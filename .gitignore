@@ -1,0 +1,37 @@
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.idea/caches
+.idea/libraries
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration
+local.properties
+
+# Captures
+captures/
+
+# Room schema (لا ترفعه على GitHub)
+schemas/
+
+# NDK / CMake
+.externalNativeBuild/
+.cxx/
+
+# Misc
+.DS_Store
+
+# Keystore (لا ترفعها أبداً على GitHub)
+*.jks
+*.keystore
+
+# Log files
+*.log

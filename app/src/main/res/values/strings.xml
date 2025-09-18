@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">ProNetwork</string>
+    <string name="clients">Clients</string>
+    <string name="search">Search by name or ID</string>
+    <string name="mark_as_paid">Mark as Paid</string>
+    <string name="mark_as_unpaid">Mark as Unpaid</string>
+    <string name="suspend">Suspend</string>
+    <string name="activate">Activate</string>
+    <string name="payment_date">Payment Date: %s</string>
+    <string name="suspension_date">Suspension Date: %s</string>
+    <string name="total_paid">Total Paid: %s SAR</string>
+    <string name="total_unpaid">Total Unpaid: %s SAR</string>
+    <string name="add_client">Add New Client</string>
+    <string name="name">Name</string>
+    <string name="subscription_id">Subscription ID</string>
+    <string name="mobile">Mobile</string>
+    <string name="room">Room</string>
+    <string name="price">Price (SAR)</string>
+    <string name="save">Save</string>
+    <string name="month">Month: %s</string>
+</resources>

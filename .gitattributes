@@ -1,0 +1,28 @@
+# Force Unix-style line endings for all text files
+* text=auto eol=lf
+
+# Treat these file types as text
+*.java text
+*.kt text
+*.xml text
+*.gradle text
+*.kts text
+*.pro text
+*.properties text
+*.toml text
+*.md text
+*.txt text
+
+# Treat image files as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.svg binary
+
+# Ignore diff for lockfiles (less noise in PRs)
+gradle.lockfile -diff
+
+# Room schemas - treat as JSON (for consistent diffs if ever tracked)
+schemas/*.json text

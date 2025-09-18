@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="app_name">برو نتورك</string>
+    <string name="clients">المشتركين</string>
+    <string name="search">ابحث بالاسم أو رقم الاشتراك</string>
+    <string name="mark_as_paid">تحديد كمدفوع</string>
+    <string name="mark_as_unpaid">تحديد كغير مدفوع</string>
+    <string name="suspend">إيقاف</string>
+    <string name="activate">تفعيل</string>
+    <string name="payment_date">تاريخ الدفع: %s</string>
+    <string name="suspension_date">تاريخ الإيقاف: %s</string>
+    <string name="total_paid">إجمالي المدفوع: %s ر.س</string>
+    <string name="total_unpaid">إجمالي غير المدفوع: %s ر.س</string>
+    <string name="add_client">إضافة مشترك جديد</string>
+    <string name="name">الاسم</string>
+    <string name="subscription_id">رقم الاشتراك</string>
+    <string name="mobile">الجوال</string>
+    <string name="room">الغرفة</string>
+    <string name="price">السعر (ر.س)</string>
+    <string name="save">حفظ</string>
+    <string name="month">الشهر: %s</string>
+</resources>
