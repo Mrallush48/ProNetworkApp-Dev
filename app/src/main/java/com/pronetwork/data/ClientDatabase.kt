@@ -4,12 +4,9 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(
-    entities = [Client::class],
-    version = 1,
-    exportSchema = true
-)
+@Database(entities = [Client::class], version = 2, exportSchema = false)
 abstract class ClientDatabase : RoomDatabase() {
     abstract fun clientDao(): ClientDao
 
@@ -23,12 +20,16 @@ abstract class ClientDatabase : RoomDatabase() {
                     context.applicationContext,
                     ClientDatabase::class.java,
                     "client_database"
-                )
-                    // مؤقتاً: نتخطى مشاكل الميغريشن عشان يشتغل المشروع. لاحقاً نستبدل بمِيغريشن آمنة.
-                    .fallbackToDestructiveMigration()
+                ).addMigrations(Migration1To2)
                     .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        private val Migration1To2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Migration code here if needed
             }
         }
     }

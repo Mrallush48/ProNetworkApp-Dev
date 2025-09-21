@@ -1,108 +1,95 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.hilt) // ✅ Hilt plugin من الـ TOML
-    id("kotlin-kapt")
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.kapt") // ضروري لتشغيل kapt مع Room أو أي مكتبة تستخدم annotation processing
 }
 
 android {
-    namespace = "com.pronetwork.app"
+    namespace = "com.pronetwork.app" // غيرها إذا عندك اسم مختلف في مشروعك
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.pronetwork.app"
+        applicationId = "com.pronetwork.app" // غيرها إذا عندك اسم مختلف في مشروعك
         minSdk = 24
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables.useSupportLibrary = true
-    }
-
-    kapt {
-        arguments {
-            arg("room.schemaLocation", "$projectDir/schemas")
-            arg("room.incremental", "true")
-        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-Xjvm-default=all",
-            "-opt-in=kotlin.RequiresOptIn"
-        )
     }
 
     buildFeatures {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 
-    packaging {
-        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    // حل مشكلة اختلاف إصدار الجافا بين kapt و javac
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-}
-
-// ✅ إضافة فلاغ رسمي لتجاهل تحذيرات kapt
-kapt {
-    correctErrorTypes = true
+    kotlin {
+        jvmToolchain(17)
+    }
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.4")
 
-    // --- Jetpack Compose ---
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
+    // Compose BOM (لتوحيد النسخ)
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
 
-    // --- Navigation Compose ---
-    implementation(libs.androidx.navigation.compose)
+    // Compose UI & Foundation
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
 
-    // --- Hilt ---
-    implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
+    // Compose Material 2
+    implementation("androidx.compose.material:material")
+    implementation("androidx.compose.material:material-icons-extended")
 
-    // --- Room ---
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    // Compose Material 3
+    implementation("androidx.compose.material3:material3")
 
-    // --- Coroutines ---
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
+    // Compose Tooling & Preview
+    implementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.ui:ui-tooling-preview")
 
-    // --- Coil (اختياري للصور) ---
-    implementation(libs.coil.compose)
+    // Activity Compose
+    implementation("androidx.activity:activity-compose:1.8.2")
 
-    // --- Debug ---
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Lifecycle & ViewModel
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.4")
+    implementation("androidx.compose.runtime:runtime-livedata")
 
-    // --- Testing ---
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // rememberSaveable
+    implementation("androidx.compose.runtime:runtime-saveable")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.8.0")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+}
+
+// يمكنك حذف هذا إذا لا تستخدم Dagger Hilt أو kapt في مكتبات أخرى
+kapt {
+    correctErrorTypes = true
 }

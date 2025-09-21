@@ -1,115 +1,219 @@
 package com.pronetwork.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.pronetwork.app.data.Client
+import com.pronetwork.app.data.Building
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditDialog(
-    client: Client? = null,
-    selectedMonthIso: String,
-    buildingId: Int,
-    onDismiss: () -> Unit,
-    onSave: (Client) -> Unit,
-    onDelete: (() -> Unit)? = null
+    buildingList: List<Building>,
+    initialName: String = "",
+    initialSubscriptionNumber: String = "",
+    initialPrice: String = "",
+    initialBuildingId: Int? = null,
+    initialStartMonth: String = "",
+    initialPhone: String = "",
+    initialAddress: String = "",
+    initialPackageType: String = "5Mbps",
+    initialNotes: String = "",
+    buildingSelectionEnabled: Boolean = true,
+    onSave: (String, String, Double, Int, String, String, String, String, String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var name by rememberSaveable { mutableStateOf(client?.name ?: "") }
-    var subscriptionNumber by rememberSaveable { mutableStateOf(client?.subscriptionNumber ?: "") }
-    var roomNumber by rememberSaveable { mutableStateOf(client?.roomNumber ?: "") }
-    var mobile by rememberSaveable { mutableStateOf(client?.mobile ?: "") }
-    var priceText by rememberSaveable { mutableStateOf(client?.price?.toString() ?: "") }
-    var isPaid by rememberSaveable { mutableStateOf(client?.isPaid ?: false) }
-
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-
-    if (showDeleteConfirm && client != null && onDelete != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("تأكيد الحذف") },
-            text = { Text("هل أنت متأكد أنك تريد حذف هذا العميل؟ لا يمكن التراجع بعد الحذف.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteConfirm = false
-                    onDelete()
-                }) {
-                    Text("تأكيد الحذف", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("إلغاء")
-                }
-            }
-        )
+    // توليد قائمة الشهور بطريقة متوافقة مع minSdk 24
+    val months = remember {
+        val calendar = Calendar.getInstance()
+        val formatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        List(25) {
+            val monthString = formatter.format(calendar.time)
+            calendar.add(Calendar.MONTH, -1)
+            monthString
+        }
     }
+    val monthOptions = months
+    var startMonth by remember { mutableStateOf(initialStartMonth.ifEmpty { monthOptions.first() }) }
+    var monthDropdownExpanded by remember { mutableStateOf(false) }
+
+    var name by remember { mutableStateOf(initialName) }
+    var subscriptionNumber by remember { mutableStateOf(initialSubscriptionNumber) }
+    var price by remember { mutableStateOf(initialPrice) }
+    var buildingId by remember { mutableIntStateOf(initialBuildingId ?: (buildingList.firstOrNull()?.id ?: 0)) }
+    var phone by remember { mutableStateOf(initialPhone) }
+    var address by remember { mutableStateOf(initialAddress) }
+    var notes by remember { mutableStateOf(initialNotes) }
+    var packageType by remember { mutableStateOf(initialPackageType) }
+    var packageExpanded by remember { mutableStateOf(false) }
+    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "20Mbps", "25Mbps", "30Mbps")
+    var buildingDropdownExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (client == null) "إضافة عميل" else "تعديل عميل") },
+        title = { Text("تعديل/إضافة عميل", style = MaterialTheme.typography.titleLarge) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = subscriptionNumber, onValueChange = { subscriptionNumber = it }, label = { Text("رقم الاشتراك") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
-                OutlinedTextField(value = roomNumber, onValueChange = { roomNumber = it }, label = { Text("رقم الغرفة (اختياري)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(value = mobile, onValueChange = { mobile = it }, label = { Text("رقم الجوال (اختياري)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-                OutlinedTextField(value = priceText, onValueChange = { priceText = it }, label = { Text("السعر") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isPaid, onCheckedChange = { isPaid = it })
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("تم الدفع")
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("اسم العميل") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = subscriptionNumber,
+                    onValueChange = { subscriptionNumber = it },
+                    label = { Text("رقم الاشتراك") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = { Text("السعر") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                if (buildingSelectionEnabled) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        OutlinedTextField(
+                            value = buildingList.firstOrNull { it.id == buildingId }?.name ?: "",
+                            onValueChange = {},
+                            label = { Text("المبنى") },
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { buildingDropdownExpanded = true },
+                            trailingIcon = {
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = buildingDropdownExpanded,
+                            onDismissRequest = { buildingDropdownExpanded = false }
+                        ) {
+                            buildingList.forEach { building ->
+                                DropdownMenuItem(
+                                    text = { Text(building.name) },
+                                    onClick = {
+                                        buildingId = building.id
+                                        buildingDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
+                // الشهر (قائمة منسدلة عصرية)
+                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    OutlinedTextField(
+                        value = startMonth,
+                        onValueChange = {},
+                        label = { Text("شهر الإضافة") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().clickable { monthDropdownExpanded = true },
+                        trailingIcon = {
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = monthDropdownExpanded,
+                        onDismissRequest = { monthDropdownExpanded = false }
+                    ) {
+                        monthOptions.forEach { month ->
+                            DropdownMenuItem(
+                                text = { Text(month) },
+                                onClick = {
+                                    startMonth = month
+                                    monthDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("رقم الجوال") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("العنوان") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    OutlinedTextField(
+                        value = packageType,
+                        onValueChange = {},
+                        label = { Text("الباقة") },
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { packageExpanded = true },
+                        trailingIcon = {
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = packageExpanded,
+                        onDismissRequest = { packageExpanded = false }
+                    ) {
+                        packageOptions.forEach {
+                            DropdownMenuItem(
+                                text = { Text(it) },
+                                onClick = {
+                                    packageType = it
+                                    packageExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("ملاحظات") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false,
+                    minLines = 2
+                )
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val priceDouble = priceText.toDoubleOrNull() ?: 0.0
-                val result = client?.copy(
-                    name = name,
-                    subscriptionNumber = subscriptionNumber,
-                    roomNumber = roomNumber.ifBlank { null },
-                    mobile = mobile.ifBlank { null },
-                    price = priceDouble,
-                    isPaid = isPaid,
-                    startMonth = selectedMonthIso,
-                    buildingId = buildingId
-                ) ?: Client(
-                    id = 0,
-                    name = name,
-                    subscriptionNumber = subscriptionNumber,
-                    roomNumber = roomNumber.ifBlank { null },
-                    mobile = mobile.ifBlank { null },
-                    price = priceDouble,
-                    buildingId = buildingId,
-                    startMonth = selectedMonthIso,
-                    endMonth = null,
-                    isPaid = isPaid,
-                    paymentDate = null
-                )
-                onSave(result)
-            }) {
-                Text("حفظ")
+            Button(
+                onClick = {
+                    val parsedPrice = price.toDoubleOrNull() ?: 0.0
+                    onSave(
+                        name,
+                        subscriptionNumber,
+                        parsedPrice,
+                        buildingId,
+                        startMonth,
+                        phone,
+                        address,
+                        packageType,
+                        notes
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("حفظ", color = MaterialTheme.colorScheme.onPrimary)
             }
         },
         dismissButton = {
-            Row {
-                if (client != null && onDelete != null) {
-                    TextButton(onClick = { showDeleteConfirm = true }) {
-                        Text("حذف", color = MaterialTheme.colorScheme.error)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("إلغاء")
-                }
+            OutlinedButton(onClick = onDismiss) {
+                Text("إلغاء")
             }
         }
     )

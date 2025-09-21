@@ -3,11 +3,6 @@ package com.pronetwork.app.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/**
- * Client data class
- * - startMonth: ISO "yyyy-MM" (متى بدأ ظهور هذا العميل)
- * - endMonth: ISO "yyyy-MM" (لو تم "حذف" في تاريخ معين نضعه هنا)، null يعني ما زال ظاهر للأشهر القادمة
- */
 @Entity(tableName = "clients")
 data class Client(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -20,5 +15,9 @@ data class Client(
     val startMonth: String,           // ISO "yyyy-MM"
     val endMonth: String? = null,     // ISO "yyyy-MM" or null
     val isPaid: Boolean = false,
-    val paymentDate: Long? = null
+    val paymentDate: Long? = null,
+    val phone: String = "",
+    val address: String = "",
+    val packageType: String = "5Mbps", // new field
+    val notes: String = ""             // new field
 )

@@ -7,5 +7,8 @@ import androidx.room.PrimaryKey
 data class Building(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val description: String? = null
+    val location: String = "",
+    val notes: String = "",
+    val floors: Int = 0,
+    val managerName: String = ""
 )

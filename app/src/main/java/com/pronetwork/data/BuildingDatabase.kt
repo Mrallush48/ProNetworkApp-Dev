@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Building::class], version = 1, exportSchema = true)
+@Database(entities = [Building::class], version = 2, exportSchema = false)
 abstract class BuildingDatabase : RoomDatabase() {
     abstract fun buildingDao(): BuildingDao
 
@@ -15,15 +16,20 @@ abstract class BuildingDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): BuildingDatabase {
             return INSTANCE ?: synchronized(this) {
-                val inst = Room.databaseBuilder(
+                val instance = Room.databaseBuilder(
                     context.applicationContext,
                     BuildingDatabase::class.java,
-                    "buildings_db"
-                )
-                    .fallbackToDestructiveMigration() // مبسط للحصول على build نظيف - لو تريد migrations أخبرني
+                    "building_database"
+                ).addMigrations(Migration1To2)
                     .build()
-                INSTANCE = inst
-                inst
+                INSTANCE = instance
+                instance
+            }
+        }
+
+        private val Migration1To2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Migration code here if needed
             }
         }
     }

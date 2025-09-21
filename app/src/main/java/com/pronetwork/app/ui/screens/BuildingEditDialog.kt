@@ -1,51 +1,27 @@
 package com.pronetwork.app.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pronetwork.app.data.Building
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun BuildingEditDialog(
-    building: Building?,
-    onDismiss: () -> Unit,
-    onSave: (Building) -> Unit,
-    onDelete: (() -> Unit)? = null
+    initialName: String = "",
+    initialLocation: String = "",
+    initialNotes: String = "",
+    onSave: (String, String, String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var name by remember { mutableStateOf(building?.name ?: "") }
-    var description by remember { mutableStateOf(building?.description ?: "") }
-
-    // ✅ حالة لإظهار نافذة تأكيد الحذف
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    if (showDeleteDialog && building != null && onDelete != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("تأكيد الحذف") },
-            text = { Text("هل أنت متأكد أنك تريد حذف هذا المبنى؟ سيتم حذف جميع العملاء المرتبطين به ولا يمكن التراجع.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        onDelete()
-                    }
-                ) {
-                    Text("تأكيد الحذف", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("إلغاء")
-                }
-            }
-        )
-    }
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var location by rememberSaveable { mutableStateOf(initialLocation) }
+    var notes by rememberSaveable { mutableStateOf(initialNotes) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (building == null) "إضافة مبنى" else "تعديل مبنى") },
+        title = { Text(if (initialName.isEmpty()) "إضافة مبنى" else "تعديل مبنى") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -55,9 +31,15 @@ fun BuildingEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("الوصف (اختياري)") },
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("الموقع (رابط أو وصف)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("ملاحظات") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -65,25 +47,12 @@ fun BuildingEditDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank()) {
-                        onSave(
-                            building?.copy(name = name, description = description)
-                                ?: Building(name = name, description = description)
-                        )
-                    }
+                    onSave(name, location, notes)
                 }
             ) { Text("حفظ") }
         },
         dismissButton = {
-            Row {
-                if (building != null && onDelete != null) {
-                    TextButton(onClick = { showDeleteDialog = true }) {
-                        Text("حذف", color = MaterialTheme.colorScheme.error)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                TextButton(onClick = onDismiss) { Text("إلغاء") }
-            }
+            OutlinedButton(onClick = onDismiss) { Text("إلغاء") }
         }
     )
 }

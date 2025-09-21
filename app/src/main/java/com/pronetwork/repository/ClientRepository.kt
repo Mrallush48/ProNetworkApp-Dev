@@ -1,36 +1,15 @@
 package com.pronetwork.app.repository
 
+import androidx.lifecycle.LiveData
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDao
-import kotlinx.coroutines.flow.Flow
 
-class ClientRepository(private val dao: ClientDao) {
+class ClientRepository(private val clientDao: ClientDao) {
+    val clients: LiveData<List<Client>> = clientDao.getAllClients()
+    fun searchClients(search: String) = clientDao.searchClients(search)
+    fun getClientsCount() = clientDao.getClientsCount()
 
-    fun getClientsByBuildingAndMonth(buildingId: Int, month: String): Flow<List<Client>> {
-        return dao.getClientsByBuildingAndMonth(buildingId, month)
-    }
-
-    fun searchClients(buildingId: Int, month: String, query: String): Flow<List<Client>> {
-        return dao.searchClients(buildingId, month, query)
-    }
-
-    suspend fun insertClient(client: Client) {
-        dao.insert(client)
-    }
-
-    suspend fun updateClient(client: Client) {
-        dao.update(client)
-    }
-
-    suspend fun deleteClient(client: Client) {
-        dao.delete(client)
-    }
-
-    /**
-     * حذف "ناعم" — يضع endMonth = month (اختياري للاستعمال لاحقاً)
-     */
-    suspend fun softDeleteClient(client: Client, month: String) {
-        val updated = client.copy(endMonth = month)
-        dao.update(updated)
-    }
+    suspend fun insert(client: Client) = clientDao.insert(client)
+    suspend fun update(client: Client) = clientDao.update(client)
+    suspend fun delete(client: Client) = clientDao.delete(client)
 }

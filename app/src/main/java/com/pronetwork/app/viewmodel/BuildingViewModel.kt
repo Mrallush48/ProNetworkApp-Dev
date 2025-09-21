@@ -1,32 +1,28 @@
 package com.pronetwork.app.viewmodel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import android.app.Application
+import androidx.lifecycle.*
 import com.pronetwork.app.data.Building
+import com.pronetwork.app.data.BuildingDatabase
 import com.pronetwork.app.repository.BuildingRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 
-class BuildingViewModel(private val repository: BuildingRepository) : ViewModel() {
+class BuildingViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository: BuildingRepository
+    private val _searchQuery = MutableLiveData("")
+    val buildings: LiveData<List<Building>>
 
-    // exposed as StateFlow
-    val buildings: StateFlow<List<Building>> =
-        repository.getAllBuildings()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    fun addBuilding(building: Building) {
-        viewModelScope.launch { repository.addBuilding(building) }
+    init {
+        val buildingDao = BuildingDatabase.getDatabase(application).buildingDao()
+        repository = BuildingRepository(buildingDao)
+        buildings = _searchQuery.switchMap { query ->
+            if (query.isEmpty()) repository.buildings else repository.searchBuildings(query)
+        }
     }
 
-    fun updateBuilding(building: Building) {
-        viewModelScope.launch { repository.updateBuilding(building) }
-    }
+    fun setSearchQuery(q: String) { _searchQuery.value = q }
 
-    fun deleteBuilding(building: Building) {
-        viewModelScope.launch { repository.deleteBuilding(building) }
-    }
+    fun insert(building: Building) = viewModelScope.launch { repository.insert(building) }
+    fun update(building: Building) = viewModelScope.launch { repository.update(building) }
+    fun delete(building: Building) = viewModelScope.launch { repository.delete(building) }
 }
