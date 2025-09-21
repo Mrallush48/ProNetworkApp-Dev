@@ -454,7 +454,14 @@ class MainActivity : ComponentActivity() {
                                     clientsCount = clientsCount,
                                     buildingsCount = buildings.size,
                                     paidClientsCount = paidClientsCount,
-                                    unpaidClientsCount = unpaidClientsCount
+                                    unpaidClientsCount = unpaidClientsCount,
+                                    allClients = clients,
+                                    monthOptions = monthOptions,
+                                    onMarkClientLate = { client, month ->
+                                        // Implementation for marking client as late
+                                        // For now, this could update the client with a late flag
+                                        // or create a separate late client record
+                                    }
                                 )
                             }
                         }

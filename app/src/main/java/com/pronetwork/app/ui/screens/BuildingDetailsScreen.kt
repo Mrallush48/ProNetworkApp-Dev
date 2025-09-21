@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +39,34 @@ fun BuildingDetailsScreen(
     var monthDropdownExpanded by remember { mutableStateOf(false) }
     var showDeleteBuildingDialog by remember { mutableStateOf(false) }
 
-    val buildingClients = allClients.filter { it.buildingId == building.id && it.startMonth == selectedMonth }
+    val buildingClients = allClients.filter { client ->
+        client.buildingId == building.id && 
+        // Apply same month visibility logic as main screen
+        try {
+            val clientStartMonth = client.startMonth
+            val currentViewMonth = selectedMonth
+            
+            // Parse both months for comparison
+            val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
+            val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
+            
+            // Check if client should be visible in this month
+            if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
+                // If client has an end month, check if view month is before end month
+                if (client.endMonth != null) {
+                    val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
+                    endDate != null && viewDate.time < endDate.time
+                } else {
+                    true // No end month, show indefinitely
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            // Fallback to exact match if parsing fails
+            client.startMonth == selectedMonth
+        }
+    }
 
     Scaffold(
         topBar = {

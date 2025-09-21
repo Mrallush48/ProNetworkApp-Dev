@@ -130,7 +130,21 @@ fun ClientDetailsScreen(
                     if (client.notes.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Text("ملاحظات:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(client.notes, style = MaterialTheme.typography.bodyMedium)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(client.notes, style = MaterialTheme.typography.bodyMedium)
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "مزامنة عبر جميع الشهور",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 }
             }
