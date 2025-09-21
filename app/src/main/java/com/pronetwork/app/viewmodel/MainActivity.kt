@@ -80,7 +80,33 @@ class MainActivity : ComponentActivity() {
                 var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
 
-                val filteredClients = clients.filter { it.startMonth == selectedMonth }
+                val filteredClients = clients.filter { client ->
+                    // Parse months to compare (format: yyyy-MM)
+                    try {
+                        val clientStartMonth = client.startMonth
+                        val currentViewMonth = selectedMonth
+                        
+                        // Parse both months for comparison
+                        val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
+                        val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
+                        
+                        // Check if client should be visible in this month
+                        if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
+                            // If client has an end month, check if view month is before end month
+                            if (client.endMonth != null) {
+                                val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
+                                endDate != null && viewDate.time < endDate.time
+                            } else {
+                                true // No end month, show indefinitely
+                            }
+                        } else {
+                            false
+                        }
+                    } catch (e: Exception) {
+                        // Fallback to exact match if parsing fails
+                        client.startMonth == selectedMonth
+                    }
+                }
 
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
@@ -199,20 +225,20 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onClientClick = { selectedClient = it },
                                         onUndoPaid = { client ->
-                                            clientViewModel.update(client.copy(isPaid = false))
+                                            clientViewModel.update(client.copy(isPaid = false, paymentDate = null))
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("تم التراجع عن تأكيد الدفع")
                                             }
                                         },
                                         onPaid = { client ->
-                                            clientViewModel.update(client.copy(isPaid = true))
+                                            clientViewModel.update(client.copy(isPaid = true, paymentDate = System.currentTimeMillis()))
                                             scope.launch {
                                                 val result = snackbarHostState.showSnackbar(
                                                     message = "تم تأكيد الدفع",
                                                     actionLabel = "تراجع"
                                                 )
                                                 if (result == SnackbarResult.ActionPerformed) {
-                                                    clientViewModel.update(client.copy(isPaid = false))
+                                                    clientViewModel.update(client.copy(isPaid = false, paymentDate = null))
                                                 }
                                             }
                                         }
@@ -250,15 +276,27 @@ class MainActivity : ComponentActivity() {
                                                 selectedClient = clientToEdit
                                                 showEditClientDialog = true
                                             },
-                                            onDelete = {
-                                                clientViewModel.delete(it)
+                                            onDelete = { clientToDelete ->
+                                                // Check if we're deleting from start month or future month
+                                                if (selectedMonth == clientToDelete.startMonth) {
+                                                    // Deleting from start month - delete completely
+                                                    clientViewModel.delete(clientToDelete)
+                                                } else {
+                                                    // Deleting from future month - set end month to current selected month
+                                                    clientViewModel.update(clientToDelete.copy(endMonth = selectedMonth))
+                                                }
                                                 selectedClient = null
                                             },
                                             onTogglePaid = { paid ->
-                                                clientViewModel.update(client.copy(isPaid = paid))
+                                                val updatedClient = if (paid) {
+                                                    client.copy(isPaid = paid, paymentDate = System.currentTimeMillis())
+                                                } else {
+                                                    client.copy(isPaid = paid, paymentDate = null)
+                                                }
+                                                clientViewModel.update(updatedClient)
                                             },
                                             onUndoPaid = {
-                                                clientViewModel.update(client.copy(isPaid = false))
+                                                clientViewModel.update(client.copy(isPaid = false, paymentDate = null))
                                             },
                                             onBack = { selectedClient = null }
                                         )

@@ -12,6 +12,30 @@ import com.pronetwork.app.data.Building
 import java.text.SimpleDateFormat
 import java.util.*
 
+@Composable
+fun CustomDatePickerDialog(
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis) }) {
+                Text("تأكيد")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("إلغاء")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditDialog(
@@ -29,7 +53,7 @@ fun ClientEditDialog(
     onSave: (String, String, Double, Int, String, String, String, String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // توليد قائمة الشهور بطريقة متوافقة مع minSdk 24
+    // Generate month options for compatibility with minSdk 24
     val months = remember {
         val calendar = Calendar.getInstance()
         val formatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
@@ -40,8 +64,37 @@ fun ClientEditDialog(
         }
     }
     val monthOptions = months
-    var startMonth by remember { mutableStateOf(initialStartMonth.ifEmpty { monthOptions.first() }) }
-    var monthDropdownExpanded by remember { mutableStateOf(false) }
+    
+    // Date picker state
+    var showDatePicker by remember { mutableStateOf(false) }
+    var selectedDate by remember { 
+        mutableStateOf(
+            if (initialStartMonth.isNotEmpty()) {
+                try {
+                    val parts = initialStartMonth.split("-")
+                    val year = parts[0].toInt()
+                    val month = parts[1].toInt() - 1 // Calendar month is 0-based
+                    val calendar = Calendar.getInstance()
+                    calendar.set(year, month, 1)
+                    calendar.timeInMillis
+                } catch (e: Exception) {
+                    System.currentTimeMillis()
+                }
+            } else {
+                System.currentTimeMillis()
+            }
+        )
+    }
+    
+    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val monthFormatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+    var startMonth by remember { 
+        mutableStateOf(
+            initialStartMonth.ifEmpty { 
+                monthFormatter.format(Date(selectedDate))
+            }
+        )
+    }
 
     var name by remember { mutableStateOf(initialName) }
     var subscriptionNumber by remember { mutableStateOf(initialSubscriptionNumber) }
@@ -111,32 +164,18 @@ fun ClientEditDialog(
                         }
                     }
                 }
-                // الشهر (قائمة منسدلة عصرية)
+                // تاريخ الإضافة (منتقي التاريخ)
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     OutlinedTextField(
-                        value = startMonth,
+                        value = "${dateFormatter.format(Date(selectedDate))} (${startMonth})",
                         onValueChange = {},
-                        label = { Text("شهر الإضافة") },
+                        label = { Text("تاريخ الإضافة") },
                         readOnly = true,
-                        modifier = Modifier.fillMaxWidth().clickable { monthDropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                         trailingIcon = {
                             Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
                         }
                     )
-                    DropdownMenu(
-                        expanded = monthDropdownExpanded,
-                        onDismissRequest = { monthDropdownExpanded = false }
-                    ) {
-                        monthOptions.forEach { month ->
-                            DropdownMenuItem(
-                                text = { Text(month) },
-                                onClick = {
-                                    startMonth = month
-                                    monthDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
                 }
                 OutlinedTextField(
                     value = phone,
@@ -217,4 +256,18 @@ fun ClientEditDialog(
             }
         }
     )
+    
+    // Date Picker Dialog
+    if (showDatePicker) {
+        CustomDatePickerDialog(
+            onDateSelected = { dateMillis ->
+                if (dateMillis != null) {
+                    selectedDate = dateMillis
+                    startMonth = monthFormatter.format(Date(dateMillis))
+                }
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
 }
