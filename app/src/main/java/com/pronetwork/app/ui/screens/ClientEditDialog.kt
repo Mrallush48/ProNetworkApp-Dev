@@ -67,31 +67,12 @@ fun ClientEditDialog(
     
     // Date picker state
     var showDatePicker by remember { mutableStateOf(false) }
-    var selectedDate by remember { 
-        mutableStateOf(
-            if (initialStartMonth.isNotEmpty()) {
-                try {
-                    val parts = initialStartMonth.split("-")
-                    val year = parts[0].toInt()
-                    val month = parts[1].toInt() - 1 // Calendar month is 0-based
-                    val calendar = Calendar.getInstance()
-                    calendar.set(year, month, 1)
-                    calendar.timeInMillis
-                } catch (e: Exception) {
-                    System.currentTimeMillis()
-                }
-            } else {
-                System.currentTimeMillis()
-            }
-        )
-    }
-    
-    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    // نستخدم فقط الشهر والسنة
     val monthFormatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
-    var startMonth by remember { 
+    var startMonth by remember {
         mutableStateOf(
-            initialStartMonth.ifEmpty { 
-                monthFormatter.format(Date(selectedDate))
+            initialStartMonth.ifEmpty {
+                monthFormatter.format(Date())
             }
         )
     }
@@ -164,12 +145,12 @@ fun ClientEditDialog(
                         }
                     }
                 }
-                // تاريخ الإضافة (منتقي التاريخ)
+                // حقل اختيار الشهر فقط
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     OutlinedTextField(
-                        value = "${dateFormatter.format(Date(selectedDate))} (${startMonth})",
+                        value = startMonth,
                         onValueChange = {},
-                        label = { Text("تاريخ الإضافة") },
+                        label = { Text("شهر البداية") },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                         trailingIcon = {
@@ -262,8 +243,12 @@ fun ClientEditDialog(
         CustomDatePickerDialog(
             onDateSelected = { dateMillis ->
                 if (dateMillis != null) {
-                    selectedDate = dateMillis
-                    startMonth = monthFormatter.format(Date(dateMillis))
+                    // نأخذ فقط الشهر والسنة
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = dateMillis
+                    val year = calendar.get(Calendar.YEAR)
+                    val month = calendar.get(Calendar.MONTH) + 1 // Calendar.MONTH is 0-based
+                    startMonth = String.format("%04d-%02d", year, month)
                 }
                 showDatePicker = false
             },
