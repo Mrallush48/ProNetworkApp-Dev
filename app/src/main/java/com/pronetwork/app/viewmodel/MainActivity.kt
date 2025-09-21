@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 var currentScreen by remember { mutableStateOf("clients") }
                 var showClientDialog by remember { mutableStateOf(false) }
                 var showBuildingDialog by remember { mutableStateOf(false) }
+                var showEditBuildingDialog by remember { mutableStateOf(false) }
                 var selectedBuilding by remember { mutableStateOf<Building?>(null) }
                 var selectedClient by remember { mutableStateOf<Client?>(null) }
                 var showEditClientDialog by remember { mutableStateOf(false) }
@@ -378,6 +379,19 @@ class MainActivity : ComponentActivity() {
                                     onUndoPaid = { client ->
                                         clientViewModel.update(client.copy(isPaid = false))
                                     },
+                                    onEditBuilding = { buildingToEdit ->
+                                        selectedBuilding = buildingToEdit
+                                        showEditBuildingDialog = true
+                                    },
+                                    onDeleteBuilding = { buildingToDelete ->
+                                        // Delete all clients associated with this building first
+                                        clients.filter { it.buildingId == buildingToDelete.id }.forEach { client ->
+                                            clientViewModel.delete(client)
+                                        }
+                                        // Then delete the building
+                                        buildingViewModel.delete(buildingToDelete)
+                                        selectedBuilding = null
+                                    },
                                     onBack = { selectedBuilding = null }
                                 )
                                 if (showEditClientDialog && selectedClient != null) {
@@ -411,6 +425,24 @@ class MainActivity : ComponentActivity() {
                                             selectedClient = null
                                         },
                                         onDismiss = { showEditClientDialog = false }
+                                    )
+                                }
+                                if (showEditBuildingDialog && selectedBuilding != null) {
+                                    BuildingEditDialog(
+                                        initialName = selectedBuilding!!.name,
+                                        initialLocation = selectedBuilding!!.location,
+                                        initialNotes = selectedBuilding!!.notes,
+                                        onSave = { name, location, notes ->
+                                            buildingViewModel.update(
+                                                selectedBuilding!!.copy(
+                                                    name = name,
+                                                    location = location,
+                                                    notes = notes
+                                                )
+                                            )
+                                            showEditBuildingDialog = false
+                                        },
+                                        onDismiss = { showEditBuildingDialog = false }
                                     )
                                 }
                             }
