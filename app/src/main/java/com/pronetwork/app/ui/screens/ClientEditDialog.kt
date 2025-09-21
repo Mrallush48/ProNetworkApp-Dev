@@ -12,6 +12,7 @@ import com.pronetwork.app.data.Building
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomDatePickerDialog(
     onDateSelected: (Long?) -> Unit,
@@ -36,7 +37,6 @@ fun CustomDatePickerDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditDialog(
     buildingList: List<Building>,
