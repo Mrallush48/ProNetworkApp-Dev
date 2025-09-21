@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +28,8 @@ fun BuildingDetailsScreen(
     onDeleteClient: (Client) -> Unit,
     onTogglePaid: (Client, Boolean) -> Unit,
     onUndoPaid: (Client) -> Unit,
+    onEditBuilding: (Building) -> Unit,
+    onDeleteBuilding: (Building) -> Unit,
     onBack: () -> Unit
 ) {
     var showAddClientDialog by remember { mutableStateOf(false) }
@@ -33,8 +37,36 @@ fun BuildingDetailsScreen(
     var showEditClientDialog by remember { mutableStateOf(false) }
     var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
     var monthDropdownExpanded by remember { mutableStateOf(false) }
+    var showDeleteBuildingDialog by remember { mutableStateOf(false) }
 
-    val buildingClients = allClients.filter { it.buildingId == building.id && it.startMonth == selectedMonth }
+    val buildingClients = allClients.filter { client ->
+        client.buildingId == building.id && 
+        // Apply same month visibility logic as main screen
+        try {
+            val clientStartMonth = client.startMonth
+            val currentViewMonth = selectedMonth
+            
+            // Parse both months for comparison
+            val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
+            val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
+            
+            // Check if client should be visible in this month
+            if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
+                // If client has an end month, check if view month is before end month
+                if (client.endMonth != null) {
+                    val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
+                    endDate != null && viewDate.time < endDate.time
+                } else {
+                    true // No end month, show indefinitely
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            // Fallback to exact match if parsing fails
+            client.startMonth == selectedMonth
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -54,8 +86,61 @@ fun BuildingDetailsScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
-            Text("الموقع: ${building.location}", style = MaterialTheme.typography.titleMedium)
-            Text("ملاحظات: ${building.notes}", style = MaterialTheme.typography.bodyMedium)
+            // Building information card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("معلومات المبنى", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(12.dp))
+                    
+                    if (building.location.isNotEmpty()) {
+                        Text("الموقع:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(building.location, style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    
+                    if (building.notes.isNotEmpty()) {
+                        Text("ملاحظات:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(building.notes, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    
+                    if (building.floors > 0) {
+                        Text("عدد الطوابق:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${building.floors}", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    
+                    if (building.managerName.isNotEmpty()) {
+                        Text("اسم المدير:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(building.managerName, style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    
+                    // Action buttons
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { onEditBuilding(building) },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Text("تعديل المبنى")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = { showDeleteBuildingDialog = true },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("حذف المبنى")
+                        }
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(16.dp))
             // قائمة منسدلة للشهر
             Box(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
@@ -227,6 +312,44 @@ fun BuildingDetailsScreen(
                     )
                 }
             }
+        }
+        
+        // Building delete confirmation dialog
+        if (showDeleteBuildingDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteBuildingDialog = false },
+                title = { Text("تأكيد حذف المبنى") },
+                text = { 
+                    Column {
+                        Text("هل أنت متأكد من حذف المبنى \"${building.name}\"؟")
+                        if (allClients.any { it.buildingId == building.id }) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "تحذير: يوجد عملاء مرتبطين بهذا المبنى. سيتم حذف جميع العملاء المرتبطين أيضاً.",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onDeleteBuilding(building)
+                            showDeleteBuildingDialog = false
+                            onBack()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { 
+                        Text("نعم، احذف", color = MaterialTheme.colorScheme.onError) 
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showDeleteBuildingDialog = false }) { 
+                        Text("إلغاء") 
+                    }
+                }
+            )
         }
     }
 }
