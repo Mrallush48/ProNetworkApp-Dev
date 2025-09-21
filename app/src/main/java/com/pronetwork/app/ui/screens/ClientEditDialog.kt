@@ -68,11 +68,11 @@ fun ClientEditDialog(
     // Date picker state
     var showDatePicker by remember { mutableStateOf(false) }
     // نستخدم فقط الشهر والسنة
-    val monthFormatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+    val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     var startMonth by remember {
         mutableStateOf(
             initialStartMonth.ifEmpty {
-                monthFormatter.format(Date())
+                dateFormatter.format(Date())
             }
         )
     }
@@ -150,7 +150,7 @@ fun ClientEditDialog(
                     OutlinedTextField(
                         value = startMonth,
                         onValueChange = {},
-                        label = { Text("شهر البداية") },
+                        label = { Text("تاريخ البداية") },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                         trailingIcon = {
@@ -243,12 +243,12 @@ fun ClientEditDialog(
         CustomDatePickerDialog(
             onDateSelected = { dateMillis ->
                 if (dateMillis != null) {
-                    // نأخذ فقط الشهر والسنة
                     val calendar = Calendar.getInstance()
                     calendar.timeInMillis = dateMillis
                     val year = calendar.get(Calendar.YEAR)
                     val month = calendar.get(Calendar.MONTH) + 1 // Calendar.MONTH is 0-based
-                    startMonth = String.format("%04d-%02d", year, month)
+                    val day = calendar.get(Calendar.DAY_OF_MONTH)
+                    startMonth = String.format("%04d-%02d-%02d", year, month, day)
                 }
                 showDatePicker = false
             },
