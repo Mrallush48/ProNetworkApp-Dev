@@ -1,10 +1,10 @@
 package com.pronetwork.app.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,7 +19,7 @@ fun CustomDatePickerDialog(
     onDismiss: () -> Unit
 ) {
     val datePickerState = rememberDatePickerState()
-    
+
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
@@ -37,6 +37,7 @@ fun CustomDatePickerDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditDialog(
     buildingList: List<Building>,
@@ -53,21 +54,28 @@ fun ClientEditDialog(
     onSave: (String, String, Double, Int, String, String, String, String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Generate month options for compatibility with minSdk 24
-    val months = remember {
-        val calendar = Calendar.getInstance()
-        val formatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
-        List(25) {
-            val monthString = formatter.format(calendar.time)
-            calendar.add(Calendar.MONTH, -1)
-            monthString
-        }
-    }
-    val monthOptions = months
-    
-    // Date picker state
+    // --- الحالات الأساسية ---
+    var name by remember { mutableStateOf(initialName) }
+    var subscriptionNumber by remember { mutableStateOf(initialSubscriptionNumber) }
+    var price by remember { mutableStateOf(initialPrice) }
+    var phone by remember { mutableStateOf(initialPhone) }
+    var address by remember { mutableStateOf(initialAddress) }
+    var notes by remember { mutableStateOf(initialNotes) }
+
+    // --- حالات القوائم المنسدلة ---
+
+    // حالة المبنى (محدثة)
+    val initialBuilding = buildingList.find { it.id == (initialBuildingId ?: 0) }
+    var selectedBuilding by remember { mutableStateOf(initialBuilding) }
+    var buildingExpanded by remember { mutableStateOf(false) }
+
+    // حالة الباقة (محدثة)
+    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "20Mbps", "25Mbps", "30Mbps")
+    var selectedPackage by remember { mutableStateOf(initialPackageType.ifEmpty { packageOptions.first() }) }
+    var packageExpanded by remember { mutableStateOf(false) }
+
+    // حالة تاريخ البداية
     var showDatePicker by remember { mutableStateOf(false) }
-    // نستخدم فقط الشهر والسنة
     val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     var startMonth by remember {
         mutableStateOf(
@@ -77,137 +85,164 @@ fun ClientEditDialog(
         )
     }
 
-    var name by remember { mutableStateOf(initialName) }
-    var subscriptionNumber by remember { mutableStateOf(initialSubscriptionNumber) }
-    var price by remember { mutableStateOf(initialPrice) }
-    var buildingId by remember { mutableIntStateOf(initialBuildingId ?: (buildingList.firstOrNull()?.id ?: 0)) }
-    var phone by remember { mutableStateOf(initialPhone) }
-    var address by remember { mutableStateOf(initialAddress) }
-    var notes by remember { mutableStateOf(initialNotes) }
-    var packageType by remember { mutableStateOf(initialPackageType) }
-    var packageExpanded by remember { mutableStateOf(false) }
-    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "20Mbps", "25Mbps", "30Mbps")
-    var buildingDropdownExpanded by remember { mutableStateOf(false) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("تعديل/إضافة عميل", style = MaterialTheme.typography.titleLarge) },
         text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("اسم العميل") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = subscriptionNumber,
-                    onValueChange = { subscriptionNumber = it },
-                    label = { Text("رقم الاشتراك") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
-                    label = { Text("السعر") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("اسم العميل") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = subscriptionNumber,
+                        onValueChange = { subscriptionNumber = it },
+                        label = { Text("رقم الاشتراك") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = { Text("السعر") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
                 if (buildingSelectionEnabled) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                        OutlinedTextField(
-                            value = buildingList.firstOrNull { it.id == buildingId }?.name ?: "",
-                            onValueChange = {},
-                            label = { Text("المبنى") },
-                            readOnly = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { buildingDropdownExpanded = true },
-                            trailingIcon = {
-                                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                    item {
+                        // === التعديل الرئيسي هنا ===
+                        // التحقق أولاً مما إذا كانت قائمة المباني تحتوي على عناصر
+                        if (buildingList.isNotEmpty()) {
+                            ExposedDropdownMenuBox(
+                                expanded = buildingExpanded,
+                                onExpandedChange = { buildingExpanded = !buildingExpanded },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedBuilding?.name ?: "اختر مبنى",
+                                    onValueChange = { },
+                                    readOnly = true,
+                                    label = { Text("المبنى") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = buildingExpanded) },
+                                    modifier = Modifier.menuAnchor()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = buildingExpanded,
+                                    onDismissRequest = { buildingExpanded = false }
+                                ) {
+                                    // === الإصلاح النهائي: استبدال LazyColumn بـ Column ===
+                                    Column {
+                                        buildingList.forEach { building ->
+                                            DropdownMenuItem(
+                                                text = { Text(building.name) },
+                                                onClick = {
+                                                    selectedBuilding = building
+                                                    buildingExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                        } else {
+                            OutlinedTextField(
+                                value = "لا توجد مباني متاحة. الرجاء إضافة مبنى أولاً.",
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("المبنى") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                item {
+                    // === حقل تاريخ البداية ===
+                    ExposedDropdownMenuBox(
+                        expanded = false, // لا نستخدم expanded state هنا لأننا نفتح dialog
+                        onExpandedChange = { showDatePicker = true }, // عند الضغط نفتح الـ dialog
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = startMonth,
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("تاريخ البداية") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
+                            modifier = Modifier.menuAnchor()
                         )
-                        DropdownMenu(
-                            expanded = buildingDropdownExpanded,
-                            onDismissRequest = { buildingDropdownExpanded = false }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text("رقم الجوال") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("العنوان") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                item {
+                    // === حقل الباقة (القائمة المنسدلة) ===
+                    ExposedDropdownMenuBox(
+                        expanded = packageExpanded,
+                        onExpandedChange = { packageExpanded = !packageExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = selectedPackage,
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("الباقة") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = packageExpanded) },
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = packageExpanded,
+                            onDismissRequest = { packageExpanded = false }
                         ) {
-                            buildingList.forEach { building ->
+                            packageOptions.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(building.name) },
+                                    text = { Text(option) },
                                     onClick = {
-                                        buildingId = building.id
-                                        buildingDropdownExpanded = false
+                                        selectedPackage = option
+                                        packageExpanded = false
                                     }
                                 )
                             }
                         }
                     }
-                }
-                // حقل اختيار الشهر فقط
-                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = startMonth,
-                        onValueChange = {},
-                        label = { Text("تاريخ البداية") },
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
-                        trailingIcon = {
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                        }
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = { Text("ملاحظات") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        minLines = 2
                     )
                 }
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("رقم الجوال") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("العنوان") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                    OutlinedTextField(
-                        value = packageType,
-                        onValueChange = {},
-                        label = { Text("الباقة") },
-                        readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { packageExpanded = true },
-                        trailingIcon = {
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                        }
-                    )
-                    DropdownMenu(
-                        expanded = packageExpanded,
-                        onDismissRequest = { packageExpanded = false }
-                    ) {
-                        packageOptions.forEach {
-                            DropdownMenuItem(
-                                text = { Text(it) },
-                                onClick = {
-                                    packageType = it
-                                    packageExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("ملاحظات") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = false,
-                    minLines = 2
-                )
             }
         },
         confirmButton = {
@@ -218,11 +253,11 @@ fun ClientEditDialog(
                         name,
                         subscriptionNumber,
                         parsedPrice,
-                        buildingId,
+                        selectedBuilding?.id ?: 0,
                         startMonth,
                         phone,
                         address,
-                        packageType,
+                        selectedPackage,
                         notes
                     )
                 },
@@ -237,7 +272,7 @@ fun ClientEditDialog(
             }
         }
     )
-    
+
     // Date Picker Dialog
     if (showDatePicker) {
         CustomDatePickerDialog(
@@ -246,7 +281,7 @@ fun ClientEditDialog(
                     val calendar = Calendar.getInstance()
                     calendar.timeInMillis = dateMillis
                     val year = calendar.get(Calendar.YEAR)
-                    val month = calendar.get(Calendar.MONTH) + 1 // Calendar.MONTH is 0-based
+                    val month = calendar.get(Calendar.MONTH) + 1
                     val day = calendar.get(Calendar.DAY_OF_MONTH)
                     startMonth = String.format("%04d-%02d-%02d", year, month, day)
                 }

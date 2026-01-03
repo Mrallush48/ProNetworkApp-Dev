@@ -7,9 +7,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.data.Building
@@ -39,33 +41,37 @@ fun BuildingDetailsScreen(
     var monthDropdownExpanded by remember { mutableStateOf(false) }
     var showDeleteBuildingDialog by remember { mutableStateOf(false) }
 
+    // --- حالات جديدة لتأكيد الحذف ---
+    var showDeleteClientDialog by remember { mutableStateOf(false) }
+    var clientToDelete by remember { mutableStateOf<Client?>(null) }
+
     val buildingClients = allClients.filter { client ->
-        client.buildingId == building.id && 
-        // Apply same month visibility logic as main screen
-        try {
-            val clientStartMonth = client.startMonth
-            val currentViewMonth = selectedMonth
-            
-            // Parse both months for comparison
-            val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
-            val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
-            
-            // Check if client should be visible in this month
-            if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
-                // If client has an end month, check if view month is before end month
-                if (client.endMonth != null) {
-                    val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
-                    endDate != null && viewDate.time < endDate.time
-                } else {
-                    true // No end month, show indefinitely
+        client.buildingId == building.id &&
+                // Apply same month visibility logic as main screen
+                try {
+                    val clientStartMonth = client.startMonth
+                    val currentViewMonth = selectedMonth
+
+                    // Parse both months for comparison
+                    val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
+                    val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
+
+                    // Check if client should be visible in this month
+                    if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
+                        // If client has an end month, check if view month is before end month
+                        if (client.endMonth != null) {
+                            val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
+                            endDate != null && viewDate.time < endDate.time
+                        } else {
+                            true // No end month, show indefinitely
+                        }
+                    } else {
+                        false
+                    }
+                } catch (_: Exception) {
+                    // Fallback to exact match if parsing fails
+                    client.startMonth == selectedMonth
                 }
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            // Fallback to exact match if parsing fails
-            client.startMonth == selectedMonth
-        }
     }
 
     Scaffold(
@@ -94,31 +100,31 @@ fun BuildingDetailsScreen(
                 Column(Modifier.padding(16.dp)) {
                     Text("معلومات المبنى", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    
+
                     if (building.location.isNotEmpty()) {
                         Text("الموقع:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(building.location, style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(8.dp))
                     }
-                    
+
                     if (building.notes.isNotEmpty()) {
                         Text("ملاحظات:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(building.notes, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(8.dp))
                     }
-                    
+
                     if (building.floors > 0) {
                         Text("عدد الطوابق:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${building.floors}", style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(8.dp))
                     }
-                    
+
                     if (building.managerName.isNotEmpty()) {
                         Text("اسم المدير:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(building.managerName, style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(8.dp))
                     }
-                    
+
                     // Action buttons
                     Row(
                         Modifier.fillMaxWidth(),
@@ -130,7 +136,7 @@ fun BuildingDetailsScreen(
                         ) {
                             Text("تعديل المبنى")
                         }
-                        
+
                         OutlinedButton(
                             onClick = { showDeleteBuildingDialog = true },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -140,7 +146,7 @@ fun BuildingDetailsScreen(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
             // قائمة منسدلة للشهر
             Box(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
@@ -178,13 +184,13 @@ fun BuildingDetailsScreen(
                 }
             }
             Text("عملاء المبنى في $selectedMonth:", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             if (buildingClients.isEmpty()) {
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .padding(top = 32.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
+                    contentAlignment = Alignment.Center
                 ) {
                     Text("لا يوجد عملاء في هذا الشهر.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -204,30 +210,44 @@ fun BuildingDetailsScreen(
                             Modifier
                                 .padding(16.dp)
                                 .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text("اسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
                                 Text("رقم الاشتراك: ${client.subscriptionNumber}", style = MaterialTheme.typography.bodySmall)
                                 Text("رقم الجوال: ${client.phone}", style = MaterialTheme.typography.bodySmall)
                                 Text("الحالة: ${if (client.isPaid) "مدفوع" else "غير مدفوع"}", style = MaterialTheme.typography.bodySmall)
                             }
-                            if (!client.isPaid) {
-                                Button(
-                                    onClick = { onTogglePaid(client, true) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                                ) {
-                                    Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("تأكيد الدفع", color = MaterialTheme.colorScheme.onTertiary)
+                            // === التعديل هنا: الأزرار في صف واحد مع تأكيد الحذف ===
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!client.isPaid) {
+                                    Button(
+                                        onClick = { onTogglePaid(client, true) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                                    ) {
+                                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("تأكيد الدفع", color = MaterialTheme.colorScheme.onTertiary)
+                                    }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { onUndoPaid(client) }
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("تراجع", color = MaterialTheme.colorScheme.primary)
+                                    }
                                 }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { onUndoPaid(client) }
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("تراجع", color = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(8.dp))
+                                IconButton(onClick = {
+                                    // عند الضغط على زر الحذف، نحفظ العميل ونظهر نافذة التأكيد
+                                    clientToDelete = client
+                                    showDeleteClientDialog = true
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "حذف العميل", tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -284,7 +304,7 @@ fun BuildingDetailsScreen(
                         initialName = client.name,
                         initialSubscriptionNumber = client.subscriptionNumber,
                         initialPrice = client.price.toString(),
-                        initialBuildingId = building.id,
+                        initialBuildingId = client.id,
                         initialStartMonth = client.startMonth,
                         initialPhone = client.phone,
                         initialAddress = client.address,
@@ -313,13 +333,13 @@ fun BuildingDetailsScreen(
                 }
             }
         }
-        
+
         // Building delete confirmation dialog
         if (showDeleteBuildingDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteBuildingDialog = false },
                 title = { Text("تأكيد حذف المبنى") },
-                text = { 
+                text = {
                     Column {
                         Text("هل أنت متأكد من حذف المبنى \"${building.name}\"؟")
                         if (allClients.any { it.buildingId == building.id }) {
@@ -340,13 +360,47 @@ fun BuildingDetailsScreen(
                             onBack()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) { 
-                        Text("نعم، احذف", color = MaterialTheme.colorScheme.onError) 
+                    ) {
+                        Text("نعم، احذف", color = MaterialTheme.colorScheme.onError)
                     }
                 },
                 dismissButton = {
-                    OutlinedButton(onClick = { showDeleteBuildingDialog = false }) { 
-                        Text("إلغاء") 
+                    OutlinedButton(onClick = { showDeleteBuildingDialog = false }) {
+                        Text("إلغاء")
+                    }
+                }
+            )
+        }
+
+        // === الجديد: مربع تأكيد حذف العميل (تم تصحيح الخطأ النهائي) ===
+        clientToDelete?.let { client ->
+            AlertDialog(
+                onDismissRequest = {
+                    showDeleteClientDialog = false
+                    clientToDelete = null
+                },
+                title = { Text("تأكيد حذف العميل") },
+                text = {
+                    Text("هل أنت متأكد من حذف العميل \"${client.name}\"؟ لا يمكن التراجع عن هذا الإجراء.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onDeleteClient(client) // تنفيذ الحذف الفعلي
+                            showDeleteClientDialog = false // إغلاق النافذة
+                            clientToDelete = null // مسح العميل المحدد
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("حذف", color = MaterialTheme.colorScheme.onError)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = {
+                        showDeleteClientDialog = false
+                        clientToDelete = null
+                    }) {
+                        Text("إلغاء")
                     }
                 }
             )

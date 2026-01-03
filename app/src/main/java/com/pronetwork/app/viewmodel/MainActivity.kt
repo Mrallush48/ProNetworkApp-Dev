@@ -86,11 +86,11 @@ class MainActivity : ComponentActivity() {
                     try {
                         val clientStartMonth = client.startMonth
                         val currentViewMonth = selectedMonth
-                        
+
                         // Parse both months for comparison
                         val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
                         val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
-                        
+
                         // Check if client should be visible in this month
                         if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
                             // If client has an end month, check if view month is before end month

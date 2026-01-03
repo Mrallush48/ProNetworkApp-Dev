@@ -28,7 +28,7 @@ fun StatisticsScreen(
     var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
     var monthDropdownExpanded by remember { mutableStateOf(false) }
     var showLateClientsDialog by remember { mutableStateOf(false) }
-    
+
     // Calculate late customers - clients who haven't paid for previous months
     val currentMonthIndex = monthOptions.indexOf(selectedMonth)
     val lateClients = if (currentMonthIndex > 0) {
@@ -39,7 +39,7 @@ fun StatisticsScreen(
                 try {
                     val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.startMonth)
                     val monthDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(month)
-                    
+
                     if (clientDate != null && monthDate != null && monthDate.time >= clientDate.time) {
                         // Client should be active in this month, check if paid
                         if (client.endMonth != null) {
@@ -63,7 +63,7 @@ fun StatisticsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("إحصائيات التطبيق", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        
+
         // Main statistics cards
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -80,7 +80,7 @@ fun StatisticsScreen(
                 modifier = Modifier.weight(1f)
             )
         }
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -98,7 +98,7 @@ fun StatisticsScreen(
                 modifier = Modifier.weight(1f)
             )
         }
-        
+
         // Late customers section
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -121,45 +121,49 @@ fun StatisticsScreen(
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
-                // Month selection for late customers
-                Box(modifier = Modifier.fillMaxWidth()) {
+
+                // Month selection for late customers (محدث)
+                ExposedDropdownMenuBox(
+                    expanded = monthDropdownExpanded,
+                    onExpandedChange = { monthDropdownExpanded = !monthDropdownExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     OutlinedTextField(
                         value = selectedMonth,
-                        onValueChange = {},
-                        label = { Text("الشهر المرجعي") },
+                        onValueChange = { },
                         readOnly = true,
-                        modifier = Modifier.fillMaxWidth().clickable { monthDropdownExpanded = true },
-                        trailingIcon = {
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                        }
+                        label = { Text("الشهر المرجعي") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthDropdownExpanded) },
+                        modifier = Modifier.menuAnchor()
                     )
-                    DropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = monthDropdownExpanded,
                         onDismissRequest = { monthDropdownExpanded = false }
                     ) {
-                        monthOptions.forEach { month ->
-                            DropdownMenuItem(
-                                text = { Text(month) },
-                                onClick = {
-                                    selectedMonth = month
-                                    monthDropdownExpanded = false
-                                }
-                            )
+                        Column {
+                            monthOptions.forEach { month ->
+                                DropdownMenuItem(
+                                    text = { Text(month) },
+                                    onClick = {
+                                        selectedMonth = month
+                                        monthDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 Text(
                     "عدد العملاء المتأخرين: ${lateClients.size}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (lateClients.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 if (lateClients.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
@@ -172,7 +176,7 @@ fun StatisticsScreen(
             }
         }
     }
-    
+
     // Late clients dialog
     if (showLateClientsDialog) {
         AlertDialog(

@@ -50,7 +50,7 @@ fun ClientDetailsScreen(
                 Column(Modifier.padding(16.dp)) {
                     Text("معلومات العميل", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    
+
                     Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text("الاسم:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -61,9 +61,9 @@ fun ClientDetailsScreen(
                             Text(client.subscriptionNumber, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
-                    
+
                     Spacer(Modifier.height(12.dp))
-                    
+
                     Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text("المبنى:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -74,45 +74,45 @@ fun ClientDetailsScreen(
                             Text(client.packageType, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
-                    
+
                     Spacer(Modifier.height(12.dp))
-                    
+
                     Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text("السعر:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("${client.price} ريال", style = MaterialTheme.typography.bodyLarge)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("شهر البداية:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)  
+                            Text("شهر البداية:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(client.startMonth, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
-                    
+
                     if (client.phone.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Text("رقم الجوال:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(client.phone, style = MaterialTheme.typography.bodyLarge)
                     }
-                    
+
                     if (client.address.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Text("العنوان:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(client.address, style = MaterialTheme.typography.bodyLarge)
                     }
-                    
+
                     if (client.roomNumber?.isNotEmpty() == true) {
                         Spacer(Modifier.height(12.dp))
                         Text("رقم الغرفة:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(client.roomNumber!!, style = MaterialTheme.typography.bodyLarge)
                     }
-                    
+
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text("حالة الدفع:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             val statusColor = if (client.isPaid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                             Text(
-                                if (client.isPaid) "مدفوع" else "غير مدفوع", 
+                                if (client.isPaid) "مدفوع" else "غير مدفوع",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = statusColor
                             )
@@ -126,7 +126,7 @@ fun ClientDetailsScreen(
                             }
                         }
                     }
-                    
+
                     if (client.notes.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Text("ملاحظات:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -148,7 +148,7 @@ fun ClientDetailsScreen(
                     }
                 }
             }
-            
+
             Spacer(Modifier.height(16.dp))
             Row(
                 Modifier.fillMaxWidth(),
@@ -157,17 +157,17 @@ fun ClientDetailsScreen(
                 Button(
                     onClick = { onEdit(client) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) { 
-                    Text("تعديل") 
+                ) {
+                    Text("تعديل")
                 }
-                
+
                 OutlinedButton(
                     onClick = { showDeleteDialog = true },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { 
-                    Text("حذف") 
+                ) {
+                    Text("حذف")
                 }
-                
+
                 if (!client.isPaid) {
                     var paymentClickCount by remember { mutableIntStateOf(0) }
                     LaunchedEffect(paymentClickCount) {
@@ -176,7 +176,7 @@ fun ClientDetailsScreen(
                             paymentClickCount = 0
                         }
                     }
-                    
+
                     Button(
                         onClick = {
                             paymentClickCount++
@@ -211,18 +211,18 @@ fun ClientDetailsScreen(
                     var undoClickCount by remember { mutableIntStateOf(0) }
                     LaunchedEffect(undoClickCount) {
                         if (undoClickCount > 0) {
-                            kotlinx.coroutines.delay(3000) // Reset after 3 seconds  
+                            kotlinx.coroutines.delay(3000) // Reset after 3 seconds
                             undoClickCount = 0
                         }
                     }
-                    
+
                     OutlinedButton(
                         onClick = {
                             undoClickCount++
                             if (undoClickCount >= 2) {
                                 onUndoPaid()
-                                scope.launch { 
-                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع") 
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع")
                                 }
                                 undoClickCount = 0
                             } else {
