@@ -10,14 +10,16 @@ data class Client(
     val subscriptionNumber: String,
     val roomNumber: String? = null,
     val mobile: String? = null,
-    val price: Double,
+    val price: Double,                      // السعر الشهري الكامل
+    val firstMonthAmount: Double? = null,   // المبلغ الفعلي للشهر الأول (جزئي)
     val buildingId: Int,
-    val startMonth: String,           // ISO "yyyy-MM"
-    val endMonth: String? = null,     // ISO "yyyy-MM" or null
-    val isPaid: Boolean = false,
-    val paymentDate: Long? = null,
+    val startMonth: String,                 // ISO "yyyy-MM"
+    val startDay: Int = 1,                  // يوم البداية في الشهر (1-31)
+    val endMonth: String? = null,           // ISO "yyyy-MM" or null
+    val isPaid: Boolean = false,            // قديم - للتوافق فقط
+    val paymentDate: Long? = null,          // قديم - للتوافق فقط
     val phone: String = "",
     val address: String = "",
-    val packageType: String = "5Mbps", // new field
-    val notes: String = ""             // new field
+    val packageType: String = "5Mbps",
+    val notes: String = ""
 )

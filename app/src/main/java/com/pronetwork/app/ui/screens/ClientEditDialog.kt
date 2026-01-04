@@ -1,41 +1,21 @@
 package com.pronetwork.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.pronetwork.app.data.Building
-import java.text.SimpleDateFormat
 import java.util.*
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomDatePickerDialog(
-    onDateSelected: (Long?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val datePickerState = rememberDatePickerState()
-
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis) }) {
-                Text("تأكيد")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("إلغاء")
-            }
-        }
-    ) {
-        DatePicker(state = datePickerState)
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,250 +24,476 @@ fun ClientEditDialog(
     initialName: String = "",
     initialSubscriptionNumber: String = "",
     initialPrice: String = "",
-    initialBuildingId: Int? = null,
+    initialBuildingId: Int = 0,
     initialStartMonth: String = "",
+    initialStartDay: Int = 1,
+    initialFirstMonthAmount: String = "",
     initialPhone: String = "",
     initialAddress: String = "",
     initialPackageType: String = "5Mbps",
     initialNotes: String = "",
     buildingSelectionEnabled: Boolean = true,
-    onSave: (String, String, Double, Int, String, String, String, String, String) -> Unit,
+    onSave: (
+        name: String,
+        subscriptionNumber: String,
+        price: Double,
+        buildingId: Int,
+        startMonth: String,
+        startDay: Int,
+        firstMonthAmount: Double,
+        phone: String,
+        address: String,
+        packageType: String,
+        notes: String
+    ) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // --- الحالات الأساسية ---
     var name by remember { mutableStateOf(initialName) }
     var subscriptionNumber by remember { mutableStateOf(initialSubscriptionNumber) }
     var price by remember { mutableStateOf(initialPrice) }
-    var phone by remember { mutableStateOf(initialPhone) }
-    var address by remember { mutableStateOf(initialAddress) }
-    var notes by remember { mutableStateOf(initialNotes) }
-
-    // --- حالات القوائم المنسدلة ---
-
-    // حالة المبنى (محدثة)
-    val initialBuilding = buildingList.find { it.id == (initialBuildingId ?: 0) }
-    var selectedBuilding by remember { mutableStateOf(initialBuilding) }
-    var buildingExpanded by remember { mutableStateOf(false) }
-
-    // حالة الباقة (محدثة)
-    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "20Mbps", "25Mbps", "30Mbps")
-    var selectedPackage by remember { mutableStateOf(initialPackageType.ifEmpty { packageOptions.first() }) }
-    var packageExpanded by remember { mutableStateOf(false) }
-
-    // حالة تاريخ البداية
-    var showDatePicker by remember { mutableStateOf(false) }
-    val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    var startMonth by remember {
+    var selectedBuildingId by remember {
         mutableStateOf(
-            initialStartMonth.ifEmpty {
-                dateFormatter.format(Date())
-            }
+            initialBuildingId.takeIf { it > 0 } ?: buildingList.firstOrNull()?.id ?: 0
         )
     }
+    var startMonth by remember { mutableStateOf(initialStartMonth) }
+    var startDay by remember { mutableStateOf(initialStartDay.toString()) }
+    var firstMonthAmount by remember { mutableStateOf(initialFirstMonthAmount) }
+    var phone by remember { mutableStateOf(initialPhone) }
+    var address by remember { mutableStateOf(initialAddress) }
+    var packageType by remember { mutableStateOf(initialPackageType) }
+    var notes by remember { mutableStateOf(initialNotes) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("تعديل/إضافة عميل", style = MaterialTheme.typography.titleLarge) },
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("اسم العميل") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = subscriptionNumber,
-                        onValueChange = { subscriptionNumber = it },
-                        label = { Text("رقم الاشتراك") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = price,
-                        onValueChange = { price = it },
-                        label = { Text("السعر") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
+    var buildingDropdownExpanded by remember { mutableStateOf(false) }
+    var packageDropdownExpanded by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-                if (buildingSelectionEnabled) {
-                    item {
-                        // === التعديل الرئيسي هنا ===
-                        // التحقق أولاً مما إذا كانت قائمة المباني تحتوي على عناصر
-                        if (buildingList.isNotEmpty()) {
-                            ExposedDropdownMenuBox(
-                                expanded = buildingExpanded,
-                                onExpandedChange = { buildingExpanded = !buildingExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedBuilding?.name ?: "اختر مبنى",
-                                    onValueChange = { },
-                                    readOnly = true,
-                                    label = { Text("المبنى") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = buildingExpanded) },
-                                    modifier = Modifier.menuAnchor()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = buildingExpanded,
-                                    onDismissRequest = { buildingExpanded = false }
-                                ) {
-                                    // === الإصلاح النهائي: استبدال LazyColumn بـ Column ===
-                                    Column {
-                                        buildingList.forEach { building ->
-                                            DropdownMenuItem(
-                                                text = { Text(building.name) },
-                                                onClick = {
-                                                    selectedBuilding = building
-                                                    buildingExpanded = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            OutlinedTextField(
-                                value = "لا توجد مباني متاحة. الرجاء إضافة مبنى أولاً.",
-                                onValueChange = { },
-                                readOnly = true,
-                                label = { Text("المبنى") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
+    // حسبة المبلغ الجزئي للشهر الأول على أساس 30 يوم دائماً
+    LaunchedEffect(price, startMonth, startDay) {
+        if (price.isNotEmpty() && startMonth.isNotEmpty() && startDay.isNotEmpty()) {
+            val priceValue = price.toDoubleOrNull()
+            val dayValue = startDay.toIntOrNull()
 
-                item {
-                    // === حقل تاريخ البداية ===
-                    ExposedDropdownMenuBox(
-                        expanded = false, // لا نستخدم expanded state هنا لأننا نفتح dialog
-                        onExpandedChange = { showDatePicker = true }, // عند الضغط نفتح الـ dialog
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = startMonth,
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("تاريخ البداية") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
-                            modifier = Modifier.menuAnchor()
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text("رقم الجوال") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = address,
-                        onValueChange = { address = it },
-                        label = { Text("العنوان") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
+            // اليوم من 1 إلى 30 فقط لأننا نعتبر الشهر 30 يوماً دائماً
+            if (priceValue != null && dayValue != null && dayValue in 1..30) {
+                val daysInMonth = 30
 
-                item {
-                    // === حقل الباقة (القائمة المنسدلة) ===
-                    ExposedDropdownMenuBox(
-                        expanded = packageExpanded,
-                        onExpandedChange = { packageExpanded = !packageExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = selectedPackage,
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("الباقة") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = packageExpanded) },
-                            modifier = Modifier.menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = packageExpanded,
-                            onDismissRequest = { packageExpanded = false }
-                        ) {
-                            packageOptions.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        selectedPackage = option
-                                        packageExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = notes,
-                        onValueChange = { notes = it },
-                        label = { Text("ملاحظات") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        minLines = 2
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val parsedPrice = price.toDoubleOrNull() ?: 0.0
-                    onSave(
-                        name,
-                        subscriptionNumber,
-                        parsedPrice,
-                        selectedBuilding?.id ?: 0,
-                        startMonth,
-                        phone,
-                        address,
-                        selectedPackage,
-                        notes
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text("حفظ", color = MaterialTheme.colorScheme.onPrimary)
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("إلغاء")
+                val remainingDays = daysInMonth - dayValue + 1
+                val partialAmount = (priceValue / daysInMonth) * remainingDays
+
+                firstMonthAmount = String.format("%.2f", partialAmount)
             }
         }
-    )
+    }
 
-    // Date Picker Dialog
-    if (showDatePicker) {
-        CustomDatePickerDialog(
-            onDateSelected = { dateMillis ->
-                if (dateMillis != null) {
-                    val calendar = Calendar.getInstance()
-                    calendar.timeInMillis = dateMillis
-                    val year = calendar.get(Calendar.YEAR)
-                    val month = calendar.get(Calendar.MONTH) + 1
-                    val day = calendar.get(Calendar.DAY_OF_MONTH)
-                    startMonth = String.format("%04d-%02d-%02d", year, month, day)
+    val packageOptions = listOf("5Mbps", "10Mbps", "20Mbps", "50Mbps", "100Mbps", "أخرى")
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = if (initialName.isEmpty()) "إضافة عميل جديد" else "تعديل العميل",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("الاسم *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = subscriptionNumber,
+                    onValueChange = { subscriptionNumber = it },
+                    label = { Text("رقم الاشتراك *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = { Text("السعر الشهري الكامل (ريال) *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = packageType,
+                        onValueChange = {},
+                        label = { Text("الباقة") },
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { packageDropdownExpanded = true },
+                        trailingIcon = {
+                            IconButton(onClick = { packageDropdownExpanded = !packageDropdownExpanded }) {
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                            }
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = packageDropdownExpanded,
+                        onDismissRequest = { packageDropdownExpanded = false }
+                    ) {
+                        packageOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    packageType = option
+                                    packageDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "📅 تاريخ بداية الاشتراك",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = startMonth,
+                        onValueChange = { startMonth = it },
+                        label = { Text("الشهر (yyyy-MM) *") },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("2026-01") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Filled.CalendarToday, contentDescription = "اختر التاريخ")
+                            }
+                        }
+                    )
+
+                    OutlinedTextField(
+                        value = startDay,
+                        onValueChange = {
+                            if (it.isEmpty() || (it.toIntOrNull() ?: 0) in 1..30) {
+                                startDay = it
+                            }
+                        },
+                        label = { Text("اليوم *") },
+                        modifier = Modifier.weight(0.5f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        placeholder = { Text("1-30") },
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = firstMonthAmount,
+                    onValueChange = { firstMonthAmount = it },
+                    label = { Text("المبلغ الفعلي للشهر الأول (ريال) *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    supportingText = {
+                        val dayValue = startDay.toIntOrNull()
+                        if (dayValue != null && dayValue in 1..30) {
+                            val daysInMonth = 30
+                            val remainingDays = daysInMonth - dayValue + 1
+                            Text(
+                                "💡 الأيام المتبقية: $remainingDays من $daysInMonth يوم",
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (buildingSelectionEnabled && buildingList.isNotEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = buildingList.firstOrNull { it.id == selectedBuildingId }?.name ?: "",
+                            onValueChange = {},
+                            label = { Text("المبنى *") },
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { buildingDropdownExpanded = true },
+                            trailingIcon = {
+                                IconButton(onClick = { buildingDropdownExpanded = !buildingDropdownExpanded }) {
+                                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                                }
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = buildingDropdownExpanded,
+                            onDismissRequest = { buildingDropdownExpanded = false }
+                        ) {
+                            buildingList.forEach { building ->
+                                DropdownMenuItem(
+                                    text = { Text(building.name) },
+                                    onClick = {
+                                        selectedBuildingId = building.id
+                                        buildingDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("رقم الجوال") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("العنوان") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false,
+                    maxLines = 2
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("ملاحظات") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false,
+                    maxLines = 3
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("إلغاء")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (name.isNotBlank() &&
+                                subscriptionNumber.isNotBlank() &&
+                                price.isNotBlank() &&
+                                startMonth.isNotBlank() &&
+                                startDay.isNotBlank() &&
+                                firstMonthAmount.isNotBlank()
+                            ) {
+
+                                val priceValue = price.toDoubleOrNull()
+                                val dayValue = startDay.toIntOrNull()
+                                val firstMonthAmountValue = firstMonthAmount.toDoubleOrNull()
+
+                                if (priceValue != null &&
+                                    dayValue != null &&
+                                    firstMonthAmountValue != null &&
+                                    dayValue in 1..30 &&
+                                    priceValue > 0 &&
+                                    firstMonthAmountValue > 0
+                                ) {
+                                    onSave(
+                                        name.trim(),
+                                        subscriptionNumber.trim(),
+                                        priceValue,
+                                        selectedBuildingId,
+                                        startMonth,
+                                        dayValue,
+                                        firstMonthAmountValue,
+                                        phone.trim(),
+                                        address.trim(),
+                                        packageType,
+                                        notes.trim()
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = name.isNotBlank() &&
+                                subscriptionNumber.isNotBlank() &&
+                                price.isNotBlank() &&
+                                startMonth.isNotBlank() &&
+                                startDay.isNotBlank() &&
+                                firstMonthAmount.isNotBlank()
+                    ) {
+                        Text("حفظ")
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            currentMonth = startMonth,
+            onDateSelected = { selectedMonth ->
+                startMonth = selectedMonth
                 showDatePicker = false
             },
             onDismiss = { showDatePicker = false }
         )
+    }
+}
+
+@Composable
+fun DatePickerDialog(
+    currentMonth: String,
+    onDateSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val calendar = Calendar.getInstance()
+
+    val monthParts = currentMonth.split("-")
+    if (monthParts.size == 2) {
+        val year = monthParts[0].toIntOrNull()
+        val month = monthParts[1].toIntOrNull()
+        if (year != null && month != null) {
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month - 1)
+        }
+    }
+
+    var selectedYear by remember { mutableStateOf(calendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableStateOf(calendar.get(Calendar.MONTH) + 1) }
+
+    var showYearPicker by remember { mutableStateOf(false) }
+    var showMonthPicker by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Text(
+                    "اختر الشهر والسنة",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { showYearPicker = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(selectedYear.toString())
+                        }
+                        DropdownMenu(
+                            expanded = showYearPicker,
+                            onDismissRequest = { showYearPicker = false }
+                        ) {
+                            (2020..2030).forEach { year ->
+                                DropdownMenuItem(
+                                    text = { Text(year.toString()) },
+                                    onClick = {
+                                        selectedYear = year
+                                        showYearPicker = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { showMonthPicker = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(String.format("%02d", selectedMonth))
+                        }
+                        DropdownMenu(
+                            expanded = showMonthPicker,
+                            onDismissRequest = { showMonthPicker = false }
+                        ) {
+                            (1..12).forEach { month ->
+                                DropdownMenuItem(
+                                    text = { Text(String.format("%02d", month)) },
+                                    onClick = {
+                                        selectedMonth = month
+                                        showMonthPicker = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("إلغاء")
+                    }
+
+                    Button(
+                        onClick = {
+                            val formattedMonth = String.format("%04d-%02d", selectedYear, selectedMonth)
+                            onDateSelected(formattedMonth)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("تأكيد")
+                    }
+                }
+            }
+        }
     }
 }

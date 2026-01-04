@@ -1,28 +1,34 @@
 package com.pronetwork.app.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.Building
+import com.pronetwork.app.data.Client
+import com.pronetwork.app.viewmodel.PaymentViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun ClientListScreen(
     clients: List<Client>,
     buildings: List<Building>,
+    selectedMonth: String,
+    paymentViewModel: PaymentViewModel,
     onAddClient: () -> Unit,
-    onClientClick: (Client) -> Unit,
-    onUndoPaid: (Client) -> Unit,
-    onPaid: (Client) -> Unit
+    onClientClick: (Client) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showPaymentDialog by remember { mutableStateOf<Pair<Client, Boolean>?>(null) }
+
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier
@@ -37,7 +43,9 @@ fun ClientListScreen(
             )
             Button(
                 onClick = onAddClient,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text("إضافة عميل", color = MaterialTheme.colorScheme.onPrimary)
             }
@@ -50,11 +58,16 @@ fun ClientListScreen(
                     .padding(top = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("لا يوجد عملاء في هذا الشهر.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("لا يوجد عملاء في هذا الشهر.")
             }
         } else {
             clients.forEach { client ->
                 val buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "بدون مبنى"
+                val payment by paymentViewModel
+                    .getPaymentLive(client.id, selectedMonth)
+                    .observeAsState(null)
+                val isPaid = payment?.isPaid ?: false
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -62,7 +75,10 @@ fun ClientListScreen(
                         .clickable { onClientClick(client) },
                     elevation = CardDefaults.cardElevation(5.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (client.isPaid) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+                        containerColor = if (isPaid)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
                     )
                 ) {
                     Row(
@@ -74,15 +90,24 @@ fun ClientListScreen(
                     ) {
                         Column {
                             Text("الاسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
-                            Text("المبنى: $buildingName", style = MaterialTheme.typography.bodySmall)
-                            Text("رقم الاشتراك: ${client.subscriptionNumber}", style = MaterialTheme.typography.bodySmall)
-                            Text("الباقة: ${client.packageType}", style = MaterialTheme.typography.bodySmall)
-                            Text("الحالة: ${if (client.isPaid) "مدفوع" else "غير مدفوع"}", style = MaterialTheme.typography.bodySmall)
+                            Text("المبنى: $buildingName")
+                            Text("رقم الاشتراك: ${client.subscriptionNumber}")
+                            Text("الباقة: ${client.packageType}")
+                            Text(
+                                "الحالة: ${if (isPaid) "مدفوع" else "غير مدفوع"}",
+                                color = if (isPaid)
+                                    MaterialTheme.colorScheme.tertiary
+                                else
+                                    MaterialTheme.colorScheme.error
+                            )
                         }
-                        if (!client.isPaid) {
+
+                        if (!isPaid) {
                             Button(
-                                onClick = { onPaid(client) },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                                onClick = { showPaymentDialog = client to true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary
+                                )
                             ) {
                                 Icon(Icons.Filled.CheckCircle, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
@@ -90,9 +115,9 @@ fun ClientListScreen(
                             }
                         } else {
                             OutlinedButton(
-                                onClick = { onUndoPaid(client) }
+                                onClick = { showPaymentDialog = client to false }
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
+                                Icon(Icons.Filled.Close, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
                                 Text("تراجع", color = MaterialTheme.colorScheme.primary)
                             }
@@ -100,6 +125,92 @@ fun ClientListScreen(
                     }
                 }
             }
+        }
+
+        SnackbarHost(hostState = snackbarHostState)
+
+        showPaymentDialog?.let { (client, shouldPay) ->
+            AlertDialog(
+                onDismissRequest = { showPaymentDialog = null },
+                icon = {
+                    Icon(
+                        if (shouldPay) Icons.Filled.CheckCircle else Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = if (shouldPay)
+                            MaterialTheme.colorScheme.tertiary
+                        else
+                            MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        if (shouldPay) "تأكيد الدفع" else "تراجع عن الدفع",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            if (shouldPay)
+                                "هل أنت متأكد من تأكيد دفع شهر $selectedMonth؟"
+                            else
+                                "هل أنت متأكد من التراجع عن دفع شهر $selectedMonth؟"
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("العميل: ${client.name}")
+                                Text("الشهر: $selectedMonth")
+                                Text(
+                                    "المبلغ: ${client.price} ريال",
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                if (shouldPay) {
+                                    paymentViewModel.markAsPaid(
+                                        clientId = client.id,
+                                        month = selectedMonth,
+                                        amount = client.price
+                                    )
+                                    snackbarHostState.showSnackbar("✓ تم تأكيد الدفع لشهر $selectedMonth")
+                                } else {
+                                    paymentViewModel.markAsUnpaid(
+                                        clientId = client.id,
+                                        month = selectedMonth
+                                    )
+                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع لشهر $selectedMonth")
+                                }
+                            }
+                            showPaymentDialog = null
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (shouldPay)
+                                MaterialTheme.colorScheme.tertiary
+                            else
+                                MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text(if (shouldPay) "نعم، تأكيد" else "نعم، تراجع")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showPaymentDialog = null }) {
+                        Text("إلغاء")
+                    }
+                }
+            )
         }
     }
 }

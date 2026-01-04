@@ -4,38 +4,38 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.pronetwork.app.data.Building
+import com.pronetwork.app.data.Client
+import com.pronetwork.app.ui.screens.*
+import com.pronetwork.app.viewmodel.BuildingViewModel
+import com.pronetwork.app.viewmodel.ClientViewModel
+import com.pronetwork.app.viewmodel.PaymentViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import com.pronetwork.app.data.Client
-import com.pronetwork.app.data.Building
-import com.pronetwork.app.ui.screens.*
-import com.pronetwork.app.viewmodel.ClientViewModel
-import com.pronetwork.app.viewmodel.BuildingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val clientViewModel: ClientViewModel by viewModels()
     private val buildingViewModel: BuildingViewModel by viewModels()
+    private val paymentViewModel: PaymentViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Light color scheme with clear text and backgrounds
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
             onPrimary = Color.White,
@@ -67,7 +67,6 @@ class MainActivity : ComponentActivity() {
                 val clients by clientViewModel.clients.observeAsState(emptyList())
                 val buildings by buildingViewModel.buildings.observeAsState(emptyList())
 
-                // Generate months list for dropdown
                 val monthsList = remember {
                     val calendar = Calendar.getInstance()
                     val formatter = SimpleDateFormat("yyyy-MM", Locale.getDefault())
@@ -82,29 +81,27 @@ class MainActivity : ComponentActivity() {
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
 
                 val filteredClients = clients.filter { client ->
-                    // Parse months to compare (format: yyyy-MM)
                     try {
                         val clientStartMonth = client.startMonth
                         val currentViewMonth = selectedMonth
 
-                        // Parse both months for comparison
-                        val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
-                        val viewDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
+                        val clientDate =
+                            SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
+                        val viewDate =
+                            SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
 
-                        // Check if client should be visible in this month
                         if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
-                            // If client has an end month, check if view month is before end month
                             if (client.endMonth != null) {
-                                val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
+                                val endDate =
+                                    SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
                                 endDate != null && viewDate.time < endDate.time
                             } else {
-                                true // No end month, show indefinitely
+                                true
                             }
                         } else {
                             false
                         }
                     } catch (e: Exception) {
-                        // Fallback to exact match if parsing fails
                         client.startMonth == selectedMonth
                     }
                 }
@@ -115,7 +112,12 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
-                            title = { Text("ProNetwork App", style = MaterialTheme.typography.titleLarge) },
+                            title = {
+                                Text(
+                                    "ProNetwork App",
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            },
                             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
@@ -174,8 +176,11 @@ class MainActivity : ComponentActivity() {
                                         .fillMaxSize()
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
-                                    // Dropdown للشهور
-                                    Box(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 12.dp)
+                                    ) {
                                         OutlinedTextField(
                                             value = selectedMonth,
                                             onValueChange = {},
@@ -183,7 +188,10 @@ class MainActivity : ComponentActivity() {
                                             label = { Text("تصفح العملاء حسب الشهر") },
                                             trailingIcon = {
                                                 IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
-                                                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                                                    Icon(
+                                                        Icons.Filled.ArrowDropDown,
+                                                        contentDescription = null
+                                                    )
                                                 }
                                             },
                                             modifier = Modifier
@@ -215,6 +223,8 @@ class MainActivity : ComponentActivity() {
                                     ClientListScreen(
                                         clients = filteredClients,
                                         buildings = buildings,
+                                        selectedMonth = selectedMonth,
+                                        paymentViewModel = paymentViewModel,
                                         onAddClient = {
                                             if (buildings.isNotEmpty()) {
                                                 showClientDialog = true
@@ -224,25 +234,7 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         },
-                                        onClientClick = { selectedClient = it },
-                                        onUndoPaid = { client ->
-                                            clientViewModel.update(client.copy(isPaid = false, paymentDate = null))
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("تم التراجع عن تأكيد الدفع")
-                                            }
-                                        },
-                                        onPaid = { client ->
-                                            clientViewModel.update(client.copy(isPaid = true, paymentDate = System.currentTimeMillis()))
-                                            scope.launch {
-                                                val result = snackbarHostState.showSnackbar(
-                                                    message = "تم تأكيد الدفع",
-                                                    actionLabel = "تراجع"
-                                                )
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    clientViewModel.update(client.copy(isPaid = false, paymentDate = null))
-                                                }
-                                            }
-                                        }
+                                        onClientClick = { selectedClient = it }
                                     )
 
                                     if (showClientDialog) {
@@ -250,57 +242,99 @@ class MainActivity : ComponentActivity() {
                                             buildingList = buildings,
                                             initialStartMonth = selectedMonth,
                                             buildingSelectionEnabled = true,
-                                            onSave = { name, subscriptionNumber, price, buildingId, startMonth, phone, address, packageType, notes ->
-                                                clientViewModel.insert(
-                                                    Client(
+                                            onSave = { name,
+                                                       subscriptionNumber,
+                                                       price,
+                                                       buildingId,
+                                                       startMonth,
+                                                       startDay,
+                                                       firstMonthAmount,
+                                                       phone,
+                                                       address,
+                                                       packageType,
+                                                       notes ->
+                                                scope.launch {
+                                                    val newClient = Client(
                                                         name = name,
                                                         subscriptionNumber = subscriptionNumber,
                                                         price = price,
+                                                        firstMonthAmount = firstMonthAmount,
                                                         buildingId = buildingId,
                                                         startMonth = startMonth,
+                                                        startDay = startDay,
                                                         phone = phone,
                                                         address = address,
                                                         packageType = packageType,
                                                         notes = notes
                                                     )
-                                                )
-                                                showClientDialog = false
+                                                    clientViewModel.insert(newClient)
+
+                                                    kotlinx.coroutines.delay(300)
+
+                                                    val allClients = clients
+                                                    val insertedClient =
+                                                        allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
+
+                                                    insertedClient?.let { client ->
+                                                        paymentViewModel.createPaymentsForClient(
+                                                            clientId = client.id,
+                                                            startMonth = startMonth,
+                                                            endMonth = null,
+                                                            amount = price,
+                                                            monthOptions = monthOptions
+                                                        )
+                                                    }
+
+                                                    showClientDialog = false
+                                                }
                                             },
                                             onDismiss = { showClientDialog = false }
                                         )
                                     }
+
                                     selectedClient?.let { client ->
+                                        val clientPayments by paymentViewModel
+                                            .getClientPayments(client.id)
+                                            .observeAsState(emptyList())
+
                                         ClientDetailsScreen(
                                             client = client,
-                                            buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "",
+                                            buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
+                                                ?: "",
+                                            payments = clientPayments,
                                             onEdit = { clientToEdit ->
                                                 selectedClient = clientToEdit
                                                 showEditClientDialog = true
                                             },
                                             onDelete = { clientToDelete ->
-                                                // Check if we're deleting from start month or future month
                                                 if (selectedMonth == clientToDelete.startMonth) {
-                                                    // Deleting from start month - delete completely
                                                     clientViewModel.delete(clientToDelete)
                                                 } else {
-                                                    // Deleting from future month - set end month to current selected month
-                                                    clientViewModel.update(clientToDelete.copy(endMonth = selectedMonth))
+                                                    clientViewModel.update(
+                                                        clientToDelete.copy(endMonth = selectedMonth)
+                                                    )
                                                 }
                                                 selectedClient = null
                                             },
-                                            onTogglePaid = { paid ->
-                                                val updatedClient = if (paid) {
-                                                    client.copy(isPaid = paid, paymentDate = System.currentTimeMillis())
-                                                } else {
-                                                    client.copy(isPaid = paid, paymentDate = null)
+                                            onTogglePayment = { month, shouldPay ->
+                                                scope.launch {
+                                                    if (shouldPay) {
+                                                        paymentViewModel.markAsPaid(
+                                                            clientId = client.id,
+                                                            month = month,
+                                                            amount = client.price
+                                                        )
+                                                    } else {
+                                                        paymentViewModel.markAsUnpaid(
+                                                            clientId = client.id,
+                                                            month = month
+                                                        )
+                                                    }
                                                 }
-                                                clientViewModel.update(updatedClient)
-                                            },
-                                            onUndoPaid = {
-                                                clientViewModel.update(client.copy(isPaid = false, paymentDate = null))
                                             },
                                             onBack = { selectedClient = null }
                                         )
+
                                         if (showEditClientDialog) {
                                             ClientEditDialog(
                                                 buildingList = buildings,
@@ -309,19 +343,34 @@ class MainActivity : ComponentActivity() {
                                                 initialPrice = selectedClient!!.price.toString(),
                                                 initialBuildingId = selectedClient!!.buildingId,
                                                 initialStartMonth = selectedClient!!.startMonth,
+                                                initialStartDay = selectedClient!!.startDay,
+                                                initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
+                                                    ?: "",
                                                 initialPhone = selectedClient!!.phone,
                                                 initialAddress = selectedClient!!.address,
                                                 initialPackageType = selectedClient!!.packageType,
                                                 initialNotes = selectedClient!!.notes,
                                                 buildingSelectionEnabled = true,
-                                                onSave = { name, subscriptionNumber, price, buildingId, startMonth, phone, address, packageType, notes ->
+                                                onSave = { name,
+                                                           subscriptionNumber,
+                                                           price,
+                                                           buildingId,
+                                                           startMonth,
+                                                           startDay,
+                                                           firstMonthAmount,
+                                                           phone,
+                                                           address,
+                                                           packageType,
+                                                           notes ->
                                                     clientViewModel.update(
                                                         selectedClient!!.copy(
                                                             name = name,
                                                             subscriptionNumber = subscriptionNumber,
                                                             price = price,
+                                                            firstMonthAmount = firstMonthAmount,
                                                             buildingId = buildingId,
                                                             startMonth = startMonth,
+                                                            startDay = startDay,
                                                             phone = phone,
                                                             address = address,
                                                             packageType = packageType,
@@ -337,6 +386,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+
                             currentScreen == "buildings" && selectedBuilding == null -> {
                                 BuildingListScreen(
                                     buildings = buildings,
@@ -360,35 +410,53 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
                             selectedBuilding != null -> {
                                 BuildingDetailsScreen(
                                     building = selectedBuilding!!,
                                     allClients = clients,
                                     monthOptions = monthOptions,
-                                    onAddClient = { client -> clientViewModel.insert(client) },
+                                    paymentViewModel = paymentViewModel,
+                                    onAddClient = { client ->
+                                        scope.launch {
+                                            clientViewModel.insert(client)
+
+                                            kotlinx.coroutines.delay(300)
+
+                                            val allClients = clients
+                                            val insertedClient =
+                                                allClients.lastOrNull { it.subscriptionNumber == client.subscriptionNumber }
+
+                                            insertedClient?.let { newClient ->
+                                                paymentViewModel.createPaymentsForClient(
+                                                    clientId = newClient.id,
+                                                    startMonth = client.startMonth,
+                                                    endMonth = null,
+                                                    amount = client.price,
+                                                    monthOptions = monthOptions
+                                                )
+                                            }
+                                        }
+                                    },
                                     onEditClient = { clientToEdit ->
                                         selectedClient = clientToEdit
                                         showEditClientDialog = true
                                     },
+                                    onUpdateClient = { clientToUpdate ->
+                                        clientViewModel.update(clientToUpdate)
+                                    },
                                     onDeleteClient = { clientToDelete ->
                                         clientViewModel.delete(clientToDelete)
-                                    },
-                                    onTogglePaid = { client, paid ->
-                                        clientViewModel.update(client.copy(isPaid = paid))
-                                    },
-                                    onUndoPaid = { client ->
-                                        clientViewModel.update(client.copy(isPaid = false))
                                     },
                                     onEditBuilding = { buildingToEdit ->
                                         selectedBuilding = buildingToEdit
                                         showEditBuildingDialog = true
                                     },
                                     onDeleteBuilding = { buildingToDelete ->
-                                        // Delete all clients associated with this building first
-                                        clients.filter { it.buildingId == buildingToDelete.id }.forEach { client ->
-                                            clientViewModel.delete(client)
-                                        }
-                                        // Then delete the building
+                                        clients.filter { it.buildingId == buildingToDelete.id }
+                                            .forEach { client ->
+                                                clientViewModel.delete(client)
+                                            }
                                         buildingViewModel.delete(buildingToDelete)
                                         selectedBuilding = null
                                     },
@@ -402,19 +470,34 @@ class MainActivity : ComponentActivity() {
                                         initialPrice = selectedClient!!.price.toString(),
                                         initialBuildingId = selectedBuilding!!.id,
                                         initialStartMonth = selectedClient!!.startMonth,
+                                        initialStartDay = selectedClient!!.startDay,
+                                        initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
+                                            ?: "",
                                         initialPhone = selectedClient!!.phone,
                                         initialAddress = selectedClient!!.address,
                                         initialPackageType = selectedClient!!.packageType,
                                         initialNotes = selectedClient!!.notes,
                                         buildingSelectionEnabled = false,
-                                        onSave = { name, subscriptionNumber, price, buildingId, startMonth, phone, address, packageType, notes ->
+                                        onSave = { name,
+                                                   subscriptionNumber,
+                                                   price,
+                                                   buildingId,
+                                                   startMonth,
+                                                   startDay,
+                                                   firstMonthAmount,
+                                                   phone,
+                                                   address,
+                                                   packageType,
+                                                   notes ->
                                             clientViewModel.update(
                                                 selectedClient!!.copy(
                                                     name = name,
                                                     subscriptionNumber = subscriptionNumber,
                                                     price = price,
+                                                    firstMonthAmount = firstMonthAmount,
                                                     buildingId = buildingId,
                                                     startMonth = startMonth,
+                                                    startDay = startDay,
                                                     phone = phone,
                                                     address = address,
                                                     packageType = packageType,
@@ -446,6 +529,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
                             currentScreen == "stats" -> {
                                 val clientsCount by clientViewModel.clientsCount.observeAsState(0)
                                 val paidClientsCount by clientViewModel.paidClientsCount.observeAsState(0)
@@ -457,11 +541,7 @@ class MainActivity : ComponentActivity() {
                                     unpaidClientsCount = unpaidClientsCount,
                                     allClients = clients,
                                     monthOptions = monthOptions,
-                                    onMarkClientLate = { client, month ->
-                                        // Implementation for marking client as late
-                                        // For now, this could update the client with a late flag
-                                        // or create a separate late client record
-                                    }
+                                    onMarkClientLate = { _, _ -> }
                                 )
                             }
                         }
