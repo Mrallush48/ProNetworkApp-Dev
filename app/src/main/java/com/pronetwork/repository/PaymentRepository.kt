@@ -98,6 +98,57 @@ class PaymentRepository(private val paymentDao: PaymentDao) {
         paymentDao.createPaymentIfNotExists(payment)
     }
 
+    /**
+     * إرجاع id لسجل Payment لعميل/شهر معيّن.
+     * إذا لم يكن موجودًا يتم إنشاؤه بمبلغ معيّن ويُرجع id الجديد.
+     * مهم لاستخدامه مع جدول payment_transactions.
+     */
+    suspend fun getOrCreatePaymentId(
+        clientId: Int,
+        month: String,
+        amount: Double
+    ): Int {
+        val normalizedMonth = normalizeMonth(month)
+        val existing = getPayment(clientId, normalizedMonth)
+        return if (existing != null) {
+            existing.id
+        } else {
+            val newId = insert(
+                Payment(
+                    clientId = clientId,
+                    month = normalizedMonth,
+                    amount = amount,
+                    isPaid = false,
+                    paymentDate = null,
+                    notes = ""
+                )
+            )
+            newId.toInt()
+        }
+    }
+
+    /**
+     * ضبط حالة الدفع (مدفوع/غير مدفوع) لسجل معين مع تاريخ اختياري.
+     * يمكن استخدامها بعد حساب المدفوع الكلي من جدول الحركات الجزئية.
+     */
+    suspend fun setPaidStatus(
+        clientId: Int,
+        month: String,
+        isPaid: Boolean,
+        paymentDate: Long? = null
+    ) {
+        val normalizedMonth = normalizeMonth(month)
+        val existing = getPayment(clientId, normalizedMonth)
+        if (existing != null) {
+            update(
+                existing.copy(
+                    isPaid = isPaid,
+                    paymentDate = paymentDate
+                )
+            )
+        }
+    }
+
     // === دالة ذكية: إنشاء أو تحديث دفعة ===
     suspend fun createOrUpdatePayment(
         clientId: Int,

@@ -1,70 +1,87 @@
 package com.pronetwork.app.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.data.Client
-import java.text.SimpleDateFormat
-import java.util.*
+import com.pronetwork.app.viewmodel.PaymentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
     clientsCount: Int,
     buildingsCount: Int,
-    paidClientsCount: Int,
-    unpaidClientsCount: Int,
-    allClients: List<Client>,
+    // إحصائيات الشهر المختار من PaymentViewModel
+    monthStats: PaymentViewModel.MonthStats?,
+    // قائمة الشهور المتاحة بصيغة yyyy-MM
     monthOptions: List<String>,
-    onMarkClientLate: (Client, String) -> Unit
+    // الشهر الحالي المختار في ViewModel
+    selectedMonth: String,
+    // تغيير الشهر في الـ ViewModel
+    onMonthChange: (String) -> Unit,
+    // يمكن استخدامه لاحقاً لإظهار قائمة المتأخرين بدقة من payments
+    allClients: List<Client> = emptyList()
 ) {
-    var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
     var monthDropdownExpanded by remember { mutableStateOf(false) }
-    var showLateClientsDialog by remember { mutableStateOf(false) }
 
-    // Calculate late customers - clients who haven't paid for previous months
-    val currentMonthIndex = monthOptions.indexOf(selectedMonth)
-    val lateClients = if (currentMonthIndex > 0) {
-        val previousMonths = monthOptions.subList(currentMonthIndex, monthOptions.size)
-        allClients.filter { client ->
-            // Check if client should be active in previous months and was not paid
-            previousMonths.any { month ->
-                try {
-                    val clientDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.startMonth)
-                    val monthDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(month)
-
-                    if (clientDate != null && monthDate != null && monthDate.time >= clientDate.time) {
-                        // Client should be active in this month, check if paid
-                        if (client.endMonth != null) {
-                            val endDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
-                            endDate != null && monthDate.time < endDate.time && !client.isPaid
-                        } else {
-                            !client.isPaid
-                        }
-                    } else false
-                } catch (e: Exception) {
-                    false
-                }
-            }
-        }
-    } else {
-        emptyList()
+    // نضمن أن selectedMonth دائمًا ضمن options
+    val safeSelectedMonth = remember(selectedMonth, monthOptions) {
+        if (monthOptions.contains(selectedMonth)) selectedMonth
+        else monthOptions.firstOrNull().orEmpty()
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("إحصائيات التطبيق", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "إحصائيات التطبيق",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
 
-        // Main statistics cards
+        // اختيار الشهر
+        ExposedDropdownMenuBox(
+            expanded = monthDropdownExpanded,
+            onExpandedChange = { monthDropdownExpanded = !monthDropdownExpanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = safeSelectedMonth,
+                onValueChange = { },
+                readOnly = true,
+                label = { Text("الشهر") },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthDropdownExpanded)
+                },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = monthDropdownExpanded,
+                onDismissRequest = { monthDropdownExpanded = false }
+            ) {
+                monthOptions.forEach { month ->
+                    DropdownMenuItem(
+                        text = { Text(month) },
+                        onClick = {
+                            monthDropdownExpanded = false
+                            onMonthChange(month)
+                        }
+                    )
+                }
+            }
+        }
+
+        // كروت الإحصائيات العامة
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -81,138 +98,57 @@ fun StatisticsScreen(
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StatCard(
-                title = "العملاء المدفوع لهم",
-                value = paidClientsCount.toString(),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-            StatCard(
-                title = "العملاء غير المدفوع لهم",
-                value = unpaidClientsCount.toString(),
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // Late customers section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "العملاء المتأخرين",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Icon(
-                        Icons.Filled.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Month selection for late customers (محدث)
-                ExposedDropdownMenuBox(
-                    expanded = monthDropdownExpanded,
-                    onExpandedChange = { monthDropdownExpanded = !monthDropdownExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = selectedMonth,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("الشهر المرجعي") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthDropdownExpanded) },
-                        modifier = Modifier.menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = monthDropdownExpanded,
-                        onDismissRequest = { monthDropdownExpanded = false }
-                    ) {
-                        Column {
-                            monthOptions.forEach { month ->
-                                DropdownMenuItem(
-                                    text = { Text(month) },
-                                    onClick = {
-                                        selectedMonth = month
-                                        monthDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    "عدد العملاء المتأخرين: ${lateClients.size}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (lateClients.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+        // إذا كانت إحصائيات الشهر جاهزة نعرضها، وإلا نظهر حالة تحميل بسيطة
+        if (monthStats != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatCard(
+                    title = "العملاء المدفوع لهم",
+                    value = monthStats.paidCount.toString(),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
                 )
+                StatCard(
+                    title = "العملاء غير المدفوع لهم",
+                    value = monthStats.unpaidCount.toString(),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
-                if (lateClients.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { showLateClientsDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("عرض التفاصيل", color = MaterialTheme.colorScheme.onError)
-                    }
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatCard(
+                    title = "إجمالي المبلغ المحصل",
+                    value = formatCurrency(monthStats.totalPaidAmount),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "إجمالي المبلغ المتبقي",
+                    value = formatCurrency(monthStats.totalUnpaidAmount),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        } else {
+            // حالة لا تزال الـ LiveData لم ترجع قيمة بعد
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
         }
-    }
 
-    // Late clients dialog
-    if (showLateClientsDialog) {
-        AlertDialog(
-            onDismissRequest = { showLateClientsDialog = false },
-            title = { Text("العملاء المتأخرين - $selectedMonth") },
-            text = {
-                Column {
-                    lateClients.forEach { client ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    client.name,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    "رقم الاشتراك: ${client.subscriptionNumber}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    "بداية الاشتراك: ${client.startMonth}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = { showLateClientsDialog = false }) {
-                    Text("إغلاق")
-                }
-            }
-        )
+        // يمكن لاحقاً إضافة قسم "العملاء المتأخرين" مبني على جدول payments
+        // بدون استخدام client.isPaid نهائياً، وبمنطق يتوافق مع طريقتك في التحصيل.
     }
 }
 
@@ -243,4 +179,9 @@ fun StatCard(
             )
         }
     }
+}
+
+// تنسيق مبالغ بشكل بسيط (يمكن تحسينه لاحقاً بإضافة Locale مخصص)
+private fun formatCurrency(amount: Double): String {
+    return String.format("%.2f ر.س", amount)
 }

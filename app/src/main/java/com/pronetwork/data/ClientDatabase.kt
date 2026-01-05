@@ -8,13 +8,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [Client::class, Payment::class],
-    version = 4, // رفعنا من 3 إلى 4 لإضافة الحقول الجديدة
+    entities = [Client::class, Payment::class, PaymentTransaction::class],
+    version = 5, // رفعنا من 4 إلى 5 لإضافة جدول payment_transactions
     exportSchema = false
 )
 abstract class ClientDatabase : RoomDatabase() {
+
     abstract fun clientDao(): ClientDao
     abstract fun paymentDao(): PaymentDao
+    abstract fun paymentTransactionDao(): PaymentTransactionDao
 
     companion object {
         @Volatile
@@ -30,19 +32,20 @@ abstract class ClientDatabase : RoomDatabase() {
                     .addMigrations(
                         MIGRATION_1_2,
                         MIGRATION_2_3,
-                        MIGRATION_3_4  // Migration الجديد
+                        MIGRATION_3_4,
+                        MIGRATION_4_5
                     )
-                    .fallbackToDestructiveMigration() // للتطوير فقط
+                    .fallbackToDestructiveMigration() // للتطوير فقط، يمكن إزالته لاحقاً في الإنتاج
                     .build()
                 INSTANCE = instance
                 instance
             }
         }
 
-        // Migration 1 → 2
+        // Migration 1 → 2 (قديم - كما هو)
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Migration code for version 1 to 2
+                // Migration code for version 1 to 2 (لا يوجد شيء حالياً)
             }
         }
 
@@ -74,7 +77,7 @@ abstract class ClientDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
 
-                // نقل البيانات القديمة
+                // نقل البيانات القديمة من clients إلى payments للسجلات المدفوعة
                 db.execSQL(
                     """
                     INSERT OR IGNORE INTO payments (clientId, month, isPaid, paymentDate, amount, createdAt)
@@ -92,7 +95,7 @@ abstract class ClientDatabase : RoomDatabase() {
             }
         }
 
-        // Migration 3 → 4: إضافة firstMonthAmount و startDay
+        // Migration 3 → 4: إضافة firstMonthAmount و startDay في clients
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // إضافة عمود firstMonthAmount (المبلغ الجزئي للشهر الأول)
@@ -111,13 +114,37 @@ abstract class ClientDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
 
-                // تحديث القيم الافتراضية للعملاء الحاليين
-                // firstMonthAmount = price (كامل) للعملاء القدامى
+                // firstMonthAmount = price للعملاء القدامى
                 db.execSQL(
                     """
                     UPDATE clients 
                     SET firstMonthAmount = price 
                     WHERE firstMonthAmount IS NULL
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // Migration 4 → 5: إنشاء جدول payment_transactions
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `payment_transactions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `paymentId` INTEGER NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `notes` TEXT NOT NULL DEFAULT '',
+                        FOREIGN KEY(`paymentId`) REFERENCES `payments`(`id`) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_payment_transactions_paymentId`
+                    ON `payment_transactions` (`paymentId`)
                     """.trimIndent()
                 )
             }

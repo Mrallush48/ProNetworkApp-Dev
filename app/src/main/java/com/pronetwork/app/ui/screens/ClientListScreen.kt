@@ -71,8 +71,7 @@ fun ClientListScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp)
-                        .clickable { onClientClick(client) },
+                        .padding(vertical = 6.dp),
                     elevation = CardDefaults.cardElevation(5.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isPaid)
@@ -88,7 +87,12 @@ fun ClientListScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        // المنطقة النصية فقط هي القابلة للنقر لفتح التفاصيل
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onClientClick(client) }
+                        ) {
                             Text("الاسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
                             Text("المبنى: $buildingName")
                             Text("رقم الاشتراك: ${client.subscriptionNumber}")
@@ -102,6 +106,9 @@ fun ClientListScreen(
                             )
                         }
 
+                        Spacer(Modifier.width(8.dp))
+
+                        // أزرار الدفع السريعة (كاملة فقط)
                         if (!isPaid) {
                             Button(
                                 onClick = { showPaymentDialog = client to true },
@@ -111,7 +118,7 @@ fun ClientListScreen(
                             ) {
                                 Icon(Icons.Filled.CheckCircle, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
-                                Text("تأكيد الدفع", color = MaterialTheme.colorScheme.onTertiary)
+                                Text("تأكيد", color = MaterialTheme.colorScheme.onTertiary)
                             }
                         } else {
                             OutlinedButton(
@@ -179,7 +186,7 @@ fun ClientListScreen(
                         onClick = {
                             scope.launch {
                                 if (shouldPay) {
-                                    paymentViewModel.markAsPaid(
+                                    paymentViewModel.markFullPayment(
                                         clientId = client.id,
                                         month = selectedMonth,
                                         amount = client.price

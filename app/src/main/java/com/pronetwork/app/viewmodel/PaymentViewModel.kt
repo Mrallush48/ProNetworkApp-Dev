@@ -2,85 +2,360 @@ package com.pronetwork.app.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.*
-import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.ClientDatabase
+import com.pronetwork.app.data.Payment
+import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.repository.PaymentRepository
+import com.pronetwork.app.repository.PaymentTransactionRepository
 import kotlinx.coroutines.launch
 
+// enum جديد لحالة الدفع
+enum class PaymentStatus {
+    UNPAID,
+    PARTIAL,
+    FULL
+}
+
+// موديل عرض حالة دفع العميل لكل شهر
+data class ClientMonthPaymentUi(
+    val month: String,
+    val monthAmount: Double,
+    val totalPaid: Double,
+    val remaining: Double,
+    val status: PaymentStatus
+)
+
 class PaymentViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: PaymentRepository
+
+    private val paymentRepository: PaymentRepository
+    private val transactionRepository: PaymentTransactionRepository
+
     val allPayments: LiveData<List<Payment>>
 
     init {
-        val paymentDao = ClientDatabase.getDatabase(application).paymentDao()
-        repository = PaymentRepository(paymentDao)
-        allPayments = repository.allPayments
+        val db = ClientDatabase.getDatabase(application)
+        val paymentDao = db.paymentDao()
+        val transactionDao = db.paymentTransactionDao()
+
+        paymentRepository = PaymentRepository(paymentDao)
+        transactionRepository = PaymentTransactionRepository(transactionDao)
+
+        allPayments = paymentRepository.allPayments
     }
 
-    // === دوال للحصول على حالة دفعة معيّنة ===
+    // ================== دالة جديدة: تحضير بيانات عرض حالة الدفع لكل شهر ==================
+
+    fun getClientMonthPaymentsUi(clientId: Int): LiveData<List<ClientMonthPaymentUi>> {
+        val result = MutableLiveData<List<ClientMonthPaymentUi>>()
+
+        // نراقب قائمة الـ Payments لهذا العميل
+        val source = paymentRepository.getClientPayments(clientId)
+
+        // نستخدم MediatorLiveData حتى نربط قراءة Room مع حساباتنا
+        val mediator = MediatorLiveData<List<ClientMonthPaymentUi>>()
+        mediator.addSource(source) { paymentList ->
+            viewModelScope.launch {
+                val payments = paymentList ?: emptyList()
+                val ids = payments.map { it.id }
+                val totalsMap = transactionRepository.getTotalsForPayments(ids)
+
+                val uiList = payments.map { p ->
+                    val totalPaid = totalsMap[p.id] ?: 0.0
+                    val remaining = (p.amount - totalPaid).coerceAtLeast(0.0)
+
+                    val status = when {
+                        totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                        totalPaid < p.amount -> PaymentStatus.PARTIAL
+                        else -> PaymentStatus.FULL
+                    }
+
+                    ClientMonthPaymentUi(
+                        month = p.month,
+                        monthAmount = p.amount,
+                        totalPaid = totalPaid,
+                        remaining = remaining,
+                        status = status
+                    )
+                }.sortedBy { it.month }
+
+                mediator.postValue(uiList)
+            }
+        }
+
+        // نعيد الـ Mediator كـ LiveData
+        return mediator
+    }
+
+    // ================== إحصائيات شهرية عامة ==================
+
+    // الشهر المختار للإحصائيات (مثل "2026-01")
+    private val _selectedStatsMonth = MutableLiveData<String>()
+    val selectedStatsMonth: LiveData<String> = _selectedStatsMonth
+
+    // موديل الإحصائيات الشهرية
+    data class MonthStats(
+        val month: String,
+        val paidCount: Int,
+        val partiallyPaidCount: Int,
+        val unpaidCount: Int,
+        val totalPaidAmount: Double,
+        val totalUnpaidAmount: Double
+    )
+
+    // LiveData للإحصائيات الشهرية الجاهزة
+    val monthStats: LiveData<MonthStats> = _selectedStatsMonth.switchMap { month ->
+        val paidCountLive = paymentRepository.getPaidCountByMonth(month)
+        val unpaidCountLive = paymentRepository.getUnpaidCountByMonth(month)
+        val totalPaidLive = paymentRepository.getTotalPaidAmountByMonth(month)
+        val totalUnpaidLive = paymentRepository.getTotalUnpaidAmountByMonth(month)
+        val paymentsLive = paymentRepository.getPaymentsByMonth(month)
+
+        MediatorLiveData<MonthStats>().apply {
+            var paidCount: Int? = null
+            var unpaidCount: Int? = null
+            var totalPaid: Double? = null
+            var totalUnpaid: Double? = null
+            var payments: List<Payment>? = null
+
+            fun update() {
+                val pc = paidCount
+                val uc = unpaidCount
+                val tp = totalPaid
+                val tu = totalUnpaid
+                val ps = payments
+                if (pc != null && uc != null && tp != null && tu != null && ps != null) {
+                    // العملاء المدفوع لهم كلياً حسب isPaid
+                    val fullPaid = pc
+                    // العملاء غير المدفوعين كلياً
+                    val notPaid = uc
+                    // العملاء ذوو الدفع الجزئي = الموجودون في payments لكن isPaid = false
+                    // (لاحقاً يمكن تحسينها بالاعتماد على مجموع الترانزكشنات)
+                    val partialPaid = ps.count { !it.isPaid && it.amount > 0.0 }
+
+                    value = MonthStats(
+                        month = month,
+                        paidCount = fullPaid,
+                        partiallyPaidCount = partialPaid,
+                        unpaidCount = notPaid,
+                        totalPaidAmount = tp,
+                        totalUnpaidAmount = tu
+                    )
+                }
+            }
+
+            addSource(paidCountLive) {
+                paidCount = it ?: 0
+                update()
+            }
+            addSource(unpaidCountLive) {
+                unpaidCount = it ?: 0
+                update()
+            }
+            addSource(totalPaidLive) {
+                totalPaid = it ?: 0.0
+                update()
+            }
+            addSource(totalUnpaidLive) {
+                totalUnpaid = it ?: 0.0
+                update()
+            }
+            addSource(paymentsLive) {
+                payments = it ?: emptyList()
+                update()
+            }
+        }
+    }
+
+    fun setStatsMonth(month: String) {
+        _selectedStatsMonth.value = month
+    }
+
+    // ================== استعلامات أساسية ==================
 
     fun getPaymentLive(clientId: Int, month: String): LiveData<Payment?> {
-        return repository.getPaymentLive(clientId, month)
+        return paymentRepository.getPaymentLive(clientId, month)
     }
 
     fun getClientPayments(clientId: Int): LiveData<List<Payment>> {
-        return repository.getClientPayments(clientId)
+        return paymentRepository.getClientPayments(clientId)
     }
 
     fun getPaymentsByMonth(month: String): LiveData<List<Payment>> {
-        return repository.getPaymentsByMonth(month)
+        return paymentRepository.getPaymentsByMonth(month)
     }
 
     fun getPaidCountByMonth(month: String): LiveData<Int> {
-        return repository.getPaidCountByMonth(month)
+        return paymentRepository.getPaidCountByMonth(month)
     }
 
     fun getUnpaidCountByMonth(month: String): LiveData<Int> {
-        return repository.getUnpaidCountByMonth(month)
+        return paymentRepository.getUnpaidCountByMonth(month)
     }
 
     fun getTotalPaidAmountByMonth(month: String): LiveData<Double?> {
-        return repository.getTotalPaidAmountByMonth(month)
+        return paymentRepository.getTotalPaidAmountByMonth(month)
     }
 
     fun getTotalUnpaidAmountByMonth(month: String): LiveData<Double?> {
-        return repository.getTotalUnpaidAmountByMonth(month)
+        return paymentRepository.getTotalUnpaidAmountByMonth(month)
     }
 
-    // === دوال الكتابة ===
+    // ================== CRUD على Payment ==================
 
     fun insert(payment: Payment) = viewModelScope.launch {
-        repository.insert(payment)
+        paymentRepository.insert(payment)
     }
 
     fun update(payment: Payment) = viewModelScope.launch {
-        repository.update(payment)
+        paymentRepository.update(payment)
     }
 
     fun delete(payment: Payment) = viewModelScope.launch {
-        repository.delete(payment)
+        paymentRepository.delete(payment)
     }
 
     fun deleteClientPayments(clientId: Int) = viewModelScope.launch {
-        repository.deleteClientPayments(clientId)
+        paymentRepository.deleteClientPayments(clientId)
     }
 
     fun deletePayment(clientId: Int, month: String) = viewModelScope.launch {
-        repository.deletePayment(clientId, month)
+        paymentRepository.deletePayment(clientId, month)
     }
 
-    // === دوال تأكيد/تراجع الدفع (مصلحة) ===
+    // ================== دوال مساعدة للحصول على paymentId وقائمة الحركات ==================
+
+    private suspend fun getPaymentIdForMonth(
+        clientId: Int,
+        month: String,
+        monthAmount: Double
+    ): Int {
+        return paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
+    }
+
+    fun getTransactionsForClientMonth(
+        clientId: Int,
+        month: String
+    ): LiveData<List<PaymentTransaction>> {
+        val result = MutableLiveData<List<PaymentTransaction>>()
+
+        viewModelScope.launch {
+            // احصل على الـ Payment الموجود لهذا الشهر
+            val payment = paymentRepository.getPayment(clientId, month)
+            if (payment != null) {
+                // نستخدم الدالة الجديدة من الريبو التي ترجع List مباشرة
+                val list = transactionRepository.getTransactionsForPaymentList(payment.id)
+                result.postValue(list)
+            } else {
+                // إذا لا يوجد Payment أصلاً، لا توجد حركات
+                result.postValue(emptyList())
+            }
+        }
+
+        return result
+    }
+
+
+    // ================== الدفع الكامل والجزئي ==================
+
+    /**
+     * دفع كامل: ينشئ/يضمن وجود Payment لهذا الشهر، ويسجل فقط المبلغ المتبقي للوصول إلى الدفع الكامل،
+     * ثم يضبط isPaid = true مع تاريخ الدفع.
+     */
+    fun markFullPayment(clientId: Int, month: String, amount: Double) = viewModelScope.launch {
+        val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, amount)
+
+        // اجمع ما تم دفعه مسبقاً لهذا الشهر
+        val alreadyPaid = transactionRepository.getTotalPaidForPayment(paymentId)
+        val remaining = (amount - alreadyPaid).coerceAtLeast(0.0)
+
+        // إذا بقي مبلغ للوصول إلى الدفع الكامل، نسجّل فقط الجزء المتبقي
+        if (remaining > 0.0) {
+            transactionRepository.insert(
+                PaymentTransaction(
+                    paymentId = paymentId,
+                    amount = remaining,
+                    notes = "استكمال دفع كامل"
+                )
+            )
+        }
+
+        // اضبط حالة الدفع كمدفوع بالكامل مع تاريخ الدفع
+        val paymentDate = System.currentTimeMillis()
+        paymentRepository.setPaidStatus(
+            clientId = clientId,
+            month = month,
+            isPaid = true,
+            paymentDate = paymentDate
+        )
+    }
+
+    /**
+     * دفع جزئي: يسجل Transaction بقيمة جزئية، ثم يحسب مجموع المدفوع
+     * ويقرر هل يصبح مدفوع بالكامل أم يبقى جزئياً (isPaid = false لكن amount > 0).
+     */
+    fun addPartialPayment(clientId: Int, month: String, monthAmount: Double, partialAmount: Double) =
+        viewModelScope.launch {
+            val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
+
+            // أضف حركة جديدة بمبلغ جزئي
+            transactionRepository.insert(
+                PaymentTransaction(
+                    paymentId = paymentId,
+                    amount = partialAmount,
+                    notes = "دفع جزئي"
+                )
+            )
+
+            // احسب المجموع الكلي المدفوع لهذا الشهر
+            val totalPaid = transactionRepository.getTotalPaidForPayment(paymentId)
+
+            if (totalPaid >= monthAmount) {
+                // أصبح مدفوع بالكامل
+                val paymentDate = System.currentTimeMillis()
+                paymentRepository.setPaidStatus(
+                    clientId = clientId,
+                    month = month,
+                    isPaid = true,
+                    paymentDate = paymentDate
+                )
+            } else {
+                // مدفوع جزئياً: نضمن أن isPaid = false لكن نخزن المبلغ المطلوب (amount)
+                val payment = paymentRepository.getPayment(clientId, month)
+                if (payment != null) {
+                    paymentRepository.update(
+                        payment.copy(
+                            amount = monthAmount,
+                            isPaid = false
+                        )
+                    )
+                }
+            }
+        }
+
+    // ================== دوال مساعدة قديمة (تبقى موجودة) ==================
 
     fun markAsPaid(clientId: Int, month: String, amount: Double) = viewModelScope.launch {
-        val paymentDate = System.currentTimeMillis()
-        repository.markAsPaid(clientId, month, paymentDate)
+        // لأسباب التوافق، نستدعي الدفع الكامل هنا
+        markFullPayment(clientId, month, amount)
     }
 
     fun markAsUnpaid(clientId: Int, month: String) = viewModelScope.launch {
-        repository.markAsUnpaid(clientId, month)
+        // احصل على سجل الـ Payment لهذا الشهر
+        val payment = paymentRepository.getPayment(clientId, month)
+        if (payment != null) {
+            // احذف كل حركات الدفع المرتبطة بهذا الشهر
+            transactionRepository.deleteTransactionsForPayment(payment.id)
+
+            // أعد ضبط حالة الدفع في جدول payments
+            paymentRepository.update(
+                payment.copy(
+                    isPaid = false,
+                    paymentDate = null
+                )
+            )
+        }
     }
 
-    // === دالة ذكية: إنشاء أو تحديث دفعة ===
     fun createOrUpdatePayment(
         clientId: Int,
         month: String,
@@ -89,10 +364,9 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         paymentDate: Long? = null,
         notes: String = ""
     ) = viewModelScope.launch {
-        repository.createOrUpdatePayment(clientId, month, amount, isPaid, paymentDate, notes)
+        paymentRepository.createOrUpdatePayment(clientId, month, amount, isPaid, paymentDate, notes)
     }
 
-    // === دالة مساعدة: إنشاء دفعات تلقائية لعميل جديد ===
     fun createPaymentsForClient(
         clientId: Int,
         startMonth: String,
@@ -100,7 +374,6 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         amount: Double,
         monthOptions: List<String>
     ) = viewModelScope.launch {
-        // تحديد نطاق الشهور
         val months = if (endMonth != null) {
             monthOptions.filter { month ->
                 month >= startMonth && month < endMonth
@@ -109,9 +382,8 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             monthOptions.filter { it >= startMonth }
         }
 
-        // إنشاء دفعة لكل شهر
         months.forEach { month ->
-            repository.createOrUpdatePayment(
+            paymentRepository.createOrUpdatePayment(
                 clientId = clientId,
                 month = month,
                 amount = amount,
