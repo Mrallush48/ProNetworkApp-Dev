@@ -3,8 +3,8 @@ package com.pronetwork.app.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
@@ -50,7 +50,7 @@ fun ClientEditDialog(
 ) {
     var name by remember { mutableStateOf(initialName) }
     var subscriptionNumber by remember { mutableStateOf(initialSubscriptionNumber) }
-    var price by remember { mutableStateOf(initialPrice) }
+    var priceText by remember { mutableStateOf(initialPrice) }
     var selectedBuildingId by remember {
         mutableStateOf(
             initialBuildingId.takeIf { it > 0 } ?: buildingList.firstOrNull()?.id ?: 0
@@ -58,7 +58,7 @@ fun ClientEditDialog(
     }
     var startMonth by remember { mutableStateOf(initialStartMonth) }
     var startDay by remember { mutableStateOf(initialStartDay.toString()) }
-    var firstMonthAmount by remember { mutableStateOf(initialFirstMonthAmount) }
+    var firstMonthAmountText by remember { mutableStateOf(initialFirstMonthAmount) }
     var phone by remember { mutableStateOf(initialPhone) }
     var address by remember { mutableStateOf(initialAddress) }
     var packageType by remember { mutableStateOf(initialPackageType) }
@@ -69,9 +69,9 @@ fun ClientEditDialog(
     var showDatePicker by remember { mutableStateOf(false) }
 
     // حسبة المبلغ الجزئي للشهر الأول على أساس 30 يوم دائماً
-    LaunchedEffect(price, startMonth, startDay) {
-        if (price.isNotEmpty() && startMonth.isNotEmpty() && startDay.isNotEmpty()) {
-            val priceValue = price.toDoubleOrNull()
+    LaunchedEffect(priceText, startMonth, startDay) {
+        if (priceText.isNotEmpty() && startMonth.isNotEmpty() && startDay.isNotEmpty()) {
+            val priceValue = priceText.toDoubleOrNull()
             val dayValue = startDay.toIntOrNull()
 
             // اليوم من 1 إلى 30 فقط لأننا نعتبر الشهر 30 يوماً دائماً
@@ -81,7 +81,7 @@ fun ClientEditDialog(
                 val remainingDays = daysInMonth - dayValue + 1
                 val partialAmount = (priceValue / daysInMonth) * remainingDays
 
-                firstMonthAmount = String.format("%.2f", partialAmount)
+                firstMonthAmountText = String.format("%.2f", partialAmount)
             }
         }
     }
@@ -129,8 +129,8 @@ fun ClientEditDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
+                    value = priceText,
+                    onValueChange = { priceText = it },
                     label = { Text("السعر الشهري الكامل (ريال) *") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -216,8 +216,8 @@ fun ClientEditDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = firstMonthAmount,
-                    onValueChange = { firstMonthAmount = it },
+                    value = firstMonthAmountText,
+                    onValueChange = { firstMonthAmountText = it },
                     label = { Text("المبلغ الفعلي للشهر الأول (ريال) *") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -318,15 +318,15 @@ fun ClientEditDialog(
                         onClick = {
                             if (name.isNotBlank() &&
                                 subscriptionNumber.isNotBlank() &&
-                                price.isNotBlank() &&
+                                priceText.isNotBlank() &&
                                 startMonth.isNotBlank() &&
                                 startDay.isNotBlank() &&
-                                firstMonthAmount.isNotBlank()
+                                firstMonthAmountText.isNotBlank()
                             ) {
 
-                                val priceValue = price.toDoubleOrNull()
+                                val priceValue = priceText.toDoubleOrNull()
                                 val dayValue = startDay.toIntOrNull()
-                                val firstMonthAmountValue = firstMonthAmount.toDoubleOrNull()
+                                val firstMonthAmountValue = firstMonthAmountText.toDoubleOrNull()
 
                                 if (priceValue != null &&
                                     dayValue != null &&
@@ -354,10 +354,10 @@ fun ClientEditDialog(
                         modifier = Modifier.weight(1f),
                         enabled = name.isNotBlank() &&
                                 subscriptionNumber.isNotBlank() &&
-                                price.isNotBlank() &&
+                                priceText.isNotBlank() &&
                                 startMonth.isNotBlank() &&
                                 startDay.isNotBlank() &&
-                                firstMonthAmount.isNotBlank()
+                                firstMonthAmountText.isNotBlank()
                     ) {
                         Text("حفظ")
                     }

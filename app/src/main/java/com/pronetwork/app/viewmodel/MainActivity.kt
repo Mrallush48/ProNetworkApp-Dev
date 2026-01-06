@@ -246,11 +246,11 @@ class MainActivity : ComponentActivity() {
                                                 buildingSelectionEnabled = true,
                                                 onSave = { name,
                                                            subscriptionNumber,
-                                                           price,
+                                                           price: Double,              // ✅ Double
                                                            buildingId,
                                                            startMonth,
                                                            startDay,
-                                                           firstMonthAmount,
+                                                           firstMonthAmount: Double?,
                                                            phone,
                                                            address,
                                                            packageType,
@@ -278,12 +278,14 @@ class MainActivity : ComponentActivity() {
                                                             allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
 
                                                         insertedClient?.let { client ->
+                                                            // ✅ تعديل: إضافة firstMonthAmount
                                                             paymentViewModel.createPaymentsForClient(
                                                                 clientId = client.id,
                                                                 startMonth = startMonth,
                                                                 endMonth = null,
                                                                 amount = price,
-                                                                monthOptions = monthOptions
+                                                                monthOptions = monthOptions,
+                                                                firstMonthAmount = firstMonthAmount
                                                             )
                                                         }
 
@@ -324,13 +326,13 @@ class MainActivity : ComponentActivity() {
                                             }
                                             selectedClient = null
                                         },
-                                        onTogglePayment = { month, shouldPay ->
+                                        onTogglePayment = { month, monthAmount, shouldPay ->    // ✅ تعديل: إضافة monthAmount
                                             scope.launch {
                                                 if (shouldPay) {
                                                     paymentViewModel.markFullPayment(
                                                         clientId = client.id,
                                                         month = month,
-                                                        amount = client.price
+                                                        amount = monthAmount              // ✅ استخدام المبلغ الصحيح
                                                     )
                                                 } else {
                                                     paymentViewModel.markAsUnpaid(
@@ -340,12 +342,12 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         },
-                                        onPartialPaymentRequest = { month, partialAmount ->
+                                        onPartialPaymentRequest = { month, monthAmount, partialAmount ->  // ✅ تعديل: إضافة monthAmount
                                             scope.launch {
                                                 paymentViewModel.addPartialPayment(
                                                     clientId = client.id,
                                                     month = month,
-                                                    monthAmount = client.price,
+                                                    monthAmount = monthAmount,            // ✅ المبلغ الصحيح
                                                     partialAmount = partialAmount
                                                 )
                                             }
@@ -354,6 +356,18 @@ class MainActivity : ComponentActivity() {
                                             paymentViewModel.getTransactionsForClientMonth(
                                                 clientId = client.id,
                                                 month = month
+                                            )
+                                        },
+                                        onDeleteTransaction = { transactionId ->
+                                            paymentViewModel.deleteTransaction(transactionId)
+                                        },
+                                        onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->  // ✅ تعديل: إضافة monthAmount
+                                            paymentViewModel.addReverseTransaction(
+                                                clientId = client.id,
+                                                month = month,
+                                                monthAmount = monthAmount,               // ✅ نفس الشيء
+                                                refundAmount = refundAmount,
+                                                reason = reason
                                             )
                                         },
                                         onBack = { selectedClient = null }
@@ -376,20 +390,24 @@ class MainActivity : ComponentActivity() {
                                             buildingSelectionEnabled = true,
                                             onSave = { name,
                                                        subscriptionNumber,
-                                                       price,
+                                                       price: Double,              // ✅ Double
                                                        buildingId,
                                                        startMonth,
                                                        startDay,
-                                                       firstMonthAmount,
+                                                       firstMonthAmount: Double?,
                                                        phone,
                                                        address,
                                                        packageType,
                                                        notes ->
+
+                                                val oldPrice = client.price
+                                                val newPrice = price
+
                                                 clientViewModel.update(
                                                     client.copy(
                                                         name = name,
                                                         subscriptionNumber = subscriptionNumber,
-                                                        price = price,
+                                                        price = newPrice,
                                                         firstMonthAmount = firstMonthAmount,
                                                         buildingId = buildingId,
                                                         startMonth = startMonth,
@@ -400,6 +418,15 @@ class MainActivity : ComponentActivity() {
                                                         notes = notes
                                                     )
                                                 )
+
+                                                if (newPrice != oldPrice) {
+                                                    // ✅ تعديل: استدعاء الدالة الجديدة
+                                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                                        clientId = client.id,
+                                                        newAmount = newPrice
+                                                    )
+                                                }
+
                                                 showEditClientDialog = false
                                                 selectedClient = null
                                             },
@@ -450,12 +477,14 @@ class MainActivity : ComponentActivity() {
                                                 allClients.lastOrNull { it.subscriptionNumber == client.subscriptionNumber }
 
                                             insertedClient?.let { newClient ->
+                                                // ✅ تعديل: إضافة firstMonthAmount
                                                 paymentViewModel.createPaymentsForClient(
                                                     clientId = newClient.id,
                                                     startMonth = client.startMonth,
                                                     endMonth = null,
                                                     amount = client.price,
-                                                    monthOptions = monthOptions
+                                                    monthOptions = monthOptions,
+                                                    firstMonthAmount = client.firstMonthAmount
                                                 )
                                             }
                                         }
@@ -502,20 +531,24 @@ class MainActivity : ComponentActivity() {
                                         buildingSelectionEnabled = false,
                                         onSave = { name,
                                                    subscriptionNumber,
-                                                   price,
+                                                   price: Double,             // ✅ Double
                                                    buildingId,
                                                    startMonth,
                                                    startDay,
-                                                   firstMonthAmount,
+                                                   firstMonthAmount: Double?,
                                                    phone,
                                                    address,
                                                    packageType,
                                                    notes ->
+
+                                            val oldPrice = selectedClient!!.price
+                                            val newPrice = price
+
                                             clientViewModel.update(
                                                 selectedClient!!.copy(
                                                     name = name,
                                                     subscriptionNumber = subscriptionNumber,
-                                                    price = price,
+                                                    price = newPrice,
                                                     firstMonthAmount = firstMonthAmount,
                                                     buildingId = buildingId,
                                                     startMonth = startMonth,
@@ -526,6 +559,15 @@ class MainActivity : ComponentActivity() {
                                                     notes = notes
                                                 )
                                             )
+
+                                            if (newPrice != oldPrice) {
+                                                // ✅ تعديل: استدعاء الدالة الجديدة
+                                                paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                                    clientId = selectedClient!!.id,
+                                                    newAmount = newPrice
+                                                )
+                                            }
+
                                             showEditClientDialog = false
                                             selectedClient = null
                                         },

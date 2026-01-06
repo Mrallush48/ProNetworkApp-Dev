@@ -34,9 +34,11 @@ fun ClientDetailsScreen(
     monthUiList: List<ClientMonthPaymentUi>,
     onEdit: (Client) -> Unit,
     onDelete: (Client) -> Unit,
-    onTogglePayment: (String, Boolean) -> Unit,           // دفع كامل / تراجع
-    onPartialPaymentRequest: (String, Double) -> Unit,    // دفع جزئي (month, amount)
+    onTogglePayment: (month: String, monthAmount: Double, shouldPay: Boolean) -> Unit,           // ✅ تعديل: إضافة monthAmount
+    onPartialPaymentRequest: (month: String, monthAmount: Double, partialAmount: Double) -> Unit,    // ✅ تعديل: إضافة monthAmount
     getMonthTransactions: (String) -> LiveData<List<PaymentTransaction>>,
+    onDeleteTransaction: (Int) -> Unit,
+    onAddReverseTransaction: (month: String, monthAmount: Double, refundAmount: Double, reason: String) -> Unit, // ✅ تعديل: إضافة monthAmount
     onBack: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -44,15 +46,25 @@ fun ClientDetailsScreen(
     // للحوار الخاص بالدفع الجزئي
     var partialPaymentMonth by remember { mutableStateOf<String?>(null) }
     var partialPaymentAmountText by remember { mutableStateOf("") }
+    var partialPaymentMonthAmount by remember { mutableStateOf(0.0) }   // ✅ جديد: لتخزين مبلغ الشهر
 
     // للحوار الخاص بتأكيد الدفع الكامل
     var confirmFullPaymentMonth by remember { mutableStateOf<String?>(null) }
+    var confirmFullPaymentMonthAmount by remember { mutableStateOf(0.0) } // ✅ جديد: لتخزين مبلغ الشهر
 
     // للحوار الخاص بتأكيد التراجع عن الدفع
     var confirmCancelPaymentMonth by remember { mutableStateOf<String?>(null) }
+    var confirmCancelPaymentMonthAmount by remember { mutableStateOf(0.0) } // ✅ جديد: لتخزين مبلغ الشهر
 
     // للحوار الخاص بحذف الحركة
-    var transactionToDelete by remember { mutableStateOf<PaymentTransaction?>(null) }
+    var deleteTransactionId by remember { mutableStateOf<Int?>(null) }
+
+    // للحوار الخاص بالحركة العكسية (استرجاع/رصيد)
+    var reverseMonth by remember { mutableStateOf<String?>(null) }
+    var reverseAmountText by remember { mutableStateOf("") }
+    var reverseReasonText by remember { mutableStateOf("") }
+    var reverseMaxAmount by remember { mutableStateOf(0.0) }
+    var reverseMonthAmount by remember { mutableStateOf(0.0) } // ✅ جديد: لتخزين مبلغ الشهر
 
     Scaffold(
         topBar = {
@@ -280,12 +292,10 @@ fun ClientDetailsScreen(
                     val month = item.month
                     val isPaidFull = item.status == PaymentStatus.FULL
                     val isPartial = item.status == PaymentStatus.PARTIAL
-                    val monthAmount = item.monthAmount
+                    val monthAmount = item.monthAmount // ✅ المبلغ الصحيح من monthUiList
 
-                    val transactionsLiveData = remember(month) {
-                        getMonthTransactions(month)
-                    }
-                    val transactions by transactionsLiveData.observeAsState(emptyList())
+                    // ✅ تعديل: إزالة remember وربط مباشر بـ LiveData
+                    val transactions by getMonthTransactions(month).observeAsState(emptyList())
 
                     val statusText: String
                     val statusColor = when {
@@ -347,9 +357,8 @@ fun ClientDetailsScreen(
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 transactions.forEach { tx: PaymentTransaction ->
-                                    val dateText = remember(tx.id) {
-                                        DateFormat.format("yyyy-MM-dd HH:mm", tx.date).toString()
-                                    }
+                                    // ✅ تعديل: إزالة remember وحساب مباشر
+                                    val dateText = DateFormat.format("yyyy-MM-dd HH:mm", tx.date).toString()
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -361,16 +370,18 @@ fun ClientDetailsScreen(
                                             modifier = Modifier.weight(1f)
                                         )
 
-                                        TextButton(
-                                            onClick = {
-                                                transactionToDelete = tx
+                                        if (tx.amount > 0.0) {
+                                            TextButton(
+                                                onClick = {
+                                                    deleteTransactionId = tx.id
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = "حذف",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
                                             }
-                                        ) {
-                                            Text(
-                                                text = "حذف",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.error
-                                            )
                                         }
                                     }
                                 }
@@ -385,7 +396,10 @@ fun ClientDetailsScreen(
                                 if (isPaidFull) {
                                     // عندما يكون مدفوع بالكامل: نعرض زر تراجع عن الدفع
                                     OutlinedButton(
-                                        onClick = { confirmCancelPaymentMonth = month },
+                                        onClick = {
+                                            confirmCancelPaymentMonth = month
+                                            confirmCancelPaymentMonthAmount = monthAmount   // ✅
+                                        },
                                         modifier = Modifier.weight(1f)
                                     ) {
                                         Text("تراجع عن الدفع")
@@ -393,7 +407,10 @@ fun ClientDetailsScreen(
                                 } else {
                                     // عندما لا يكون مدفوع بالكامل: تأكيد كامل + دفع جزئي
                                     Button(
-                                        onClick = { confirmFullPaymentMonth = month },
+                                        onClick = {
+                                            confirmFullPaymentMonth = month
+                                            confirmFullPaymentMonthAmount = monthAmount   // ✅
+                                        },
                                         modifier = Modifier.weight(1f)
                                     ) {
                                         Text("تأكيد الدفع الكامل")
@@ -403,10 +420,27 @@ fun ClientDetailsScreen(
                                         onClick = {
                                             partialPaymentMonth = month
                                             partialPaymentAmountText = ""
+                                            partialPaymentMonthAmount = monthAmount       // ✅
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
                                         Text("دفع جزئي")
+                                    }
+                                }
+
+                                if (item.totalPaid > 0.0) {
+                                    // زر استرجاع مبلغ
+                                    OutlinedButton(
+                                        onClick = {
+                                            reverseMonth = month
+                                            reverseAmountText = ""
+                                            reverseReasonText = ""
+                                            reverseMaxAmount = item.totalPaid   // سقف الاسترجاع
+                                            reverseMonthAmount = monthAmount    // ✅
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("استرجاع مبلغ")
                                     }
                                 }
                             }
@@ -418,46 +452,12 @@ fun ClientDetailsScreen(
             item { Spacer(Modifier.height(16.dp)) }
         }
 
-        // حوار تأكيد حذف الحركة
-        if (transactionToDelete != null) {
-            AlertDialog(
-                onDismissRequest = { transactionToDelete = null },
-                title = { Text("تأكيد الحذف") },
-                text = {
-                    val tx = transactionToDelete!!
-                    val dateText = DateFormat.format("yyyy-MM-dd HH:mm", tx.date).toString()
-                    Text(
-                        "هل أنت متأكد من حذف هذه الحركة؟\n" +
-                                "- ${tx.amount} ريال (${tx.notes ?: ""}) - $dateText"
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            // استدعاء ViewModel لحذف الحركة
-                            // paymentViewModel.deleteTransaction(transactionToDelete!!.id)
-                            transactionToDelete = null
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("نعم، احذف")
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { transactionToDelete = null }) {
-                        Text("إلغاء")
-                    }
-                }
-            )
-        }
-
         // حوار الدفع الجزئي
         if (partialPaymentMonth != null) {
+            val month = partialPaymentMonth!!
             AlertDialog(
                 onDismissRequest = { partialPaymentMonth = null },
-                title = { Text("دفع جزئي - ${formatYearMonth(partialPaymentMonth!!)}") },
+                title = { Text("دفع جزئي - ${formatYearMonth(month)}") },
                 text = {
                     Column {
                         Text("أدخل المبلغ الذي دفعه العميل لهذا الشهر:")
@@ -470,7 +470,7 @@ fun ClientDetailsScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "السعر الشهري: ${client.price} ريال",
+                            "السعر الشهري: ${partialPaymentMonthAmount} ريال", // ✅ تعديل: استخدام monthAmount
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -478,10 +478,9 @@ fun ClientDetailsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            val month = partialPaymentMonth
                             val amount = partialPaymentAmountText.toDoubleOrNull()
-                            if (month != null && amount != null && amount > 0.0) {
-                                onPartialPaymentRequest(month, amount)
+                            if (amount != null && amount > 0.0) {
+                                onPartialPaymentRequest(month, partialPaymentMonthAmount, amount) // ✅ تعديل: إرسال monthAmount
                                 partialPaymentMonth = null
                             }
                         }
@@ -506,13 +505,13 @@ fun ClientDetailsScreen(
                 text = {
                     Text(
                         "هل أنت متأكد من تأكيد الدفع الكامل لشهر ${formatYearMonth(month)} " +
-                                "بقيمة ${client.price} ريال؟"
+                                "بقيمة ${confirmFullPaymentMonthAmount} ريال؟" // ✅ تعديل: استخدام monthAmount
                     )
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            onTogglePayment(month, true)
+                            onTogglePayment(month, confirmFullPaymentMonthAmount, true) // ✅ تعديل: إرسال monthAmount
                             confirmFullPaymentMonth = null
                         }
                     ) {
@@ -542,8 +541,7 @@ fun ClientDetailsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            // نرسل shouldPay = false ليتم استدعاء markAsUnpaid في الـ ViewModel
-                            onTogglePayment(month, false)
+                            onTogglePayment(month, confirmCancelPaymentMonthAmount, false) // ✅ تعديل: إرسال monthAmount
                             confirmCancelPaymentMonth = null
                         }
                     ) {
@@ -552,6 +550,101 @@ fun ClientDetailsScreen(
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { confirmCancelPaymentMonth = null }) {
+                        Text("إلغاء")
+                    }
+                }
+            )
+        }
+
+        // حوار حذف الحركة
+        if (deleteTransactionId != null) {
+            AlertDialog(
+                onDismissRequest = { deleteTransactionId = null },
+                title = { Text("حذف حركة الدفع") },
+                text = {
+                    Text("هل أنت متأكد من حذف هذه الحركة نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val id = deleteTransactionId
+                            if (id != null) {
+                                onDeleteTransaction(id)
+                            }
+                            deleteTransactionId = null
+                        }
+                    ) {
+                        Text("نعم، حذف")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { deleteTransactionId = null }) {
+                        Text("إلغاء")
+                    }
+                }
+            )
+        }
+
+        // حوار الحركة العكسية (استرجاع/رصيد)
+        if (reverseMonth != null) {
+            val month = reverseMonth!!
+            AlertDialog(
+                onDismissRequest = { reverseMonth = null },
+                title = { Text("استرجاع مبلغ - ${formatYearMonth(month)}") },
+                text = {
+                    Column {
+                        Text("أدخل المبلغ الذي تريد استرجاعه من هذا الشهر:")
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = reverseAmountText,
+                            onValueChange = { reverseAmountText = it },
+                            singleLine = true,
+                            label = { Text("المبلغ بالريال (سيُسجّل بالسالب)") }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = reverseReasonText,
+                            onValueChange = { reverseReasonText = it },
+                            singleLine = false,
+                            label = { Text("سبب الاسترجاع (إجباري)") }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "الحد الأقصى للاسترداد: ${reverseMaxAmount} ريال",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        if (reverseReasonText.isBlank()) {
+                            Text(
+                                "يجب كتابة سبب الاسترجاع.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    val canConfirm = reverseAmountText.toDoubleOrNull() != null &&
+                            reverseAmountText.toDouble() > 0.0 &&
+                            reverseAmountText.toDouble() <= reverseMaxAmount &&
+                            reverseReasonText.isNotBlank()
+
+                    Button(
+                        onClick = {
+                            val amount = reverseAmountText.toDoubleOrNull()
+                            if (amount != null && amount > 0.0 && amount <= reverseMaxAmount && reverseReasonText.isNotBlank()) {
+                                val reason = reverseReasonText.trim()
+                                onAddReverseTransaction(month, reverseMonthAmount, amount, reason) // ✅ تعديل: إرسال monthAmount
+                                reverseMonth = null
+                            }
+                        },
+                        enabled = canConfirm
+                    ) {
+                        Text("تأكيد الاسترجاع")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { reverseMonth = null }) {
                         Text("إلغاء")
                     }
                 }

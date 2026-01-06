@@ -48,4 +48,18 @@ class PaymentTransactionRepository(
     suspend fun deleteTransactionsForPayment(paymentId: Int) {
         transactionDao.deleteByPaymentId(paymentId)
     }
+
+    /**
+     * حذف حركة واحدة حسب المعرف
+     */
+    suspend fun deleteTransactionById(transactionId: Int) {
+        transactionDao.deleteTransactionById(transactionId)
+    }
+
+    /**
+     * جلب paymentId من transactionId
+     */
+    suspend fun getPaymentIdByTransactionId(transactionId: Int): Int? {
+        return transactionDao.getPaymentIdByTransactionId(transactionId)
+    }
 }

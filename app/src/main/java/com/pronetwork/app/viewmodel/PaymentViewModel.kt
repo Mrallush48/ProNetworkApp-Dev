@@ -254,6 +254,56 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         return result
     }
 
+    // ================== حذف حركة فردية ==================
+
+    fun deleteTransaction(transactionId: Int) = viewModelScope.launch {
+        // 1) احصل على paymentId من transactionId
+        val paymentId = transactionRepository.getPaymentIdByTransactionId(transactionId)
+        if (paymentId == null) {
+            // لا يوجد شيء نحذفه أو الحركة غير موجودة
+            return@launch
+        }
+
+        // 2) نفّذ الحذف
+        transactionRepository.deleteTransactionById(transactionId)
+
+        // 3) أعد حساب مجموع المدفوع الجديد لهذا الـ Payment
+        val newTotalPaid = transactionRepository.getTotalPaidForPayment(paymentId)
+
+        // 4) احصل على سجل Payment لتعديل الحالة
+        val payment = paymentRepository.getPaymentById(paymentId)
+        if (payment != null) {
+            // 5) حدّث حالة الدفع في جدول payments بناءً على المجموع الجديد
+            when {
+                newTotalPaid <= 0.0 -> {
+                    // لا يوجد مدفوع بعد الحذف → الشهر غير مدفوع
+                    paymentRepository.update(
+                        payment.copy(
+                            isPaid = false,
+                            paymentDate = null
+                        )
+                    )
+                }
+                newTotalPaid < payment.amount -> {
+                    // لا يزال مدفوع جزئيًا → isPaid = false مع إبقاء المبلغ
+                    paymentRepository.update(
+                        payment.copy(
+                            isPaid = false,
+                            paymentDate = null
+                        )
+                    )
+                }
+                else -> {
+                    // ما زال مدفوع بالكامل → نحافظ على isPaid = true
+                    paymentRepository.update(
+                        payment.copy(
+                            isPaid = true
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     // ================== الدفع الكامل والجزئي ==================
 
@@ -332,6 +382,141 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
+    // ================== حركة عكسية (استرجاع / رصيد) ==================
+
+    /**
+     * حركة عكسية (استرجاع / رصيد): تسجل Transaction بمبلغ سالب.
+     * تستخدم عند فصل الخدمة قبل نهاية الشهر أو عند رد جزء من المبلغ للعميل.
+     */
+    fun addReverseTransaction(
+        clientId: Int,
+        month: String,
+        monthAmount: Double,
+        refundAmount: Double,
+        reason: String = "حركة عكسية / استرجاع"
+    ) = viewModelScope.launch {
+        // نضمن وجود Payment لهذا الشهر
+        val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
+
+        // نسجل حركة جديدة بمبلغ سالب
+        transactionRepository.insert(
+            PaymentTransaction(
+                paymentId = paymentId,
+                amount = -refundAmount,        // المبلغ بالسالب
+                notes = reason
+            )
+        )
+
+        // بعد الحركة العكسية، نعيد حساب المجموع ونحدث حالة الدفع
+        val newTotalPaid = transactionRepository.getTotalPaidForPayment(paymentId)
+        val payment = paymentRepository.getPaymentById(paymentId)
+
+        if (payment != null) {
+            when {
+                newTotalPaid <= 0.0 -> {
+                    // لا يوجد مدفوع فعليًا بعد الاسترجاع
+                    paymentRepository.update(
+                        payment.copy(
+                            isPaid = false,
+                            paymentDate = null
+                        )
+                    )
+                }
+                newTotalPaid < payment.amount -> {
+                    // أصبح مدفوع جزئيًا بعد الاسترجاع
+                    paymentRepository.update(
+                        payment.copy(
+                            isPaid = false,
+                            paymentDate = null
+                        )
+                    )
+                }
+                else -> {
+                    // ما زال مدفوع بالكامل (نادر لكن ممكن إذا كان الاسترجاع صغير)
+                    paymentRepository.update(
+                        payment.copy(
+                            isPaid = true
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    // ================== تعديل مبلغ الاشتراك من شهر معيّن ==================
+
+    /**
+     * تعديل مبلغ الاشتراك الشهري للعميل اعتبارًا من شهر معين فما بعد.
+     * لا يلمس الشهور التي عليها حركات.
+     */
+    fun applyNewMonthlyPriceFromMonth(
+        clientId: Int,
+        fromMonth: String,
+        newAmount: Double
+    ) = viewModelScope.launch {
+        paymentRepository.updateFutureUnpaidPaymentsAmount(
+            clientId = clientId,
+            fromMonth = fromMonth,
+            newAmount = newAmount
+        )
+    }
+
+    /**
+     * تعديل مبلغ الاشتراك الشهري للعميل اعتبارًا من أول شهر "نظيف" (لا حركات عليه) فما بعد.
+     * مفيد عند تغيير السعر فقط لأشهر المستقبلية دون التأثير على الشهور الحالية.
+     */
+    fun applyNewMonthlyPriceFromNextUnpaidMonth(
+        clientId: Int,
+        newAmount: Double
+    ) = viewModelScope.launch {
+        val fromMonth = paymentRepository.getFirstUnpaidMonthForClient(clientId)
+        if (fromMonth != null) {
+            paymentRepository.updateFutureUnpaidPaymentsAmount(
+                clientId = clientId,
+                fromMonth = fromMonth,
+                newAmount = newAmount
+            )
+        }
+    }
+
+    // ================== دالة مساعدة جديدة: إنشاء دفعات للعميل ==================
+
+    /**
+     * إنشاء دفعات شهرية للعميل.
+     * الشهر الأول قد يكون بسعر مختلف (مثل 30 ريال)، والباقي بالسعر العادي (مثل 150 ريال).
+     */
+    fun createPaymentsForClient(
+        clientId: Int,
+        startMonth: String,
+        endMonth: String?,
+        amount: Double,
+        monthOptions: List<String>,
+        firstMonthAmount: Double? = null      // ✅ جديد: مبلغ الشهر الأول
+    ) = viewModelScope.launch {
+        val months = if (endMonth != null) {
+            monthOptions.filter { month ->
+                month >= startMonth && month < endMonth
+            }
+        } else {
+            monthOptions.filter { it >= startMonth }
+        }
+
+        months.forEachIndexed { index, month ->
+            val monthAmount = if (index == 0 && firstMonthAmount != null) {
+                firstMonthAmount           // ✅ للشهر الأول استخدم القيمة الخاصة (مثل 30)
+            } else {
+                amount                     // ✅ باقي الشهور بالمبلغ الكامل (150)
+            }
+
+            paymentRepository.createOrUpdatePayment(
+                clientId = clientId,
+                month = month,
+                amount = monthAmount,
+                isPaid = false
+            )
+        }
+    }
+
     // ================== دوال مساعدة قديمة (تبقى موجودة) ==================
 
     fun markAsPaid(clientId: Int, month: String, amount: Double) = viewModelScope.launch {
@@ -365,30 +550,5 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         notes: String = ""
     ) = viewModelScope.launch {
         paymentRepository.createOrUpdatePayment(clientId, month, amount, isPaid, paymentDate, notes)
-    }
-
-    fun createPaymentsForClient(
-        clientId: Int,
-        startMonth: String,
-        endMonth: String?,
-        amount: Double,
-        monthOptions: List<String>
-    ) = viewModelScope.launch {
-        val months = if (endMonth != null) {
-            monthOptions.filter { month ->
-                month >= startMonth && month < endMonth
-            }
-        } else {
-            monthOptions.filter { it >= startMonth }
-        }
-
-        months.forEach { month ->
-            paymentRepository.createOrUpdatePayment(
-                clientId = clientId,
-                month = month,
-                amount = amount,
-                isPaid = false
-            )
-        }
     }
 }

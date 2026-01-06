@@ -87,4 +87,54 @@ interface PaymentDao {
     // إنشاء دفعة تلقائية لعميل في شهر معيّن (إذا لم تكن موجودة)
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun createPaymentIfNotExists(payment: Payment)
+
+    // دالة جديدة: جلب Payment حسب المعرف
+    @Query("SELECT * FROM payments WHERE id = :id LIMIT 1")
+    suspend fun getPaymentById(id: Int): Payment?
+
+    // دالة جديدة: تحديث مبالغ الشهور المستقبلية (القديمة)
+    @Query("""
+        UPDATE payments
+        SET amount = :newAmount
+        WHERE clientId = :clientId
+          AND month >= :fromMonth
+    """)
+    suspend fun updateFuturePaymentsAmount(
+        clientId: Int,
+        fromMonth: String,
+        newAmount: Double
+    )
+
+    // دالة جديدة: تحديث مبالغ الشهور المستقبلية (الجديدة)
+    @Query("""
+        UPDATE payments
+        SET amount = :newAmount
+        WHERE clientId = :clientId
+          AND month >= :fromMonth
+          AND id NOT IN (
+              SELECT DISTINCT paymentId
+              FROM payment_transactions
+              WHERE clientId = :clientId
+          )
+    """)
+    suspend fun updateFutureUnpaidPaymentsAmount(
+        clientId: Int,
+        fromMonth: String,
+        newAmount: Double
+    )
+
+    // دالة جديدة: جلب أول شهر غير مسجّل عليه أي حركات لعميل معيّن
+    @Query("""
+        SELECT month
+        FROM payments
+        WHERE clientId = :clientId
+          AND id NOT IN (
+              SELECT DISTINCT paymentId
+              FROM payment_transactions
+              WHERE clientId = :clientId
+          )
+        ORDER BY month
+        LIMIT 1
+    """)
+    suspend fun getFirstUnpaidMonthForClient(clientId: Int): String?
 }

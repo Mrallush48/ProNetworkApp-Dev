@@ -38,6 +38,12 @@ interface PaymentTransactionDao {
     @Query("DELETE FROM payment_transactions WHERE paymentId = :paymentId")
     suspend fun deleteByPaymentId(paymentId: Int)
 
+    @Query("DELETE FROM payment_transactions WHERE id = :transactionId")
+    suspend fun deleteTransactionById(transactionId: Int)
+
+    @Query("SELECT paymentId FROM payment_transactions WHERE id = :transactionId LIMIT 1")
+    suspend fun getPaymentIdByTransactionId(transactionId: Int): Int?
+
     data class PaymentTotal(
         val paymentId: Int,
         val totalPaid: Double

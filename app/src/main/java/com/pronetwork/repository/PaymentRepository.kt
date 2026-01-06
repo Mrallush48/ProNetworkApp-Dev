@@ -182,4 +182,36 @@ class PaymentRepository(private val paymentDao: PaymentDao) {
             )
         }
     }
+
+    // دالة جديدة: جلب Payment حسب المعرف
+    suspend fun getPaymentById(id: Int): Payment? {
+        return paymentDao.getPaymentById(id)
+    }
+
+    // دالة جديدة: تحديث مبالغ الشهور المستقبلية
+    suspend fun updateFuturePaymentsAmount(
+        clientId: Int,
+        fromMonth: String,
+        newAmount: Double
+    ) {
+        paymentDao.updateFuturePaymentsAmount(clientId, normalizeMonth(fromMonth), newAmount)
+    }
+
+    // دالة جديدة: تحديث مبالغ الشهور المستقبلية (الجديدة)
+    suspend fun updateFutureUnpaidPaymentsAmount(
+        clientId: Int,
+        fromMonth: String,
+        newAmount: Double
+    ) {
+        paymentDao.updateFutureUnpaidPaymentsAmount(
+            clientId = clientId,
+            fromMonth = normalizeMonth(fromMonth),
+            newAmount = newAmount
+        )
+    }
+
+    // دالة جديدة: جلب أول شهر غير مسجّل عليه أي حركات لعميل معيّن
+    suspend fun getFirstUnpaidMonthForClient(clientId: Int): String? {
+        return paymentDao.getFirstUnpaidMonthForClient(clientId)
+    }
 }
