@@ -2,6 +2,8 @@ package com.pronetwork.app.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -27,9 +29,12 @@ fun ClientListScreen(
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showPaymentDialog by remember { mutableStateOf<Pair<Client, Boolean>?>(null) }
+
+    // ✅ تعديل: استخدام Triple لتمرير المبلغ الصحيح
+    var showPaymentDialog by remember { mutableStateOf<Triple<Client, String, Double>?>(null) }
 
     Column(Modifier.fillMaxSize()) {
+        // الهيدر (عدد العملاء + زر إضافة)
         Row(
             Modifier
                 .fillMaxWidth()
@@ -51,6 +56,7 @@ fun ClientListScreen(
             }
         }
 
+        // باقي المحتوى في LazyColumn قابلة للسكرول
         if (clients.isEmpty()) {
             Box(
                 Modifier
@@ -61,82 +67,47 @@ fun ClientListScreen(
                 Text("لا يوجد عملاء في هذا الشهر.")
             }
         } else {
-            clients.forEach { client ->
-                val buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "بدون مبنى"
-                val payment by paymentViewModel
-                    .getPaymentLive(client.id, selectedMonth)
-                    .observeAsState(null)
-                val isPaid = payment?.isPaid ?: false
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(clients, key = { it.id }) { client ->
+                    val buildingName =
+                        buildings.firstOrNull { it.id == client.buildingId }?.name ?: "بدون مبنى"
 
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    elevation = CardDefaults.cardElevation(5.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isPaid)
-                            MaterialTheme.colorScheme.secondaryContainer
-                        else
-                            MaterialTheme.colorScheme.surface
+                    // ✅ تعديل: جلب المبلغ من Payment (إذا موجود)
+                    val payment by paymentViewModel
+                        .getPaymentLive(client.id, selectedMonth)
+                        .observeAsState(null)
+                    val isPaid = payment?.isPaid ?: false
+                    val monthAmount = payment?.amount ?: client.price  // ✅ استخدام المبلغ من Payment أولاً
+
+                    ClientCardItem(
+                        client = client,
+                        buildingName = buildingName,
+                        isPaid = isPaid,
+                        monthAmount = monthAmount,      // ✅ تمرير المبلغ الصحيح
+                        onClientClick = onClientClick,
+                        onShowPaymentDialog = { shouldPay ->
+                            // ✅ تعديل: إرسال المبلغ الصحيح مع Triple
+                            showPaymentDialog = Triple(client, selectedMonth, monthAmount)
+                        }
                     )
-                ) {
-                    Row(
-                        Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // المنطقة النصية فقط هي القابلة للنقر لفتح التفاصيل
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { onClientClick(client) }
-                        ) {
-                            Text("الاسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
-                            Text("المبنى: $buildingName")
-                            Text("رقم الاشتراك: ${client.subscriptionNumber}")
-                            Text("الباقة: ${client.packageType}")
-                            Text(
-                                "الحالة: ${if (isPaid) "مدفوع" else "غير مدفوع"}",
-                                color = if (isPaid)
-                                    MaterialTheme.colorScheme.tertiary
-                                else
-                                    MaterialTheme.colorScheme.error
-                            )
-                        }
-
-                        Spacer(Modifier.width(8.dp))
-
-                        // أزرار الدفع السريعة (كاملة فقط)
-                        if (!isPaid) {
-                            Button(
-                                onClick = { showPaymentDialog = client to true },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiary
-                                )
-                            ) {
-                                Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                                Spacer(Modifier.width(4.dp))
-                                Text("تأكيد", color = MaterialTheme.colorScheme.onTertiary)
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = { showPaymentDialog = client to false }
-                            ) {
-                                Icon(Icons.Filled.Close, contentDescription = null)
-                                Spacer(Modifier.width(4.dp))
-                                Text("تراجع", color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
                 }
             }
         }
 
         SnackbarHost(hostState = snackbarHostState)
 
-        showPaymentDialog?.let { (client, shouldPay) ->
+        // ✅ تعديل: حوار الدفع باستخدام Triple
+        showPaymentDialog?.let { (client, month, monthAmount) ->
+            val paymentState by paymentViewModel
+                .getPaymentLive(client.id, month)
+                .observeAsState(null)
+            val isCurrentlyPaid = paymentState?.isPaid ?: false
+            val shouldPay = !isCurrentlyPaid   // إذا غير مدفوع → تأكيد دفع، إذا مدفوع → تراجع
+
             AlertDialog(
                 onDismissRequest = { showPaymentDialog = null },
                 icon = {
@@ -160,9 +131,9 @@ fun ClientListScreen(
                     Column {
                         Text(
                             if (shouldPay)
-                                "هل أنت متأكد من تأكيد دفع شهر $selectedMonth؟"
+                                "هل أنت متأكد من تأكيد دفع شهر $month؟"
                             else
-                                "هل أنت متأكد من التراجع عن دفع شهر $selectedMonth؟"
+                                "هل أنت متأكد من التراجع عن دفع شهر $month؟"
                         )
                         Spacer(Modifier.height(8.dp))
                         Card(
@@ -172,9 +143,9 @@ fun ClientListScreen(
                         ) {
                             Column(Modifier.padding(12.dp)) {
                                 Text("العميل: ${client.name}")
-                                Text("الشهر: $selectedMonth")
+                                Text("الشهر: $month")
                                 Text(
-                                    "المبلغ: ${client.price} ريال",
+                                    "المبلغ: $monthAmount ريال",     // ✅ استخدام المبلغ الصحيح
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -188,16 +159,16 @@ fun ClientListScreen(
                                 if (shouldPay) {
                                     paymentViewModel.markFullPayment(
                                         clientId = client.id,
-                                        month = selectedMonth,
-                                        amount = client.price
+                                        month = month,
+                                        amount = monthAmount              // ✅ استخدام المبلغ الصحيح
                                     )
-                                    snackbarHostState.showSnackbar("✓ تم تأكيد الدفع لشهر $selectedMonth")
+                                    snackbarHostState.showSnackbar("✓ تم تأكيد الدفع لشهر $month")
                                 } else {
                                     paymentViewModel.markAsUnpaid(
                                         clientId = client.id,
-                                        month = selectedMonth
+                                        month = month
                                     )
-                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع لشهر $selectedMonth")
+                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع لشهر $month")
                                 }
                             }
                             showPaymentDialog = null
@@ -218,6 +189,77 @@ fun ClientListScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun ClientCardItem(
+    client: Client,
+    buildingName: String,
+    isPaid: Boolean,
+    monthAmount: Double,              // ✅ معلمة جديدة
+    onClientClick: (Client) -> Unit,
+    onShowPaymentDialog: (Boolean) -> Unit // true = تأكيد, false = تراجع
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(5.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPaid)
+                MaterialTheme.colorScheme.secondaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClientClick(client) }
+            ) {
+                Text("الاسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
+                Text("المبنى: $buildingName")
+                Text("رقم الاشتراك: ${client.subscriptionNumber}")
+                Text("الباقة: ${client.packageType}")
+                Text(
+                    "الحالة: ${if (isPaid) "مدفوع" else "غير مدفوع"}",
+                    color = if (isPaid)
+                        MaterialTheme.colorScheme.tertiary
+                    else
+                        MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            if (!isPaid) {
+                Button(
+                    onClick = { onShowPaymentDialog(true) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    )
+                ) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("تأكيد", color = MaterialTheme.colorScheme.onTertiary)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onShowPaymentDialog(false) }
+                ) {
+                    Icon(Icons.Filled.Close, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("تراجع", color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
     }
 }

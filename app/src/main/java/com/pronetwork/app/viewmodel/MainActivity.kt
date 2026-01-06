@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -64,6 +66,13 @@ class MainActivity : ComponentActivity() {
                 var selectedClient by remember { mutableStateOf<Client?>(null) }
                 var showEditClientDialog by remember { mutableStateOf(false) }
 
+                // ✅ إضافة: حالات البحث والفلترة والفرز
+                var searchQuery by remember { mutableStateOf("") }
+                var selectedFilterBuildingId by remember { mutableStateOf<Int?>(null) }
+                var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
+                var sortByStartMonth by remember { mutableStateOf(false) }
+                var showFilterDialog by remember { mutableStateOf(false) }
+
                 val clients by clientViewModel.clients.observeAsState(emptyList())
                 val buildings by buildingViewModel.buildings.observeAsState(emptyList())
 
@@ -80,7 +89,8 @@ class MainActivity : ComponentActivity() {
                 var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
 
-                val filteredClients = clients.filter { client ->
+                // ✅ تعديل: منطق تصفية العملاء
+                val monthFilteredClients = clients.filter { client ->
                     try {
                         val clientStartMonth = client.startMonth
                         val currentViewMonth = selectedMonth
@@ -104,6 +114,32 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         client.startMonth == selectedMonth
                     }
+                }
+
+                val searchedClients = monthFilteredClients.filter { client ->
+                    if (searchQuery.isBlank()) return@filter true
+                    val q = searchQuery.trim()
+                    client.name.contains(q, ignoreCase = true) ||
+                            client.subscriptionNumber.contains(q, ignoreCase = true) ||
+                            client.phone.contains(q, ignoreCase = true)
+                }
+
+                val buildingFilteredClients = searchedClients.filter { client ->
+                    selectedFilterBuildingId?.let { bid ->
+                        client.buildingId == bid
+                    } ?: true
+                }
+
+                val packageFilteredClients = buildingFilteredClients.filter { client ->
+                    selectedFilterPackage?.let { pkg ->
+                        client.packageType == pkg
+                    } ?: true
+                }
+
+                val filteredClients = if (sortByStartMonth) {
+                    packageFilteredClients.sortedBy { it.startMonth }
+                } else {
+                    packageFilteredClients
                 }
 
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -222,6 +258,42 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
 
+                                        // ✅ تعديل: شريط البحث + زر الفلترة
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(bottom = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            OutlinedTextField(
+                                                value = searchQuery,
+                                                onValueChange = { searchQuery = it },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .heightIn(min = 36.dp),
+                                                placeholder = { Text("بحث...", style = MaterialTheme.typography.bodySmall) },
+                                                singleLine = true,
+                                                textStyle = MaterialTheme.typography.bodySmall,
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                    unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            )
+
+                                            Spacer(Modifier.width(8.dp))
+
+                                            IconButton(
+                                                onClick = { showFilterDialog = true }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.FilterList,
+                                                    contentDescription = "الفلترة والفرز"
+                                                )
+                                            }
+                                        }
+
                                         ClientListScreen(
                                             clients = filteredClients,
                                             buildings = buildings,
@@ -238,6 +310,132 @@ class MainActivity : ComponentActivity() {
                                             },
                                             onClientClick = { selectedClient = it }
                                         )
+
+                                        // ✅ حوار الفلترة (موجود مسبقًا)
+                                        if (showFilterDialog) {
+                                            AlertDialog(
+                                                onDismissRequest = { showFilterDialog = false },
+                                                title = { Text("الفلترة والفرز") },
+                                                text = {
+                                                    Column(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                    ) {
+                                                        // فلترة المبنى
+                                                        Text("المبنى", style = MaterialTheme.typography.labelMedium)
+                                                        var buildingFilterExpanded by remember { mutableStateOf(false) }
+                                                        ExposedDropdownMenuBox(
+                                                            expanded = buildingFilterExpanded,
+                                                            onExpandedChange = { buildingFilterExpanded = !buildingFilterExpanded }
+                                                        ) {
+                                                            OutlinedTextField(
+                                                                readOnly = true,
+                                                                value = selectedFilterBuildingId?.let { bid ->
+                                                                    buildings.firstOrNull { it.id == bid }?.name ?: "كل المباني"
+                                                                } ?: "كل المباني",
+                                                                onValueChange = {},
+                                                                trailingIcon = {
+                                                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = buildingFilterExpanded)
+                                                                },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .menuAnchor()
+                                                            )
+                                                            ExposedDropdownMenu(
+                                                                expanded = buildingFilterExpanded,
+                                                                onDismissRequest = { buildingFilterExpanded = false }
+                                                            ) {
+                                                                DropdownMenuItem(
+                                                                    text = { Text("كل المباني") },
+                                                                    onClick = {
+                                                                        selectedFilterBuildingId = null
+                                                                        buildingFilterExpanded = false
+                                                                    }
+                                                                )
+                                                                buildings.forEach { b ->
+                                                                    DropdownMenuItem(
+                                                                        text = { Text(b.name) },
+                                                                        onClick = {
+                                                                            selectedFilterBuildingId = b.id
+                                                                            buildingFilterExpanded = false
+                                                                        }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // فلترة الباقة
+                                                        Text("الباقة", style = MaterialTheme.typography.labelMedium)
+                                                        val packageTypes = clients.map { it.packageType }.distinct().sorted()
+                                                        var packageFilterExpanded by remember { mutableStateOf(false) }
+                                                        ExposedDropdownMenuBox(
+                                                            expanded = packageFilterExpanded,
+                                                            onExpandedChange = { packageFilterExpanded = !packageFilterExpanded }
+                                                        ) {
+                                                            OutlinedTextField(
+                                                                readOnly = true,
+                                                                value = selectedFilterPackage ?: "كل الباقات",
+                                                                onValueChange = {},
+                                                                trailingIcon = {
+                                                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = packageFilterExpanded)
+                                                                },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .menuAnchor()
+                                                            )
+                                                            ExposedDropdownMenu(
+                                                                expanded = packageFilterExpanded,
+                                                                onDismissRequest = { packageFilterExpanded = false }
+                                                            ) {
+                                                                DropdownMenuItem(
+                                                                    text = { Text("كل الباقات") },
+                                                                    onClick = {
+                                                                        selectedFilterPackage = null
+                                                                        packageFilterExpanded = false
+                                                                    }
+                                                                )
+                                                                packageTypes.forEach { pkg ->
+                                                                    DropdownMenuItem(
+                                                                        text = { Text(pkg) },
+                                                                        onClick = {
+                                                                            selectedFilterPackage = pkg
+                                                                            packageFilterExpanded = false
+                                                                        }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // فرز حسب شهر البداية
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Checkbox(
+                                                                checked = sortByStartMonth,
+                                                                onCheckedChange = { sortByStartMonth = it }
+                                                            )
+                                                            Text("فرز حسب تاريخ بداية الاشتراك")
+                                                        }
+                                                    }
+                                                },
+                                                confirmButton = {
+                                                    Button(onClick = { showFilterDialog = false }) {
+                                                        Text("تطبيق")
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    OutlinedButton(onClick = {
+                                                        // مسح الفلاتر
+                                                        selectedFilterBuildingId = null
+                                                        selectedFilterPackage = null
+                                                        sortByStartMonth = false
+                                                        showFilterDialog = false
+                                                    }) {
+                                                        Text("مسح الفلاتر")
+                                                    }
+                                                }
+                                            )
+                                        }
 
                                         if (showClientDialog) {
                                             ClientEditDialog(
@@ -460,137 +658,283 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            // ✅ تعديل: فرع selectedBuilding != null
                             selectedBuilding != null -> {
-                                BuildingDetailsScreen(
-                                    building = selectedBuilding!!,
-                                    allClients = clients,
-                                    monthOptions = monthOptions,
-                                    paymentViewModel = paymentViewModel,
-                                    onAddClient = { client ->
-                                        scope.launch {
-                                            clientViewModel.insert(client)
+                                if (selectedClient == null) {
+                                    // عرض تفاصيل المبنى وقائمة عملائه
+                                    BuildingDetailsScreen(
+                                        building = selectedBuilding!!,
+                                        allClients = clients,
+                                        monthOptions = monthOptions,
+                                        paymentViewModel = paymentViewModel,
+                                        onAddClient = { client ->
+                                            scope.launch {
+                                                clientViewModel.insert(client)
 
-                                            kotlinx.coroutines.delay(300)
+                                                kotlinx.coroutines.delay(300)
 
-                                            val allClients = clients
-                                            val insertedClient =
-                                                allClients.lastOrNull { it.subscriptionNumber == client.subscriptionNumber }
+                                                val allClients = clients
+                                                val insertedClient =
+                                                    allClients.lastOrNull { it.subscriptionNumber == client.subscriptionNumber }
 
-                                            insertedClient?.let { newClient ->
-                                                // ✅ تعديل: إضافة firstMonthAmount
-                                                paymentViewModel.createPaymentsForClient(
-                                                    clientId = newClient.id,
-                                                    startMonth = client.startMonth,
-                                                    endMonth = null,
-                                                    amount = client.price,
-                                                    monthOptions = monthOptions,
-                                                    firstMonthAmount = client.firstMonthAmount
-                                                )
+                                                insertedClient?.let { newClient ->
+                                                    // ✅ تعديل: إضافة firstMonthAmount
+                                                    paymentViewModel.createPaymentsForClient(
+                                                        clientId = newClient.id,
+                                                        startMonth = client.startMonth,
+                                                        endMonth = null,
+                                                        amount = client.price,
+                                                        monthOptions = monthOptions,
+                                                        firstMonthAmount = client.firstMonthAmount
+                                                    )
+                                                }
                                             }
-                                        }
-                                    },
-                                    onEditClient = { clientToEdit ->
-                                        selectedClient = clientToEdit
-                                        showEditClientDialog = true
-                                    },
-                                    onUpdateClient = { clientToUpdate ->
-                                        clientViewModel.update(clientToUpdate)
-                                    },
-                                    onDeleteClient = { clientToDelete ->
-                                        clientViewModel.delete(clientToDelete)
-                                    },
-                                    onEditBuilding = { buildingToEdit ->
-                                        selectedBuilding = buildingToEdit
-                                        showEditBuildingDialog = true
-                                    },
-                                    onDeleteBuilding = { buildingToDelete ->
-                                        clients.filter { it.buildingId == buildingToDelete.id }
-                                            .forEach { client ->
-                                                clientViewModel.delete(client)
-                                            }
-                                        buildingViewModel.delete(buildingToDelete)
-                                        selectedBuilding = null
-                                    },
-                                    onBack = { selectedBuilding = null }
-                                )
-                                if (showEditClientDialog && selectedClient != null) {
-                                    ClientEditDialog(
-                                        buildingList = listOf(selectedBuilding!!),
-                                        initialName = selectedClient!!.name,
-                                        initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
-                                        initialPrice = selectedClient!!.price.toString(),
-                                        initialBuildingId = selectedBuilding!!.id,
-                                        initialStartMonth = selectedClient!!.startMonth,
-                                        initialStartDay = selectedClient!!.startDay,
-                                        initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
-                                            ?: "",
-                                        initialPhone = selectedClient!!.phone,
-                                        initialAddress = selectedClient!!.address,
-                                        initialPackageType = selectedClient!!.packageType,
-                                        initialNotes = selectedClient!!.notes,
-                                        buildingSelectionEnabled = false,
-                                        onSave = { name,
-                                                   subscriptionNumber,
-                                                   price: Double,             // ✅ Double
-                                                   buildingId,
-                                                   startMonth,
-                                                   startDay,
-                                                   firstMonthAmount: Double?,
-                                                   phone,
-                                                   address,
-                                                   packageType,
-                                                   notes ->
+                                        },
+                                        onEditClient = { clientToEdit ->
+                                            selectedClient = clientToEdit
+                                            showEditClientDialog = true
+                                        },
+                                        onUpdateClient = { clientToUpdate ->
+                                            clientViewModel.update(clientToUpdate)
+                                        },
+                                        onDeleteClient = { clientToDelete ->
+                                            clientViewModel.delete(clientToDelete)
+                                        },
+                                        onEditBuilding = { buildingToEdit ->
+                                            selectedBuilding = buildingToEdit
+                                            showEditBuildingDialog = true
+                                        },
+                                        onDeleteBuilding = { buildingToDelete ->
+                                            clients.filter { it.buildingId == buildingToDelete.id }
+                                                .forEach { client ->
+                                                    clientViewModel.delete(client)
+                                                }
+                                            buildingViewModel.delete(buildingToDelete)
+                                            selectedBuilding = null
+                                        },
+                                        onClientClick = { client ->
+                                            // ✅ عند الضغط على عميل من تبويب المباني → افتح تفاصيله
+                                            selectedClient = client
+                                        },
+                                        onBack = { selectedBuilding = null }
+                                    )
 
-                                            val oldPrice = selectedClient!!.price
-                                            val newPrice = price
-
-                                            clientViewModel.update(
-                                                selectedClient!!.copy(
-                                                    name = name,
-                                                    subscriptionNumber = subscriptionNumber,
-                                                    price = newPrice,
-                                                    firstMonthAmount = firstMonthAmount,
-                                                    buildingId = buildingId,
-                                                    startMonth = startMonth,
-                                                    startDay = startDay,
-                                                    phone = phone,
-                                                    address = address,
-                                                    packageType = packageType,
-                                                    notes = notes
+                                    // Dialog تعديل المبنى كما كان
+                                    if (showEditBuildingDialog && selectedBuilding != null) {
+                                        BuildingEditDialog(
+                                            initialName = selectedBuilding!!.name,
+                                            initialLocation = selectedBuilding!!.location,
+                                            initialNotes = selectedBuilding!!.notes,
+                                            onSave = { name, location, notes ->
+                                                buildingViewModel.update(
+                                                    selectedBuilding!!.copy(
+                                                        name = name,
+                                                        location = location,
+                                                        notes = notes
+                                                    )
                                                 )
-                                            )
+                                                showEditBuildingDialog = false
+                                            },
+                                            onDismiss = { showEditBuildingDialog = false }
+                                        )
+                                    }
 
-                                            if (newPrice != oldPrice) {
-                                                // ✅ تعديل: استدعاء الدالة الجديدة
-                                                paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
-                                                    clientId = selectedClient!!.id,
-                                                    newAmount = newPrice
+                                    // Dialog تعديل العميل من داخل تبويب المبنى (إذا ضغط زر تعديل)
+                                    if (showEditClientDialog && selectedClient != null) {
+                                        ClientEditDialog(
+                                            buildingList = listOf(selectedBuilding!!),
+                                            initialName = selectedClient!!.name,
+                                            initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
+                                            initialPrice = selectedClient!!.price.toString(),
+                                            initialBuildingId = selectedBuilding!!.id,
+                                            initialStartMonth = selectedClient!!.startMonth,
+                                            initialStartDay = selectedClient!!.startDay,
+                                            initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
+                                                ?: "",
+                                            initialPhone = selectedClient!!.phone,
+                                            initialAddress = selectedClient!!.address,
+                                            initialPackageType = selectedClient!!.packageType,
+                                            initialNotes = selectedClient!!.notes,
+                                            buildingSelectionEnabled = false,
+                                            onSave = { name,
+                                                       subscriptionNumber,
+                                                       price: Double,
+                                                       buildingId,
+                                                       startMonth,
+                                                       startDay,
+                                                       firstMonthAmount: Double?,
+                                                       phone,
+                                                       address,
+                                                       packageType,
+                                                       notes ->
+
+                                                val oldPrice = selectedClient!!.price
+                                                val newPrice = price
+
+                                                clientViewModel.update(
+                                                    selectedClient!!.copy(
+                                                        name = name,
+                                                        subscriptionNumber = subscriptionNumber,
+                                                        price = newPrice,
+                                                        firstMonthAmount = firstMonthAmount,
+                                                        buildingId = buildingId,
+                                                        startMonth = startMonth,
+                                                        startDay = startDay,
+                                                        phone = phone,
+                                                        address = address,
+                                                        packageType = packageType,
+                                                        notes = notes
+                                                    )
                                                 )
-                                            }
 
-                                            showEditClientDialog = false
+                                                if (newPrice != oldPrice) {
+                                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                                        clientId = selectedClient!!.id,
+                                                        newAmount = newPrice
+                                                    )
+                                                }
+
+                                                showEditClientDialog = false
+                                                selectedClient = null
+                                            },
+                                            onDismiss = { showEditClientDialog = false }
+                                        )
+                                    }
+                                } else {
+                                    // ✅ هنا نعرض تفاصيل العميل مباشرة داخل تبويب المباني
+                                    val client = selectedClient!!
+                                    val clientPayments by paymentViewModel
+                                        .getClientPayments(client.id)
+                                        .observeAsState(emptyList())
+
+                                    val clientMonthUi by paymentViewModel
+                                        .getClientMonthPaymentsUi(client.id)
+                                        .observeAsState(emptyList())
+
+                                    ClientDetailsScreen(
+                                        client = client,
+                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "",
+                                        payments = clientPayments,
+                                        monthUiList = clientMonthUi,
+                                        onEdit = { clientToEdit ->
+                                            selectedClient = clientToEdit
+                                            showEditClientDialog = true
+                                        },
+                                        onDelete = { clientToDelete ->
+                                            clientViewModel.delete(clientToDelete)
                                             selectedClient = null
                                         },
-                                        onDismiss = { showEditClientDialog = false }
-                                    )
-                                }
-                                if (showEditBuildingDialog && selectedBuilding != null) {
-                                    BuildingEditDialog(
-                                        initialName = selectedBuilding!!.name,
-                                        initialLocation = selectedBuilding!!.location,
-                                        initialNotes = selectedBuilding!!.notes,
-                                        onSave = { name, location, notes ->
-                                            buildingViewModel.update(
-                                                selectedBuilding!!.copy(
-                                                    name = name,
-                                                    location = location,
-                                                    notes = notes
-                                                )
-                                            )
-                                            showEditBuildingDialog = false
+                                        onTogglePayment = { month, monthAmount, shouldPay ->
+                                            scope.launch {
+                                                if (shouldPay) {
+                                                    paymentViewModel.markFullPayment(
+                                                        clientId = client.id,
+                                                        month = month,
+                                                        amount = monthAmount
+                                                    )
+                                                } else {
+                                                    paymentViewModel.markAsUnpaid(
+                                                        clientId = client.id,
+                                                        month = month
+                                                    )
+                                                }
+                                            }
                                         },
-                                        onDismiss = { showEditBuildingDialog = false }
+                                        onPartialPaymentRequest = { month, monthAmount, partialAmount ->
+                                            scope.launch {
+                                                paymentViewModel.addPartialPayment(
+                                                    clientId = client.id,
+                                                    month = month,
+                                                    monthAmount = monthAmount,
+                                                    partialAmount = partialAmount
+                                                )
+                                            }
+                                        },
+                                        getMonthTransactions = { month ->
+                                            paymentViewModel.getTransactionsForClientMonth(
+                                                clientId = client.id,
+                                                month = month
+                                            )
+                                        },
+                                        onDeleteTransaction = { transactionId ->
+                                            paymentViewModel.deleteTransaction(transactionId)
+                                        },
+                                        onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->
+                                            paymentViewModel.addReverseTransaction(
+                                                clientId = client.id,
+                                                month = month,
+                                                monthAmount = monthAmount,
+                                                refundAmount = refundAmount,
+                                                reason = reason
+                                            )
+                                        },
+                                        onBack = {
+                                            // الرجوع من تفاصيل العميل داخل تبويب المباني
+                                            selectedClient = null
+                                        }
                                     )
+
+                                    // Dialog تعديل العميل من شاشة التفاصيل (نفس اللي في تبويب العملاء)
+                                    if (showEditClientDialog) {
+                                        ClientEditDialog(
+                                            buildingList = listOf(selectedBuilding!!),
+                                            initialName = client.name,
+                                            initialSubscriptionNumber = client.subscriptionNumber,
+                                            initialPrice = client.price.toString(),
+                                            initialBuildingId = client.buildingId,
+                                            initialStartMonth = client.startMonth,
+                                            initialStartDay = client.startDay,
+                                            initialFirstMonthAmount = client.firstMonthAmount?.toString()
+                                                ?: "",
+                                            initialPhone = client.phone,
+                                            initialAddress = client.address,
+                                            initialPackageType = client.packageType,
+                                            initialNotes = client.notes,
+                                            buildingSelectionEnabled = false,
+                                            onSave = { name,
+                                                       subscriptionNumber,
+                                                       price: Double,
+                                                       buildingId,
+                                                       startMonth,
+                                                       startDay,
+                                                       firstMonthAmount: Double?,
+                                                       phone,
+                                                       address,
+                                                       packageType,
+                                                       notes ->
+
+                                                val oldPrice = client.price
+                                                val newPrice = price
+
+                                                clientViewModel.update(
+                                                    client.copy(
+                                                        name = name,
+                                                        subscriptionNumber = subscriptionNumber,
+                                                        price = newPrice,
+                                                        firstMonthAmount = firstMonthAmount,
+                                                        buildingId = buildingId,
+                                                        startMonth = startMonth,
+                                                        startDay = startDay,
+                                                        phone = phone,
+                                                        address = address,
+                                                        packageType = packageType,
+                                                        notes = notes
+                                                    )
+                                                )
+
+                                                if (newPrice != oldPrice) {
+                                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                                        clientId = client.id,
+                                                        newAmount = newPrice
+                                                    )
+                                                }
+
+                                                showEditClientDialog = false
+                                                selectedClient = null
+                                            },
+                                            onDismiss = { showEditClientDialog = false }
+                                        )
+                                    }
                                 }
                             }
 

@@ -2,16 +2,11 @@ package com.pronetwork.app.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -38,6 +33,7 @@ fun BuildingDetailsScreen(
     onDeleteClient: (Client) -> Unit,
     onEditBuilding: (Building) -> Unit,
     onDeleteBuilding: (Building) -> Unit,
+    onClientClick: (Client) -> Unit,
     onBack: () -> Unit
 ) {
     var showAddClientDialog by remember { mutableStateOf(false) }
@@ -48,7 +44,9 @@ fun BuildingDetailsScreen(
     var showDeleteBuildingDialog by remember { mutableStateOf(false) }
     var showDeleteClientDialog by remember { mutableStateOf(false) }
     var clientToDelete by remember { mutableStateOf<Client?>(null) }
-    var showPaymentDialog by remember { mutableStateOf<Pair<Client, Boolean>?>(null) }
+
+    // ⬅️ الآن نحفظ Client + month + monthAmount
+    var showPaymentDialog by remember { mutableStateOf<Triple<Client, String, Double>?>(null) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -59,6 +57,7 @@ fun BuildingDetailsScreen(
                     try {
                         val clientStartMonth = client.startMonth
                         val currentViewMonth = selectedMonth
+
                         val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault())
                         val clientDate = sdf.parse(clientStartMonth)
                         val viewDate = sdf.parse(currentViewMonth)
@@ -97,508 +96,519 @@ fun BuildingDetailsScreen(
             }
         }
     ) { padding ->
-        Column(
-            Modifier
+        LazyColumn(
+            modifier = Modifier
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // معلومات المبنى
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(4.dp)
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("معلومات المبنى", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(12.dp))
-
-                    if (building.location.isNotEmpty()) {
-                        Text("الموقع:", style = MaterialTheme.typography.labelMedium)
-                        Text(building.location)
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    if (building.notes.isNotEmpty()) {
-                        Text("ملاحظات:", style = MaterialTheme.typography.labelMedium)
-                        Text(building.notes)
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    if (building.floors > 0) {
-                        Text("عدد الطوابق:", style = MaterialTheme.typography.labelMedium)
-                        Text("${building.floors}")
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    if (building.managerName.isNotEmpty()) {
-                        Text("اسم المدير:", style = MaterialTheme.typography.labelMedium)
-                        Text(building.managerName)
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { onEditBuilding(building) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Filled.Edit, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text("تعديل المبنى")
-                        }
-
-                        OutlinedButton(
-                            onClick = { showDeleteBuildingDialog = true },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Filled.Delete, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text("حذف المبنى")
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // اختيار الشهر
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            ) {
-                OutlinedTextField(
-                    value = selectedMonth,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("تصفح العملاء حسب الشهر") },
-                    trailingIcon = {
-                        IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                        }
-                    },
+            item {
+                // معلومات المبنى
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { monthDropdownExpanded = true }
-                )
-                DropdownMenu(
-                    expanded = monthDropdownExpanded,
-                    onDismissRequest = { monthDropdownExpanded = false }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    monthOptions.forEach { month ->
-                        DropdownMenuItem(
-                            text = { Text(month) },
-                            onClick = {
-                                selectedMonth = month
-                                monthDropdownExpanded = false
+                    Column(Modifier.padding(16.dp)) {
+                        Text("معلومات المبنى", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(12.dp))
+
+                        if (building.location.isNotEmpty()) {
+                            Text("الموقع:", style = MaterialTheme.typography.labelMedium)
+                            Text(building.location)
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        if (building.notes.isNotEmpty()) {
+                            Text("ملاحظات:", style = MaterialTheme.typography.labelMedium)
+                            Text(building.notes)
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        if (building.floors > 0) {
+                            Text("عدد الطوابق:", style = MaterialTheme.typography.labelMedium)
+                            Text("${building.floors}")
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        if (building.managerName.isNotEmpty()) {
+                            Text("اسم المدير:", style = MaterialTheme.typography.labelMedium)
+                            Text(building.managerName)
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onEditBuilding(building) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.Edit, contentDescription = null)
+                                Spacer(Modifier.width(4.dp))
+                                Text("تعديل المبنى", color = MaterialTheme.colorScheme.onPrimary)
                             }
-                        )
+
+                            OutlinedButton(
+                                onClick = { showDeleteBuildingDialog = true },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Filled.Delete, contentDescription = null)
+                                Spacer(Modifier.width(4.dp))
+                                Text("حذف المبنى", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     }
                 }
             }
 
-            Text("عملاء المبنى في $selectedMonth:", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-
-            if (buildingClients.isEmpty()) {
+            item {
+                // اختيار الشهر
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 32.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text("لا يوجد عملاء في هذا الشهر.")
-                }
-            } else {
-                buildingClients.forEach { client ->
-                    val payment by paymentViewModel
-                        .getPaymentLive(client.id, selectedMonth)
-                        .observeAsState(null)
-                    val isPaid = payment?.isPaid ?: false
-
-                    Card(
+                    OutlinedTextField(
+                        value = selectedMonth,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("تصفح العملاء حسب الشهر") },
+                        trailingIcon = {
+                            IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        elevation = CardDefaults.cardElevation(5.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isPaid)
-                                MaterialTheme.colorScheme.secondaryContainer
-                            else
-                                MaterialTheme.colorScheme.surface
-                        )
+                            .clickable { monthDropdownExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = monthDropdownExpanded,
+                        onDismissRequest = { monthDropdownExpanded = false }
                     ) {
-                        Row(
-                            Modifier
-                                .clickable { selectedClient = client }
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text("اسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
-                                Text("رقم الاشتراك: ${client.subscriptionNumber}")
-                                Text("رقم الجوال: ${client.phone}")
-                                Text(
-                                    "الحالة: ${if (isPaid) "مدفوع" else "غير مدفوع"}",
-                                    color = if (isPaid)
-                                        MaterialTheme.colorScheme.tertiary
-                                    else
-                                        MaterialTheme.colorScheme.error
-                                )
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (!isPaid) {
-                                    Button(
-                                        onClick = { showPaymentDialog = client to true },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.tertiary
-                                        )
-                                    ) {
-                                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("تأكيد")
-                                    }
-                                } else {
-                                    OutlinedButton(
-                                        onClick = { showPaymentDialog = client to false }
-                                    ) {
-                                        Icon(Icons.Filled.Close, contentDescription = null)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("تراجع")
-                                    }
+                        monthOptions.forEach { month ->
+                            DropdownMenuItem(
+                                text = { Text(month) },
+                                onClick = {
+                                    selectedMonth = month
+                                    monthDropdownExpanded = false
                                 }
-                                Spacer(Modifier.width(4.dp))
-                                IconButton(
-                                    onClick = {
-                                        selectedClient = client
-                                        showEditClientDialog = true
-                                    }
-                                ) {
-                                    Icon(Icons.Filled.Edit, contentDescription = "تعديل العميل")
-                                }
-                                Spacer(Modifier.width(4.dp))
-                                IconButton(
-                                    onClick = {
-                                        clientToDelete = client
-                                        showDeleteClientDialog = true
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Delete,
-                                        contentDescription = "حذف العميل",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
+                            )
                         }
                     }
                 }
             }
 
-            // إضافة عميل
-            if (showAddClientDialog) {
-                ClientEditDialog(
-                    buildingList = listOf(building),
-                    initialBuildingId = building.id,
-                    initialStartMonth = selectedMonth,
-                    initialStartDay = 1,
-                    initialFirstMonthAmount = "",
-                    buildingSelectionEnabled = false,
-                    onSave = { name,
-                               subscriptionNumber,
-                               price,
-                               buildingId,
-                               startMonth,
-                               startDay,
-                               firstMonthAmount,
-                               phone,
-                               address,
-                               packageType,
-                               notes ->
-                        onAddClient(
-                            Client(
-                                name = name,
-                                subscriptionNumber = subscriptionNumber,
-                                price = price,
-                                firstMonthAmount = firstMonthAmount,
-                                buildingId = buildingId,
-                                startMonth = startMonth,
-                                startDay = startDay,
-                                phone = phone,
-                                address = address,
-                                packageType = packageType,
-                                notes = notes
-                            )
-                        )
-                        showAddClientDialog = false
-                    },
-                    onDismiss = { showAddClientDialog = false }
+            item {
+                Text(
+                    "عملاء المبنى في $selectedMonth:",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
 
-            // تفاصيل / تعديل العميل
-            selectedClient?.let { client ->
-                if (!showEditClientDialog) {
-                    ClientDetailsBottomSheet(
-                        client = client,
-                        buildingName = building.name,
-                        onEdit = { showEditClientDialog = true },
-                        onDelete = {
-                            if (selectedMonth == client.startMonth) {
-                                onDeleteClient(client)
-                            } else {
-                                onUpdateClient(client.copy(endMonth = selectedMonth))
-                            }
-                            selectedClient = null
-                        },
-                        onTogglePaid = { showPaymentDialog = client to true },
-                        onUndoPaid = { showPaymentDialog = client to false },
-                        onDismiss = { selectedClient = null }
-                    )
-                }
+            items(buildingClients) { client ->
+                val payment by paymentViewModel
+                    .getPaymentLive(client.id, selectedMonth)
+                    .observeAsState(null)
+                val isPaid = payment?.isPaid ?: false
+                val monthAmount = payment?.amount ?: client.price
 
-                if (showEditClientDialog) {
-                    ClientEditDialog(
-                        buildingList = listOf(building),
-                        initialName = client.name,
-                        initialSubscriptionNumber = client.subscriptionNumber,
-                        initialPrice = client.price.toString(),
-                        initialBuildingId = client.buildingId,
-                        initialStartMonth = client.startMonth,
-                        initialStartDay = client.startDay,
-                        initialFirstMonthAmount = client.firstMonthAmount?.toString() ?: "",
-                        initialPhone = client.phone,
-                        initialAddress = client.address,
-                        initialPackageType = client.packageType,
-                        initialNotes = client.notes,
-                        buildingSelectionEnabled = false,
-                        onSave = { name,
-                                   subscriptionNumber,
-                                   price,
-                                   buildingId,
-                                   startMonth,
-                                   startDay,
-                                   firstMonthAmount,
-                                   phone,
-                                   address,
-                                   packageType,
-                                   notes ->
-                            onEditClient(
-                                client.copy(
-                                    name = name,
-                                    subscriptionNumber = subscriptionNumber,
-                                    price = price,
-                                    firstMonthAmount = firstMonthAmount,
-                                    buildingId = buildingId,
-                                    startMonth = startMonth,
-                                    startDay = startDay,
-                                    phone = phone,
-                                    address = address,
-                                    packageType = packageType,
-                                    notes = notes
-                                )
-                            )
-                            showEditClientDialog = false
-                            selectedClient = null
-                        },
-                        onDismiss = {
-                            showEditClientDialog = false
-                            selectedClient = null
-                        }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    elevation = CardDefaults.cardElevation(5.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isPaid)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
                     )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clickable { onClientClick(client) }
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                        ) {
+                            Text("الاسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
+                            Text("رقم الاشتراك: ${client.subscriptionNumber}")
+                            Text("رقم الجوال: ${client.phone}")
+                            Text(
+                                "الحالة: ${if (isPaid) "مدفوع" else "غير مدفوع"}",
+                                color = if (isPaid)
+                                    MaterialTheme.colorScheme.tertiary
+                                else
+                                    MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (!isPaid) {
+                                Button(
+                                    onClick = {
+                                        showPaymentDialog = Triple(
+                                            client,
+                                            selectedMonth,
+                                            monthAmount
+                                        )
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary
+                                    )
+                                ) {
+                                    Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("تأكيد", color = MaterialTheme.colorScheme.onTertiary)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = {
+                                        showPaymentDialog = Triple(
+                                            client,
+                                            selectedMonth,
+                                            monthAmount
+                                        )
+                                    }
+                                ) {
+                                    Icon(Icons.Filled.Close, contentDescription = null)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("تراجع", color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
+                                onClick = {
+                                    selectedClient = client
+                                    showEditClientDialog = true
+                                }
+                            ) {
+                                Icon(Icons.Filled.Edit, contentDescription = "تعديل العميل")
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
+                                onClick = {
+                                    clientToDelete = client
+                                    showDeleteClientDialog = true
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "حذف العميل",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (buildingClients.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("لا يوجد عملاء في هذا الشهر.")
+                    }
                 }
             }
         }
 
-        // تأكيد الدفع / التراجع
-        showPaymentDialog?.let { (client, shouldPay) ->
-            AlertDialog(
-                onDismissRequest = { showPaymentDialog = null },
-                icon = {
-                    Icon(
-                        if (shouldPay) Icons.Filled.CheckCircle else Icons.Filled.Close,
-                        contentDescription = null,
-                        tint = if (shouldPay)
-                            MaterialTheme.colorScheme.tertiary
-                        else
-                            MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(48.dp)
+        // إضافة عميل
+        if (showAddClientDialog) {
+            ClientEditDialog(
+                buildingList = listOf(building),
+                initialBuildingId = building.id,
+                initialStartMonth = selectedMonth,
+                initialStartDay = 1,
+                initialFirstMonthAmount = "",
+                buildingSelectionEnabled = false,
+                onSave = { name,
+                           subscriptionNumber,
+                           price: Double,
+                           buildingId,
+                           startMonth,
+                           startDay,
+                           firstMonthAmount: Double?,
+                           phone,
+                           address,
+                           packageType,
+                           notes ->
+                    onAddClient(
+                        Client(
+                            name = name,
+                            subscriptionNumber = subscriptionNumber,
+                            price = price,
+                            firstMonthAmount = firstMonthAmount,
+                            buildingId = buildingId,
+                            startMonth = startMonth,
+                            startDay = startDay,
+                            phone = phone,
+                            address = address,
+                            packageType = packageType,
+                            notes = notes
+                        )
                     )
+                    showAddClientDialog = false
                 },
-                title = {
+                onDismiss = { showAddClientDialog = false }
+            )
+        }
+
+        // تعديل عميل
+        if (showEditClientDialog && selectedClient != null) {
+            ClientEditDialog(
+                buildingList = listOf(building),
+                initialName = selectedClient!!.name,
+                initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
+                initialPrice = selectedClient!!.price.toString(),
+                initialBuildingId = building.id,
+                initialStartMonth = selectedClient!!.startMonth,
+                initialStartDay = selectedClient!!.startDay,
+                initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString() ?: "",
+                initialPhone = selectedClient!!.phone,
+                initialAddress = selectedClient!!.address,
+                initialPackageType = selectedClient!!.packageType,
+                initialNotes = selectedClient!!.notes,
+                buildingSelectionEnabled = false,
+                onSave = { name,
+                           subscriptionNumber,
+                           price: Double,
+                           buildingId,
+                           startMonth,
+                           startDay,
+                           firstMonthAmount: Double?,
+                           phone,
+                           address,
+                           packageType,
+                           notes ->
+
+                    onUpdateClient(
+                        selectedClient!!.copy(
+                            name = name,
+                            subscriptionNumber = subscriptionNumber,
+                            price = price,
+                            firstMonthAmount = firstMonthAmount,
+                            buildingId = buildingId,
+                            startMonth = startMonth,
+                            startDay = startDay,
+                            phone = phone,
+                            address = address,
+                            packageType = packageType,
+                            notes = notes
+                        )
+                    )
+                    showEditClientDialog = false
+                    selectedClient = null
+                },
+                onDismiss = {
+                    showEditClientDialog = false
+                    selectedClient = null
+                }
+            )
+        }
+    }
+
+    // تأكيد الدفع / التراجع باستخدام monthAmount الفعلي
+    showPaymentDialog?.let { (client, month, monthAmount) ->
+        val payment by paymentViewModel
+            .getPaymentLive(client.id, month)
+            .observeAsState()
+        val isPaid = payment?.isPaid ?: false
+        val shouldPay = !isPaid
+
+        AlertDialog(
+            onDismissRequest = { showPaymentDialog = null },
+            icon = {
+                Icon(
+                    if (shouldPay) Icons.Filled.CheckCircle else Icons.Filled.Close,
+                    contentDescription = null,
+                    tint = if (shouldPay)
+                        MaterialTheme.colorScheme.tertiary
+                    else
+                        MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    if (shouldPay) "تأكيد الدفع" else "تراجع عن الدفع",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column {
                     Text(
-                        if (shouldPay) "تأكيد الدفع" else "تراجع عن الدفع",
-                        style = MaterialTheme.typography.titleLarge
+                        if (shouldPay)
+                            "هل أنت متأكد من تأكيد دفع شهر $month؟"
+                        else
+                            "هل أنت متأكد من التراجع عن دفع شهر $month؟"
                     )
-                },
-                text = {
-                    Column {
-                        Text(
-                            if (shouldPay)
-                                "هل أنت متأكد من تأكيد دفع شهر $selectedMonth؟"
-                            else
-                                "هل أنت متأكد من التراجع عن دفع شهر $selectedMonth؟"
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text("العميل: ${client.name}")
-                                Text("الشهر: $selectedMonth")
-                                Text(
-                                    "المبلغ: ${client.price} ريال",
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                if (shouldPay) {
-                                    paymentViewModel.markAsPaid(
-                                        clientId = client.id,
-                                        month = selectedMonth,
-                                        amount = client.price
-                                    )
-                                    snackbarHostState.showSnackbar("✓ تم تأكيد الدفع لشهر $selectedMonth")
-                                } else {
-                                    paymentViewModel.markAsUnpaid(
-                                        clientId = client.id,
-                                        month = selectedMonth
-                                    )
-                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع لشهر $selectedMonth")
-                                }
-                            }
-                            showPaymentDialog = null
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (shouldPay)
-                                MaterialTheme.colorScheme.tertiary
-                            else
-                                MaterialTheme.colorScheme.error
+                    Spacer(Modifier.height(8.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
                         )
                     ) {
-                        Text(if (shouldPay) "نعم، تأكيد" else "نعم، تراجع")
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { showPaymentDialog = null }) {
-                        Text("إلغاء")
-                    }
-                }
-            )
-        }
-
-        // حذف المبنى
-        if (showDeleteBuildingDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteBuildingDialog = false },
-                title = { Text("تأكيد حذف المبنى") },
-                text = {
-                    Column {
-                        Text("هل أنت متأكد من حذف المبنى \"${building.name}\"؟")
-                        if (allClients.any { it.buildingId == building.id }) {
-                            Spacer(Modifier.height(8.dp))
+                        Column(Modifier.padding(12.dp)) {
+                            Text("العميل: ${client.name}")
+                            Text("الشهر: $month")
                             Text(
-                                "تحذير: سيتم حذف جميع العملاء المرتبطين بهذا المبنى.",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            onDeleteBuilding(building)
-                            showDeleteBuildingDialog = false
-                            onBack()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("نعم، احذف")
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { showDeleteBuildingDialog = false }) {
-                        Text("إلغاء")
-                    }
-                }
-            )
-        }
-
-        // حذف العميل
-        if (showDeleteClientDialog && clientToDelete != null) {
-            AlertDialog(
-                onDismissRequest = {
-                    showDeleteClientDialog = false
-                    clientToDelete = null
-                },
-                title = { Text("تأكيد الحذف") },
-                text = {
-                    Column {
-                        val c = clientToDelete!!
-                        if (selectedMonth == c.startMonth) {
-                            Text("هل أنت متأكد من حذف العميل \"${c.name}\" نهائيًا من جميع الشهور؟")
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "تحذير: سيتم حذف العميل بالكامل.",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        } else {
-                            Text("هل تريد إيقاف اشتراك العميل \"${c.name}\" ابتداءً من شهر $selectedMonth؟")
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "سيبقى العميل ظاهرًا في الشهور السابقة لـ $selectedMonth.",
+                                "المبلغ: $monthAmount ريال",
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            val c = clientToDelete!!
-                            if (selectedMonth == c.startMonth) {
-                                onDeleteClient(c)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (shouldPay) {
+                                paymentViewModel.markFullPayment(
+                                    clientId = client.id,
+                                    month = month,
+                                    amount = monthAmount
+                                )
+                                snackbarHostState.showSnackbar("✓ تم تأكيد الدفع لشهر $month")
                             } else {
-                                onUpdateClient(c.copy(endMonth = selectedMonth))
+                                paymentViewModel.markAsUnpaid(
+                                    clientId = client.id,
+                                    month = month
+                                )
+                                snackbarHostState.showSnackbar("تم التراجع عن الدفع لشهر $month")
                             }
-                            showDeleteClientDialog = false
-                            clientToDelete = null
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("حذف")
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(
-                        onClick = {
-                            showDeleteClientDialog = false
-                            clientToDelete = null
                         }
-                    ) {
-                        Text("إلغاء")
+                        showPaymentDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (shouldPay)
+                            MaterialTheme.colorScheme.tertiary
+                        else
+                            MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(if (shouldPay) "نعم، تأكيد" else "نعم، تراجع")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showPaymentDialog = null }) {
+                    Text("إلغاء")
+                }
+            }
+        )
+    }
+
+    // حذف المبنى
+    if (showDeleteBuildingDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteBuildingDialog = false },
+            title = { Text("تأكيد حذف المبنى") },
+            text = {
+                Column {
+                    Text("هل أنت متأكد من حذف المبنى \"${building.name}\"؟")
+                    if (allClients.any { it.buildingId == building.id }) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "تحذير: سيتم حذف جميع العملاء المرتبطين بهذا المبنى.",
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
-            )
-        }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteBuilding(building)
+                        showDeleteBuildingDialog = false
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("نعم، احذف", color = MaterialTheme.colorScheme.onError)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteBuildingDialog = false }) {
+                    Text("إلغاء")
+                }
+            }
+        )
+    }
+
+    // حذف العميل
+    if (showDeleteClientDialog && clientToDelete != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteClientDialog = false
+                clientToDelete = null
+            },
+            title = { Text("تأكيد الحذف") },
+            text = {
+                Column {
+                    val c = clientToDelete!!
+                    if (selectedMonth == c.startMonth) {
+                        Text("هل أنت متأكد من حذف العميل \"${c.name}\" نهائيًا من جميع الشهور؟")
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "تحذير: سيتم حذف العميل بالكامل.",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        Text("هل تريد إيقاف اشتراك العميل \"${c.name}\" ابتداءً من شهر $selectedMonth؟")
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "سيبقى العميل ظاهرًا في الشهور السابقة لـ $selectedMonth.",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val c = clientToDelete!!
+                        if (selectedMonth == c.startMonth) {
+                            onDeleteClient(c)
+                        } else {
+                            onUpdateClient(c.copy(endMonth = selectedMonth))
+                        }
+                        showDeleteClientDialog = false
+                        clientToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("حذف", color = MaterialTheme.colorScheme.onError)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showDeleteClientDialog = false
+                    clientToDelete = null
+                }) {
+                    Text("إلغاء")
+                }
+            }
+        )
     }
 }
