@@ -160,16 +160,15 @@ fun ClientListScreen(
                                     paymentViewModel.markFullPayment(
                                         clientId = client.id,
                                         month = month,
-                                        amount = monthAmount              // ✅ استخدام المبلغ الصحيح
+                                        amount = monthAmount
                                     )
-                                    snackbarHostState.showSnackbar("✓ تم تأكيد الدفع لشهر $month")
                                 } else {
                                     paymentViewModel.markAsUnpaid(
                                         clientId = client.id,
                                         month = month
                                     )
-                                    snackbarHostState.showSnackbar("تم التراجع عن الدفع لشهر $month")
                                 }
+
                             }
                             showPaymentDialog = null
                         },

@@ -491,7 +491,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         endMonth: String?,
         amount: Double,
         monthOptions: List<String>,
-        firstMonthAmount: Double? = null      // ✅ جديد: مبلغ الشهر الأول
+        firstMonthAmount: Double? = null
     ) = viewModelScope.launch {
         val months = if (endMonth != null) {
             monthOptions.filter { month ->
@@ -500,12 +500,13 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         } else {
             monthOptions.filter { it >= startMonth }
         }
+            .sorted()   // ✅ مهم: تأكيد أن الترتيب تصاعدي مثل 2025-01, 2025-02, ..., 2026-01
 
         months.forEachIndexed { index, month ->
             val monthAmount = if (index == 0 && firstMonthAmount != null) {
-                firstMonthAmount           // ✅ للشهر الأول استخدم القيمة الخاصة (مثل 30)
+                firstMonthAmount           // الآن تُطبَّق على أقدم شهر = startMonth الصحيح
             } else {
-                amount                     // ✅ باقي الشهور بالمبلغ الكامل (150)
+                amount
             }
 
             paymentRepository.createOrUpdatePayment(
@@ -516,6 +517,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             )
         }
     }
+
 
     // ================== دوال مساعدة قديمة (تبقى موجودة) ==================
 

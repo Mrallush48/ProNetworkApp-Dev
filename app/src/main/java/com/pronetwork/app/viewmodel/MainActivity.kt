@@ -35,6 +35,66 @@ class MainActivity : ComponentActivity() {
     private val buildingViewModel: BuildingViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
 
+    // دالة واحدة تجمع كل منطق التصفية/البحث/الفرز
+    private fun filterClients(
+        clients: List<Client>,
+        selectedMonth: String,
+        searchQuery: String,
+        selectedFilterBuildingId: Int?,
+        selectedFilterPackage: String?,
+        sortByStartMonth: Boolean
+    ): List<Client> {
+        val monthFilteredClients = clients.filter { client ->
+            try {
+                val clientStartMonth = client.startMonth
+                val currentViewMonth = selectedMonth
+
+                val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+                val clientDate = dateFormat.parse(clientStartMonth)
+                val viewDate = dateFormat.parse(currentViewMonth)
+
+                if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
+                    if (client.endMonth != null) {
+                        val endDate = dateFormat.parse(client.endMonth)
+                        endDate != null && viewDate.time < endDate.time
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+            } catch (e: Exception) {
+                client.startMonth == selectedMonth
+            }
+        }
+
+        val searchedClients = monthFilteredClients.filter { client ->
+            if (searchQuery.isBlank()) return@filter true
+            val q = searchQuery.trim()
+            client.name.contains(q, ignoreCase = true) ||
+                    client.subscriptionNumber.contains(q, ignoreCase = true) ||
+                    client.phone.contains(q, ignoreCase = true)
+        }
+
+        val buildingFilteredClients = searchedClients.filter { client ->
+            selectedFilterBuildingId?.let { bid ->
+                client.buildingId == bid
+            } ?: true
+        }
+
+        val packageFilteredClients = buildingFilteredClients.filter { client ->
+            selectedFilterPackage?.let { pkg ->
+                client.packageType == pkg
+            } ?: true
+        }
+
+        return if (sortByStartMonth) {
+            packageFilteredClients.sortedBy { it.startMonth }
+        } else {
+            packageFilteredClients
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -66,12 +126,14 @@ class MainActivity : ComponentActivity() {
                 var selectedClient by remember { mutableStateOf<Client?>(null) }
                 var showEditClientDialog by remember { mutableStateOf(false) }
 
-                // ✅ إضافة: حالات البحث والفلترة والفرز
                 var searchQuery by remember { mutableStateOf("") }
                 var selectedFilterBuildingId by remember { mutableStateOf<Int?>(null) }
                 var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
                 var sortByStartMonth by remember { mutableStateOf(false) }
                 var showFilterDialog by remember { mutableStateOf(false) }
+
+                // جديد: التحكم في إظهار/إخفاء شريط الشهر + البحث
+                var showFilters by remember { mutableStateOf(false) }
 
                 val clients by clientViewModel.clients.observeAsState(emptyList())
                 val buildings by buildingViewModel.buildings.observeAsState(emptyList())
@@ -89,58 +151,15 @@ class MainActivity : ComponentActivity() {
                 var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
 
-                // ✅ تعديل: منطق تصفية العملاء
-                val monthFilteredClients = clients.filter { client ->
-                    try {
-                        val clientStartMonth = client.startMonth
-                        val currentViewMonth = selectedMonth
-
-                        val clientDate =
-                            SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(clientStartMonth)
-                        val viewDate =
-                            SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(currentViewMonth)
-
-                        if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
-                            if (client.endMonth != null) {
-                                val endDate =
-                                    SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(client.endMonth)
-                                endDate != null && viewDate.time < endDate.time
-                            } else {
-                                true
-                            }
-                        } else {
-                            false
-                        }
-                    } catch (e: Exception) {
-                        client.startMonth == selectedMonth
-                    }
-                }
-
-                val searchedClients = monthFilteredClients.filter { client ->
-                    if (searchQuery.isBlank()) return@filter true
-                    val q = searchQuery.trim()
-                    client.name.contains(q, ignoreCase = true) ||
-                            client.subscriptionNumber.contains(q, ignoreCase = true) ||
-                            client.phone.contains(q, ignoreCase = true)
-                }
-
-                val buildingFilteredClients = searchedClients.filter { client ->
-                    selectedFilterBuildingId?.let { bid ->
-                        client.buildingId == bid
-                    } ?: true
-                }
-
-                val packageFilteredClients = buildingFilteredClients.filter { client ->
-                    selectedFilterPackage?.let { pkg ->
-                        client.packageType == pkg
-                    } ?: true
-                }
-
-                val filteredClients = if (sortByStartMonth) {
-                    packageFilteredClients.sortedBy { it.startMonth }
-                } else {
-                    packageFilteredClients
-                }
+                // استخدام الدالة الجديدة بدل الكود المتكرر
+                val filteredClients = filterClients(
+                    clients = clients,
+                    selectedMonth = selectedMonth,
+                    searchQuery = searchQuery,
+                    selectedFilterBuildingId = selectedFilterBuildingId,
+                    selectedFilterPackage = selectedFilterPackage,
+                    sortByStartMonth = sortByStartMonth
+                )
 
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
@@ -207,90 +226,113 @@ class MainActivity : ComponentActivity() {
                     ) {
                         when {
                             currentScreen == "clients" && selectedBuilding == null -> {
-                                // إذا لا يوجد عميل محدد: نعرض قائمة العملاء
                                 if (selectedClient == null) {
                                     Column(
                                         Modifier
                                             .fillMaxSize()
                                             .padding(horizontal = 12.dp, vertical = 8.dp)
                                     ) {
-                                        Box(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 12.dp)
-                                        ) {
-                                            OutlinedTextField(
-                                                value = selectedMonth,
-                                                onValueChange = {},
-                                                readOnly = true,
-                                                label = { Text("تصفح العملاء حسب الشهر") },
-                                                trailingIcon = {
-                                                    IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
-                                                        Icon(
-                                                            Icons.Filled.ArrowDropDown,
-                                                            contentDescription = null
-                                                        )
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable { monthDropdownExpanded = true },
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                                    unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            )
-                                            DropdownMenu(
-                                                expanded = monthDropdownExpanded,
-                                                onDismissRequest = { monthDropdownExpanded = false }
-                                            ) {
-                                                monthOptions.forEach { month ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(month) },
-                                                        onClick = {
-                                                            selectedMonth = month
-                                                            monthDropdownExpanded = false
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        // ✅ تعديل: شريط البحث + زر الفلترة
+                                        // شريط علوي: عنوان + زر إظهار/إخفاء البحث
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(bottom = 8.dp),
+                                                .padding(bottom = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            OutlinedTextField(
-                                                value = searchQuery,
-                                                onValueChange = { searchQuery = it },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .heightIn(min = 36.dp),
-                                                placeholder = { Text("بحث...", style = MaterialTheme.typography.bodySmall) },
-                                                singleLine = true,
-                                                textStyle = MaterialTheme.typography.bodySmall,
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                                    unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                                            Text(
+                                                text = "العملاء ($selectedMonth)",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.primary
                                             )
+                                            TextButton(onClick = { showFilters = !showFilters }) {
+                                                Text(if (showFilters) "إخفاء البحث" else "خيارات البحث")
+                                            }
+                                        }
 
-                                            Spacer(Modifier.width(8.dp))
-
-                                            IconButton(
-                                                onClick = { showFilterDialog = true }
+                                        if (showFilters) {
+                                            Box(
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 12.dp)
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Filled.FilterList,
-                                                    contentDescription = "الفلترة والفرز"
+                                                OutlinedTextField(
+                                                    value = selectedMonth,
+                                                    onValueChange = {},
+                                                    readOnly = true,
+                                                    label = { Text("تصفح العملاء حسب الشهر") },
+                                                    trailingIcon = {
+                                                        IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
+                                                            Icon(
+                                                                Icons.Filled.ArrowDropDown,
+                                                                contentDescription = null
+                                                            )
+                                                        }
+                                                    },
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable { monthDropdownExpanded = true },
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                        unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                                                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
                                                 )
+                                                DropdownMenu(
+                                                    expanded = monthDropdownExpanded,
+                                                    onDismissRequest = { monthDropdownExpanded = false }
+                                                ) {
+                                                    monthOptions.forEach { month ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(month) },
+                                                            onClick = {
+                                                                selectedMonth = month
+                                                                monthDropdownExpanded = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = searchQuery,
+                                                    onValueChange = { searchQuery = it },
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .heightIn(min = 36.dp),
+                                                    placeholder = {
+                                                        Text(
+                                                            "بحث...",
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                    },
+                                                    singleLine = true,
+                                                    textStyle = MaterialTheme.typography.bodySmall,
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                        unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                                                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                )
+
+                                                Spacer(Modifier.width(8.dp))
+
+                                                IconButton(
+                                                    onClick = { showFilterDialog = true }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.FilterList,
+                                                        contentDescription = "الفلترة والفرز"
+                                                    )
+                                                }
                                             }
                                         }
 
@@ -311,7 +353,6 @@ class MainActivity : ComponentActivity() {
                                             onClientClick = { selectedClient = it }
                                         )
 
-                                        // ✅ حوار الفلترة (موجود مسبقًا)
                                         if (showFilterDialog) {
                                             AlertDialog(
                                                 onDismissRequest = { showFilterDialog = false },
@@ -321,21 +362,25 @@ class MainActivity : ComponentActivity() {
                                                         modifier = Modifier.fillMaxWidth(),
                                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                                     ) {
-                                                        // فلترة المبنى
                                                         Text("المبنى", style = MaterialTheme.typography.labelMedium)
                                                         var buildingFilterExpanded by remember { mutableStateOf(false) }
                                                         ExposedDropdownMenuBox(
                                                             expanded = buildingFilterExpanded,
-                                                            onExpandedChange = { buildingFilterExpanded = !buildingFilterExpanded }
+                                                            onExpandedChange = {
+                                                                buildingFilterExpanded = !buildingFilterExpanded
+                                                            }
                                                         ) {
                                                             OutlinedTextField(
                                                                 readOnly = true,
                                                                 value = selectedFilterBuildingId?.let { bid ->
-                                                                    buildings.firstOrNull { it.id == bid }?.name ?: "كل المباني"
+                                                                    buildings.firstOrNull { it.id == bid }?.name
+                                                                        ?: "كل المباني"
                                                                 } ?: "كل المباني",
                                                                 onValueChange = {},
                                                                 trailingIcon = {
-                                                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = buildingFilterExpanded)
+                                                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                                                        expanded = buildingFilterExpanded
+                                                                    )
                                                                 },
                                                                 modifier = Modifier
                                                                     .fillMaxWidth()
@@ -343,7 +388,9 @@ class MainActivity : ComponentActivity() {
                                                             )
                                                             ExposedDropdownMenu(
                                                                 expanded = buildingFilterExpanded,
-                                                                onDismissRequest = { buildingFilterExpanded = false }
+                                                                onDismissRequest = {
+                                                                    buildingFilterExpanded = false
+                                                                }
                                                             ) {
                                                                 DropdownMenuItem(
                                                                     text = { Text("كل المباني") },
@@ -364,20 +411,24 @@ class MainActivity : ComponentActivity() {
                                                             }
                                                         }
 
-                                                        // فلترة الباقة
                                                         Text("الباقة", style = MaterialTheme.typography.labelMedium)
-                                                        val packageTypes = clients.map { it.packageType }.distinct().sorted()
+                                                        val packageTypes =
+                                                            clients.map { it.packageType }.distinct().sorted()
                                                         var packageFilterExpanded by remember { mutableStateOf(false) }
                                                         ExposedDropdownMenuBox(
                                                             expanded = packageFilterExpanded,
-                                                            onExpandedChange = { packageFilterExpanded = !packageFilterExpanded }
+                                                            onExpandedChange = {
+                                                                packageFilterExpanded = !packageFilterExpanded
+                                                            }
                                                         ) {
                                                             OutlinedTextField(
                                                                 readOnly = true,
                                                                 value = selectedFilterPackage ?: "كل الباقات",
                                                                 onValueChange = {},
                                                                 trailingIcon = {
-                                                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = packageFilterExpanded)
+                                                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                                                        expanded = packageFilterExpanded
+                                                                    )
                                                                 },
                                                                 modifier = Modifier
                                                                     .fillMaxWidth()
@@ -385,7 +436,9 @@ class MainActivity : ComponentActivity() {
                                                             )
                                                             ExposedDropdownMenu(
                                                                 expanded = packageFilterExpanded,
-                                                                onDismissRequest = { packageFilterExpanded = false }
+                                                                onDismissRequest = {
+                                                                    packageFilterExpanded = false
+                                                                }
                                                             ) {
                                                                 DropdownMenuItem(
                                                                     text = { Text("كل الباقات") },
@@ -406,7 +459,6 @@ class MainActivity : ComponentActivity() {
                                                             }
                                                         }
 
-                                                        // فرز حسب شهر البداية
                                                         Row(
                                                             verticalAlignment = Alignment.CenterVertically
                                                         ) {
@@ -425,7 +477,6 @@ class MainActivity : ComponentActivity() {
                                                 },
                                                 dismissButton = {
                                                     OutlinedButton(onClick = {
-                                                        // مسح الفلاتر
                                                         selectedFilterBuildingId = null
                                                         selectedFilterPackage = null
                                                         sortByStartMonth = false
@@ -444,7 +495,7 @@ class MainActivity : ComponentActivity() {
                                                 buildingSelectionEnabled = true,
                                                 onSave = { name,
                                                            subscriptionNumber,
-                                                           price: Double,              // ✅ Double
+                                                           price: Double,
                                                            buildingId,
                                                            startMonth,
                                                            startDay,
@@ -476,7 +527,6 @@ class MainActivity : ComponentActivity() {
                                                             allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
 
                                                         insertedClient?.let { client ->
-                                                            // ✅ تعديل: إضافة firstMonthAmount
                                                             paymentViewModel.createPaymentsForClient(
                                                                 clientId = client.id,
                                                                 startMonth = startMonth,
@@ -495,7 +545,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 } else {
-                                    // إذا تم اختيار عميل: نعرض شاشة تفاصيل العميل فقط
                                     val client = selectedClient!!
                                     val clientPayments by paymentViewModel
                                         .getClientPayments(client.id)
@@ -507,7 +556,8 @@ class MainActivity : ComponentActivity() {
 
                                     ClientDetailsScreen(
                                         client = client,
-                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "",
+                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
+                                            ?: "",
                                         payments = clientPayments,
                                         monthUiList = clientMonthUi,
                                         onEdit = { clientToEdit ->
@@ -524,13 +574,13 @@ class MainActivity : ComponentActivity() {
                                             }
                                             selectedClient = null
                                         },
-                                        onTogglePayment = { month, monthAmount, shouldPay ->    // ✅ تعديل: إضافة monthAmount
+                                        onTogglePayment = { month, monthAmount, shouldPay ->
                                             scope.launch {
                                                 if (shouldPay) {
                                                     paymentViewModel.markFullPayment(
                                                         clientId = client.id,
                                                         month = month,
-                                                        amount = monthAmount              // ✅ استخدام المبلغ الصحيح
+                                                        amount = monthAmount
                                                     )
                                                 } else {
                                                     paymentViewModel.markAsUnpaid(
@@ -540,12 +590,12 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         },
-                                        onPartialPaymentRequest = { month, monthAmount, partialAmount ->  // ✅ تعديل: إضافة monthAmount
+                                        onPartialPaymentRequest = { month, monthAmount, partialAmount ->
                                             scope.launch {
                                                 paymentViewModel.addPartialPayment(
                                                     clientId = client.id,
                                                     month = month,
-                                                    monthAmount = monthAmount,            // ✅ المبلغ الصحيح
+                                                    monthAmount = monthAmount,
                                                     partialAmount = partialAmount
                                                 )
                                             }
@@ -559,11 +609,11 @@ class MainActivity : ComponentActivity() {
                                         onDeleteTransaction = { transactionId ->
                                             paymentViewModel.deleteTransaction(transactionId)
                                         },
-                                        onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->  // ✅ تعديل: إضافة monthAmount
+                                        onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->
                                             paymentViewModel.addReverseTransaction(
                                                 clientId = client.id,
                                                 month = month,
-                                                monthAmount = monthAmount,               // ✅ نفس الشيء
+                                                monthAmount = monthAmount,
                                                 refundAmount = refundAmount,
                                                 reason = reason
                                             )
@@ -580,7 +630,8 @@ class MainActivity : ComponentActivity() {
                                             initialBuildingId = client.buildingId,
                                             initialStartMonth = client.startMonth,
                                             initialStartDay = client.startDay,
-                                            initialFirstMonthAmount = client.firstMonthAmount?.toString() ?: "",
+                                            initialFirstMonthAmount = client.firstMonthAmount?.toString()
+                                                ?: "",
                                             initialPhone = client.phone,
                                             initialAddress = client.address,
                                             initialPackageType = client.packageType,
@@ -588,7 +639,7 @@ class MainActivity : ComponentActivity() {
                                             buildingSelectionEnabled = true,
                                             onSave = { name,
                                                        subscriptionNumber,
-                                                       price: Double,              // ✅ Double
+                                                       price: Double,
                                                        buildingId,
                                                        startMonth,
                                                        startDay,
@@ -618,7 +669,6 @@ class MainActivity : ComponentActivity() {
                                                 )
 
                                                 if (newPrice != oldPrice) {
-                                                    // ✅ تعديل: استدعاء الدالة الجديدة
                                                     paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
                                                         clientId = client.id,
                                                         newAmount = newPrice
@@ -658,10 +708,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            // ✅ تعديل: فرع selectedBuilding != null
                             selectedBuilding != null -> {
                                 if (selectedClient == null) {
-                                    // عرض تفاصيل المبنى وقائمة عملائه
                                     BuildingDetailsScreen(
                                         building = selectedBuilding!!,
                                         allClients = clients,
@@ -678,7 +726,6 @@ class MainActivity : ComponentActivity() {
                                                     allClients.lastOrNull { it.subscriptionNumber == client.subscriptionNumber }
 
                                                 insertedClient?.let { newClient ->
-                                                    // ✅ تعديل: إضافة firstMonthAmount
                                                     paymentViewModel.createPaymentsForClient(
                                                         clientId = newClient.id,
                                                         startMonth = client.startMonth,
@@ -713,13 +760,11 @@ class MainActivity : ComponentActivity() {
                                             selectedBuilding = null
                                         },
                                         onClientClick = { client ->
-                                            // ✅ عند الضغط على عميل من تبويب المباني → افتح تفاصيله
                                             selectedClient = client
                                         },
                                         onBack = { selectedBuilding = null }
                                     )
 
-                                    // Dialog تعديل المبنى كما كان
                                     if (showEditBuildingDialog && selectedBuilding != null) {
                                         BuildingEditDialog(
                                             initialName = selectedBuilding!!.name,
@@ -739,7 +784,6 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
 
-                                    // Dialog تعديل العميل من داخل تبويب المبنى (إذا ضغط زر تعديل)
                                     if (showEditClientDialog && selectedClient != null) {
                                         ClientEditDialog(
                                             buildingList = listOf(selectedBuilding!!),
@@ -801,7 +845,6 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                 } else {
-                                    // ✅ هنا نعرض تفاصيل العميل مباشرة داخل تبويب المباني
                                     val client = selectedClient!!
                                     val clientPayments by paymentViewModel
                                         .getClientPayments(client.id)
@@ -813,7 +856,8 @@ class MainActivity : ComponentActivity() {
 
                                     ClientDetailsScreen(
                                         client = client,
-                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "",
+                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
+                                            ?: "",
                                         payments = clientPayments,
                                         monthUiList = clientMonthUi,
                                         onEdit = { clientToEdit ->
@@ -869,12 +913,10 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         onBack = {
-                                            // الرجوع من تفاصيل العميل داخل تبويب المباني
                                             selectedClient = null
                                         }
                                     )
 
-                                    // Dialog تعديل العميل من شاشة التفاصيل (نفس اللي في تبويب العملاء)
                                     if (showEditClientDialog) {
                                         ClientEditDialog(
                                             buildingList = listOf(selectedBuilding!!),
