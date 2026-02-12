@@ -464,5 +464,15 @@
 
     <string name="building_details_show_future_clients">Show future clients</string>
 
+    <!-- Daily Summary -->
+    <string name="daily_summary_total">Total Amount</string>
+    <string name="daily_summary_clients">Payments</string>
+    <string name="daily_summary_transactions">Transactions</string>
+
+    <string name="monthly_collection_ratio">Monthly Collection Ratio</string>
+    <string name="expected_clients">Expected Clients</string>
+    <string name="paid_clients">Paid</string>
+
+
 
 </resources>

@@ -47,4 +47,11 @@ interface ClientDao {
         ORDER BY name ASC
     """)
     fun searchClients(buildingId: Int, month: String, query: String): Flow<List<Client>>
+
+    @Query("SELECT COUNT(*) FROM clients")
+    fun getActiveClientsCount(): Flow<Int>
+
+
+    @Query("SELECT COUNT(DISTINCT paymentId) FROM payment_transactions WHERE date >= :startDate AND date <= :endDate")
+    fun getPaidClientsCount(startDate: Long, endDate: Long): Flow<Int>
 }

@@ -57,12 +57,25 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.filled.Add
+import com.pronetwork.app.data.ClientDatabase
+import com.pronetwork.app.repository.PaymentTransactionRepository
+import com.pronetwork.data.DailySummary
+import kotlinx.coroutines.flow.first
+import androidx.lifecycle.lifecycleScope
+import com.pronetwork.data.MonthlyCollectionRatio
+
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val clientViewModel: ClientViewModel by viewModels()
     private val buildingViewModel: BuildingViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
+
+    private val transactionRepository by lazy {
+        val db = ClientDatabase.getDatabase(application)
+        PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
+    }
+
 
     // دالة واحدة تجمع كل منطق التصفية/البحث/الفرز
     private fun filterClients(
@@ -170,6 +183,18 @@ class MainActivity : ComponentActivity() {
                 val buildingSearchQuery by buildingViewModel.searchQuery.observeAsState("")
                 var dailyUi by remember { mutableStateOf<DailyCollectionUi?>(null) }
 
+                var dailySummary by remember { mutableStateOf(DailySummary()) }
+
+                var monthlyRatio by remember {
+                    mutableStateOf(
+                        MonthlyCollectionRatio(
+                            expectedClients = 0,
+                            paidClients = 0,
+                            collectionRatio = 0f
+                        )
+                    )
+                }
+
                 fun loadDailyCollectionFor(dateMillis: Long) {
                     val calendar = Calendar.getInstance().apply {
                         timeInMillis = dateMillis
@@ -193,7 +218,26 @@ class MainActivity : ComponentActivity() {
                             buildings = buildingCollections
                         )
                     }
+                    // تحميل ملخص التحصيل اليومي
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val dateString = dateFormat.format(Date(dateMillis))
+
+                    lifecycleScope.launch {
+                        transactionRepository.getDailySummary(dateString)
+                            .collect { summary ->
+                                dailySummary = summary
+                            }
+                    }
                 }
+                // تحميل نسبة التحصيل الشهرية
+                LaunchedEffect(Unit) {
+                    transactionRepository.getMonthlyCollectionRatio()
+                        .collect { ratio ->
+                            monthlyRatio = ratio
+                        }
+                }
+
+
 
                 val monthsList = remember {
                     val calendar = Calendar.getInstance()
@@ -1100,12 +1144,16 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         DailyCollectionScreen(
                                             dailyCollection = dailyUi,
+                                            dailySummary = dailySummary,
+                                            monthlyRatio = monthlyRatio,
                                             selectedDateMillis = selectedDailyDateMillis,
                                             onChangeDate = { newMillis ->
                                                 selectedDailyDateMillis = newMillis
                                                 loadDailyCollectionFor(newMillis)
                                             }
                                         )
+
+
                                         Spacer(Modifier.height(8.dp))
                                         OutlinedButton(
                                             onClick = { showDailyCollection = false },

@@ -38,12 +38,14 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         val db = ClientDatabase.getDatabase(application)
         val paymentDao = db.paymentDao()
         val transactionDao = db.paymentTransactionDao()
+        val clientDao = db.clientDao()
 
-        paymentRepository = PaymentRepository(paymentDao)
-        transactionRepository = PaymentTransactionRepository(transactionDao)
+        paymentRepository = PaymentRepository(paymentDao, clientDao)
+        transactionRepository = PaymentTransactionRepository(transactionDao, clientDao)
 
         allPayments = paymentRepository.allPayments
     }
+
 
     // ================== دالة جديدة: تحضير بيانات عرض حالة الدفع لكل شهر ==================
 

@@ -8,19 +8,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.viewmodel.DailyCollectionUi
+import com.pronetwork.data.DailySummary
+import com.pronetwork.data.MonthlyCollectionRatio
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun DailyCollectionScreen(
     dailyCollection: DailyCollectionUi?,
+    dailySummary: DailySummary,
+    monthlyRatio: MonthlyCollectionRatio,
     selectedDateMillis: Long,
     onChangeDate: (Long) -> Unit
 ) {
+
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     Column(
@@ -88,6 +94,93 @@ fun DailyCollectionScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // ملخص التحصيل اليومي - 3 Cards أفقية
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Card 1: الإجمالي
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.daily_summary_total),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = String.format("%.2f", dailySummary.totalAmount),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Card 2: عدد العملاء
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.daily_summary_clients),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${dailySummary.totalClients}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Card 3: عدد الحركات
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.daily_summary_transactions),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${dailySummary.totalTransactions}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+
         // عرض التاريخ الحالي
         Text(
             text = stringResource(
@@ -120,6 +213,42 @@ fun DailyCollectionScreen(
                         R.string.daily_collection_total_value,
                         total
                     ),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        // Monthly Collection Ratio Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    text = stringResource(R.string.monthly_collection_ratio),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("${stringResource(R.string.expected_clients)}: ${monthlyRatio.expectedClients}")
+                    Text("${stringResource(R.string.paid_clients)}: ${monthlyRatio.paidClients}")
+                }
+
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { monthlyRatio.collectionRatio / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = "%.1f%%".format(monthlyRatio.collectionRatio),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary
                 )

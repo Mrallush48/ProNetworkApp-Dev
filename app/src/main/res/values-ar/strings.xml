@@ -465,5 +465,16 @@
 
     <string name="building_details_show_future_clients">عرض العملاء المستقبليين</string>
 
+    <!-- Daily Summary -->
+    <string name="daily_summary_total">الإجمالي</string>
+    <string name="daily_summary_clients">الدفعات</string>
+    <string name="daily_summary_transactions">الحركات</string>
+
+    <string name="monthly_collection_ratio">نسبة التحصيل الشهرية</string>
+    <string name="expected_clients">العملاء المتوقعين</string>
+    <string name="paid_clients">المدفوعات</string>
+
+
+
 
 </resources>

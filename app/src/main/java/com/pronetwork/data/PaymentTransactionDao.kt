@@ -7,6 +7,9 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+import com.pronetwork.data.DailySummary
+
 
 @Dao
 interface PaymentTransactionDao {
@@ -75,4 +78,22 @@ interface PaymentTransactionDao {
         val paymentId: Int,
         val totalPaid: Double
     )
+    /**
+     * استعلام لحساب ملخص التحصيل اليومي
+     * يحسب: إجمالي المبلغ، عدد الدفعات المختلفة، عدد الحركات
+     *
+     * @param date التاريخ المطلوب (بصيغة yyyy-MM-dd)
+     * @return Flow<DailySummary> يتحدث تلقائياً عند تغيير البيانات
+     */
+    @Query("""
+        SELECT 
+            COALESCE(SUM(amount), 0.0) as totalAmount,
+            COUNT(DISTINCT paymentId) as totalClients,
+            COUNT(*) as totalTransactions
+        FROM payment_transactions 
+        WHERE date(date / 1000, 'unixepoch', 'localtime') = :date
+    """)
+    fun getDailySummary(date: String): Flow<DailySummary>
+
+
 }

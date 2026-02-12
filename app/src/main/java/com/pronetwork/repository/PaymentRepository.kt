@@ -1,8 +1,18 @@
 package com.pronetwork.app.repository
 
 import androidx.lifecycle.LiveData
+import com.pronetwork.app.data.ClientDao
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentDao
+import java.util.Calendar
+import kotlinx.coroutines.flow.combine
+import com.pronetwork.data.MonthlyCollectionRatio
+import kotlinx.coroutines.flow.Flow
+
+
+
+
+
 
 // توحيد صيغة الشهر إلى yyyy-MM
 private fun normalizeMonth(yearMonth: String): String {
@@ -16,7 +26,11 @@ private fun normalizeMonth(yearMonth: String): String {
     }
 }
 
-class PaymentRepository(private val paymentDao: PaymentDao) {
+class PaymentRepository(
+    private val paymentDao: PaymentDao,
+    private val clientDao: ClientDao
+) {
+
 
     // === استعلامات القراءة ===
 
@@ -214,4 +228,33 @@ class PaymentRepository(private val paymentDao: PaymentDao) {
     suspend fun getFirstUnpaidMonthForClient(clientId: Int): String? {
         return paymentDao.getFirstUnpaidMonthForClient(clientId)
     }
+
+    fun getMonthlyCollectionRatio(): Flow<MonthlyCollectionRatio> {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfMonth = calendar.timeInMillis
+
+        val endOfMonth = Calendar.getInstance().timeInMillis
+
+        return combine(
+            clientDao.getActiveClientsCount(),
+            clientDao.getPaidClientsCount(startOfMonth, endOfMonth)
+        ) { totalClients, paidClients ->
+            val ratio = if (totalClients > 0) {
+                (paidClients.toFloat() / totalClients.toFloat()) * 100
+            } else {
+                0f
+            }
+            MonthlyCollectionRatio(
+                expectedClients = totalClients,
+                paidClients = paidClients,
+                collectionRatio = ratio
+            )
+        }
+    }
+
 }
