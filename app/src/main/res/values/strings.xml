@@ -473,6 +473,11 @@
     <string name="expected_clients">Expected Clients</string>
     <string name="paid_clients">Paid</string>
 
+    <string name="performance_excellent">Excellent Performance</string>
+    <string name="performance_good">Good Performance</string>
+    <string name="performance_poor">Poor Performance</string>
+
+
 
 
 </resources>

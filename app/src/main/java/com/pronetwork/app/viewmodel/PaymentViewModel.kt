@@ -610,4 +610,16 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
     ) = viewModelScope.launch {
         paymentRepository.createOrUpdatePayment(clientId, month, amount, isPaid, paymentDate, notes)
     }
+
+}
+
+// Performance evaluation logic
+enum class DailyPerformanceLevel { EXCELLENT, GOOD, POOR }
+
+fun getDailyPerformance(totalAmount: Double): DailyPerformanceLevel {
+    return when {
+        totalAmount >= 4000.0 -> DailyPerformanceLevel.EXCELLENT
+        totalAmount >= 3000.0 -> DailyPerformanceLevel.GOOD
+        else -> DailyPerformanceLevel.POOR
+    }
 }

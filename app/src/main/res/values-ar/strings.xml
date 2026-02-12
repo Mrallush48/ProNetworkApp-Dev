@@ -474,6 +474,11 @@
     <string name="expected_clients">العملاء المتوقعين</string>
     <string name="paid_clients">المدفوعات</string>
 
+    <string name="performance_excellent">أداء ممتاز</string>
+    <string name="performance_good">أداء جيد</string>
+    <string name="performance_poor">أداء ضعيف</string>
+
+
 
 
 

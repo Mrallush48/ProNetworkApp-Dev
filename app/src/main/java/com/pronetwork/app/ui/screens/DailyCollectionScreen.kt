@@ -13,9 +13,12 @@ import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.viewmodel.DailyCollectionUi
+import com.pronetwork.app.viewmodel.DailyPerformanceLevel
+import com.pronetwork.app.viewmodel.getDailyPerformance
 import com.pronetwork.data.DailySummary
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun DailyCollectionScreen(
@@ -214,6 +217,32 @@ fun DailyCollectionScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
+
+                // عرض تقييم الأداء
+                val performance = getDailyPerformance(total)
+                val (emoji, color) = when (performance) {
+                    DailyPerformanceLevel.EXCELLENT -> "🟢" to MaterialTheme.colorScheme.primary
+                    DailyPerformanceLevel.GOOD -> "🟡" to Color(0xFFFFC107)
+                    DailyPerformanceLevel.POOR -> "🔴" to MaterialTheme.colorScheme.error
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = emoji, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(when (performance) {
+                            DailyPerformanceLevel.EXCELLENT -> R.string.performance_excellent
+                            DailyPerformanceLevel.GOOD -> R.string.performance_good
+                            DailyPerformanceLevel.POOR -> R.string.performance_poor
+                        }),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = color,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+
             }
         }
 
