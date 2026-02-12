@@ -16,6 +16,7 @@ import com.pronetwork.app.viewmodel.PaymentViewModel
 import java.text.NumberFormat
 import java.util.Locale
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
@@ -42,12 +43,6 @@ fun StatisticsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-    Text(
-            text = stringResource(R.string.screen_stats),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
 
         // اختيار الشهر
         ExposedDropdownMenuBox(

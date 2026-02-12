@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -32,7 +31,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -60,9 +58,11 @@ import androidx.compose.material.icons.filled.Add
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import com.pronetwork.data.DailySummary
-import kotlinx.coroutines.flow.first
 import androidx.lifecycle.lifecycleScope
 import com.pronetwork.data.MonthlyCollectionRatio
+import com.pronetwork.app.ui.components.ScreenTopBar
+import com.pronetwork.app.ui.components.ExportOption
+
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -267,19 +267,6 @@ class MainActivity : ComponentActivity() {
                 val addActionLabel = stringResource(R.string.action_add)
 
                 Scaffold(
-                    topBar = {
-                        CenterAlignedTopAppBar(
-                            title = {
-                                Text(
-                                    stringResource(R.string.app_name),
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                            },
-                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        )
-                    },
                     bottomBar = {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -1140,38 +1127,62 @@ class MainActivity : ComponentActivity() {
                                 val clientsCount by clientViewModel.clientsCount.observeAsState(0)
                                 val monthStats by paymentViewModel.monthStats.observeAsState(null)
                                 if (!showDailyCollection) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    ) {
-
-                                    Button(
-                                            onClick = {
-                                                showDailyCollection = true
-                                                loadDailyCollectionFor(selectedDailyDateMillis)
-                                            },
-                                            modifier = Modifier
-                                                .align(Alignment.CenterHorizontally)
-                                                .padding(bottom = 12.dp)
-                                        ) {
-                                            Text(stringResource(R.string.stats_daily_collection))
+                                    Scaffold(
+                                        topBar = {
+                                            ScreenTopBar(
+                                                title = stringResource(R.string.screen_stats),
+                                                showOptions = true,
+                                                options = listOf(
+                                                    ExportOption.CSV,
+                                                    ExportOption.PDF,
+                                                    ExportOption.ALL_PAYMENTS
+                                                ),
+                                                onOptionClick = { option ->
+                                                    when (option) {
+                                                        ExportOption.CSV -> { /* Export CSV */ }
+                                                        ExportOption.PDF -> { /* Export PDF */ }
+                                                        ExportOption.ALL_PAYMENTS -> { /* Export All */ }
+                                                        else -> {}
+                                                    }
+                                                }
+                                            )
                                         }
-                                        StatisticsScreen(
-                                            clientsCount = clientsCount,
-                                            buildingsCount = buildings.size,
-                                            monthStats = monthStats,
-                                            monthlyRatio = monthlyRatio,
-                                            monthOptions = monthOptions,
-                                            selectedMonth = selectedMonth,
-                                            onMonthChange = { newMonth ->
-                                                selectedMonth = newMonth
-                                                paymentViewModel.setStatsMonth(newMonth)
-                                            },
-                                            allClients = clients
-                                        )
+                                    ) { paddingValues ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(paddingValues)
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    showDailyCollection = true
+                                                    loadDailyCollectionFor(selectedDailyDateMillis)
+                                                },
+                                                modifier = Modifier
+                                                    .align(Alignment.CenterHorizontally)
+                                                    .padding(bottom = 12.dp)
+                                            ) {
+                                                Text(stringResource(R.string.stats_daily_collection))
+                                            }
+                                            StatisticsScreen(
+                                                clientsCount = clientsCount,
+                                                buildingsCount = buildings.size,
+                                                monthStats = monthStats,
+                                                monthlyRatio = monthlyRatio,
+                                                monthOptions = monthOptions,
+                                                selectedMonth = selectedMonth,
+                                                onMonthChange = { newMonth ->
+                                                    selectedMonth = newMonth
+                                                    paymentViewModel.setStatsMonth(newMonth)
+                                                },
+                                                allClients = clients
+                                            )
+                                        }
                                     }
-                                } else {
+                                }
+
+                             else {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()
