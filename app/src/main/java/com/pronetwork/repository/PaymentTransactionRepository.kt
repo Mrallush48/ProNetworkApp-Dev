@@ -3,6 +3,7 @@ package com.pronetwork.app.repository
 import androidx.lifecycle.LiveData
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.data.PaymentTransactionDao
+import com.pronetwork.app.data.DailyBuildingCollection
 
 class PaymentTransactionRepository(
     private val transactionDao: PaymentTransactionDao
@@ -32,33 +33,27 @@ class PaymentTransactionRepository(
         return transactionDao.getTotalPaidForPayment(paymentId)
     }
 
-    /**
-     * إرجاع خريطة: paymentId -> totalPaid
-     * لاستخدامها في تحديد حالة كل شهر (غير مدفوع / جزئي / كامل).
-     */
+    suspend fun getDailyBuildingCollectionsForDay(
+        dayStartMillis: Long,
+        dayEndMillis: Long
+    ): List<DailyBuildingCollection> {
+        return transactionDao.getDailyBuildingCollectionsForDay(dayStartMillis, dayEndMillis)
+    }
+
     suspend fun getTotalsForPayments(paymentIds: List<Int>): Map<Int, Double> {
         if (paymentIds.isEmpty()) return emptyMap()
         val rows = transactionDao.getTotalsForPayments(paymentIds)
         return rows.associate { it.paymentId to it.totalPaid }
     }
 
-    /**
-     * حذف كل الحركات الخاصة بـ paymentId
-     */
     suspend fun deleteTransactionsForPayment(paymentId: Int) {
         transactionDao.deleteByPaymentId(paymentId)
     }
 
-    /**
-     * حذف حركة واحدة حسب المعرف
-     */
     suspend fun deleteTransactionById(transactionId: Int) {
         transactionDao.deleteTransactionById(transactionId)
     }
 
-    /**
-     * جلب paymentId من transactionId
-     */
     suspend fun getPaymentIdByTransactionId(transactionId: Int): Int? {
         return transactionDao.getPaymentIdByTransactionId(transactionId)
     }

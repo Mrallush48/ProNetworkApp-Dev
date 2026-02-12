@@ -12,24 +12,53 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
+import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.ui.screens.*
 import com.pronetwork.app.viewmodel.BuildingViewModel
 import com.pronetwork.app.viewmodel.ClientViewModel
 import com.pronetwork.app.viewmodel.PaymentViewModel
+import com.pronetwork.app.viewmodel.DailyCollectionUi
+import com.pronetwork.app.ui.theme.ProNetworkSpotTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.filled.Add
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val clientViewModel: ClientViewModel by viewModels()
     private val buildingViewModel: BuildingViewModel by viewModels()
@@ -48,11 +77,9 @@ class MainActivity : ComponentActivity() {
             try {
                 val clientStartMonth = client.startMonth
                 val currentViewMonth = selectedMonth
-
                 val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
                 val clientDate = dateFormat.parse(clientStartMonth)
                 val viewDate = dateFormat.parse(currentViewMonth)
-
                 if (viewDate != null && clientDate != null && viewDate.time >= clientDate.time) {
                     if (client.endMonth != null) {
                         val endDate = dateFormat.parse(client.endMonth)
@@ -67,7 +94,6 @@ class MainActivity : ComponentActivity() {
                 client.startMonth == selectedMonth
             }
         }
-
         val searchedClients = monthFilteredClients.filter { client ->
             if (searchQuery.isBlank()) return@filter true
             val q = searchQuery.trim()
@@ -75,19 +101,16 @@ class MainActivity : ComponentActivity() {
                     client.subscriptionNumber.contains(q, ignoreCase = true) ||
                     client.phone.contains(q, ignoreCase = true)
         }
-
         val buildingFilteredClients = searchedClients.filter { client ->
             selectedFilterBuildingId?.let { bid ->
                 client.buildingId == bid
             } ?: true
         }
-
         val packageFilteredClients = buildingFilteredClients.filter { client ->
             selectedFilterPackage?.let { pkg ->
                 client.packageType == pkg
             } ?: true
         }
-
         return if (sortByStartMonth) {
             packageFilteredClients.sortedBy { it.startMonth }
         } else {
@@ -97,7 +120,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        // ملاحظة: myLightColors لم يعد مستخدمًا فعليًا، لكن أبقيته كما هو حتى لا أكسر أي شيء محتمل في المستقبل.
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
             onPrimary = Color.White,
@@ -112,11 +135,9 @@ class MainActivity : ComponentActivity() {
             secondaryContainer = Color(0xFFD1C4E9),
             onSecondaryContainer = Color(0xFF512DA8)
         )
-
         setContent {
-            MaterialTheme(
-                colorScheme = myLightColors,
-                typography = MaterialTheme.typography
+            ProNetworkSpotTheme(
+                darkTheme = false // لاحقاً ممكن تربطه بإعداد النظام
             ) {
                 var currentScreen by remember { mutableStateOf("clients") }
                 var showClientDialog by remember { mutableStateOf(false) }
@@ -125,18 +146,54 @@ class MainActivity : ComponentActivity() {
                 var selectedBuilding by remember { mutableStateOf<Building?>(null) }
                 var selectedClient by remember { mutableStateOf<Client?>(null) }
                 var showEditClientDialog by remember { mutableStateOf(false) }
-
                 var searchQuery by remember { mutableStateOf("") }
                 var selectedFilterBuildingId by remember { mutableStateOf<Int?>(null) }
                 var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
                 var sortByStartMonth by remember { mutableStateOf(false) }
                 var showFilterDialog by remember { mutableStateOf(false) }
-
                 // جديد: التحكم في إظهار/إخفاء شريط الشهر + البحث
                 var showFilters by remember { mutableStateOf(false) }
-
+                // جديد: حالة شاشة التحصيل اليومي داخل تبويب الإحصائيات
+                var showDailyCollection by remember { mutableStateOf(false) }
+                var selectedDailyDateMillis by remember {
+                    mutableStateOf(
+                        Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+                    )
+                }
                 val clients by clientViewModel.clients.observeAsState(emptyList())
                 val buildings by buildingViewModel.buildings.observeAsState(emptyList())
+                val buildingSearchQuery by buildingViewModel.searchQuery.observeAsState("")
+                var dailyUi by remember { mutableStateOf<DailyCollectionUi?>(null) }
+
+                fun loadDailyCollectionFor(dateMillis: Long) {
+                    val calendar = Calendar.getInstance().apply {
+                        timeInMillis = dateMillis
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    val dayStartMillis = calendar.timeInMillis
+                    calendar.add(Calendar.DAY_OF_MONTH, 1)
+                    val dayEndMillis = calendar.timeInMillis
+                    val liveData = paymentViewModel.getDailyBuildingCollectionsForDay(
+                        dayStartMillis = dayStartMillis,
+                        dayEndMillis = dayEndMillis
+                    )
+                    liveData.observe(this@MainActivity) { buildingCollections: List<DailyBuildingCollection> ->
+                        val total = buildingCollections.sumOf { it.totalAmount }
+                        dailyUi = DailyCollectionUi(
+                            dateMillis = dateMillis,
+                            totalAmount = total,
+                            buildings = buildingCollections
+                        )
+                    }
+                }
 
                 val monthsList = remember {
                     val calendar = Calendar.getInstance()
@@ -150,7 +207,6 @@ class MainActivity : ComponentActivity() {
                 val monthOptions = monthsList
                 var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
-
                 // استخدام الدالة الجديدة بدل الكود المتكرر
                 val filteredClients = filterClients(
                     clients = clients,
@@ -160,16 +216,19 @@ class MainActivity : ComponentActivity() {
                     selectedFilterPackage = selectedFilterPackage,
                     sortByStartMonth = sortByStartMonth
                 )
-
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+
+                // ✅ استخراج النصوص خارج السياق غير القابل للتكوين (قبل Scaffold)
+                val addRequiresBuildingMessage = stringResource(R.string.clients_add_requires_building)
+                val addActionLabel = stringResource(R.string.action_add)
 
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {
                                 Text(
-                                    "ProNetwork App",
+                                    stringResource(R.string.app_name),
                                     style = MaterialTheme.typography.titleLarge
                                 )
                             },
@@ -188,9 +247,10 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = "clients"
                                     selectedBuilding = null
                                     selectedClient = null
+                                    showDailyCollection = false
                                 },
                                 icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                                label = { Text("العملاء") }
+                                label = { Text(stringResource(R.string.screen_clients)) }
                             )
                             NavigationBarItem(
                                 selected = currentScreen == "buildings",
@@ -198,9 +258,10 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = "buildings"
                                     selectedBuilding = null
                                     selectedClient = null
+                                    showDailyCollection = false
                                 },
                                 icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                                label = { Text("المباني") }
+                                label = { Text(stringResource(R.string.screen_buildings)) }
                             )
                             NavigationBarItem(
                                 selected = currentScreen == "stats",
@@ -208,12 +269,38 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = "stats"
                                     selectedBuilding = null
                                     selectedClient = null
+                                    showDailyCollection = false
                                 },
                                 icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
-                                label = { Text("إحصائيات") }
+                                label = { Text(stringResource(R.string.screen_stats)) }
                             )
                         }
                     },
+                    floatingActionButton = {
+                        // عرض الزر العائم فقط في شاشة العملاء الرئيسية (ليس في تفاصيل المبنى أو العميل)
+                        if (currentScreen == "clients" && selectedBuilding == null && selectedClient == null) {
+                            FloatingActionButton(
+                                onClick = {
+                                    if (buildings.isNotEmpty()) {
+                                        showClientDialog = true
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                message = addRequiresBuildingMessage // ✅ استخدام المتغير المستخرج
+                                            )
+                                        }
+                                    }
+                                },
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = addActionLabel // ✅ استخدام المتغير المستخرج
+                                )
+                            }
+                        }
+                    },  // ← ✅ الفاصلة الإلزامية هنا (مهم جدًا)
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState)
                     }
@@ -232,7 +319,6 @@ class MainActivity : ComponentActivity() {
                                             .fillMaxSize()
                                             .padding(horizontal = 12.dp, vertical = 8.dp)
                                     ) {
-                                        // شريط علوي: عنوان + زر إظهار/إخفاء البحث
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -241,12 +327,20 @@ class MainActivity : ComponentActivity() {
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "العملاء ($selectedMonth)",
+                                                text = stringResource(
+                                                    R.string.clients_title_with_month,
+                                                    selectedMonth
+                                                ),
                                                 style = MaterialTheme.typography.titleMedium,
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                             TextButton(onClick = { showFilters = !showFilters }) {
-                                                Text(if (showFilters) "إخفاء البحث" else "خيارات البحث")
+                                                Text(
+                                                    if (showFilters)
+                                                        stringResource(R.string.clients_filters_hide)
+                                                    else
+                                                        stringResource(R.string.clients_filters_show)
+                                                )
                                             }
                                         }
 
@@ -260,7 +354,7 @@ class MainActivity : ComponentActivity() {
                                                     value = selectedMonth,
                                                     onValueChange = {},
                                                     readOnly = true,
-                                                    label = { Text("تصفح العملاء حسب الشهر") },
+                                                    label = { Text(stringResource(R.string.clients_browse_by_month)) },
                                                     trailingIcon = {
                                                         IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
                                                             Icon(
@@ -309,7 +403,7 @@ class MainActivity : ComponentActivity() {
                                                         .heightIn(min = 36.dp),
                                                     placeholder = {
                                                         Text(
-                                                            "بحث...",
+                                                            stringResource(R.string.clients_search_placeholder),
                                                             style = MaterialTheme.typography.bodySmall
                                                         )
                                                     },
@@ -330,12 +424,14 @@ class MainActivity : ComponentActivity() {
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Filled.FilterList,
-                                                        contentDescription = "الفلترة والفرز"
+                                                        contentDescription = stringResource(R.string.clients_filter_and_sort)
                                                     )
                                                 }
                                             }
                                         }
 
+                                        val addClientRequiresBuildingMessage =
+                                            stringResource(R.string.clients_add_requires_building)
                                         ClientListScreen(
                                             clients = filteredClients,
                                             buildings = buildings,
@@ -346,7 +442,9 @@ class MainActivity : ComponentActivity() {
                                                     showClientDialog = true
                                                 } else {
                                                     scope.launch {
-                                                        snackbarHostState.showSnackbar("يجب إضافة مبنى أولاً قبل إضافة عميل.")
+                                                        snackbarHostState.showSnackbar(
+                                                            message = addClientRequiresBuildingMessage
+                                                        )
                                                     }
                                                 }
                                             },
@@ -356,13 +454,16 @@ class MainActivity : ComponentActivity() {
                                         if (showFilterDialog) {
                                             AlertDialog(
                                                 onDismissRequest = { showFilterDialog = false },
-                                                title = { Text("الفلترة والفرز") },
+                                                title = { Text(stringResource(R.string.clients_filter_and_sort)) },
                                                 text = {
                                                     Column(
                                                         modifier = Modifier.fillMaxWidth(),
                                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                                     ) {
-                                                        Text("المبنى", style = MaterialTheme.typography.labelMedium)
+                                                        Text(
+                                                            stringResource(R.string.clients_filter_building_label),
+                                                            style = MaterialTheme.typography.labelMedium
+                                                        )
                                                         var buildingFilterExpanded by remember { mutableStateOf(false) }
                                                         ExposedDropdownMenuBox(
                                                             expanded = buildingFilterExpanded,
@@ -374,8 +475,8 @@ class MainActivity : ComponentActivity() {
                                                                 readOnly = true,
                                                                 value = selectedFilterBuildingId?.let { bid ->
                                                                     buildings.firstOrNull { it.id == bid }?.name
-                                                                        ?: "كل المباني"
-                                                                } ?: "كل المباني",
+                                                                        ?: stringResource(R.string.clients_filter_all_buildings)
+                                                                } ?: stringResource(R.string.clients_filter_all_buildings),
                                                                 onValueChange = {},
                                                                 trailingIcon = {
                                                                     ExposedDropdownMenuDefaults.TrailingIcon(
@@ -393,7 +494,7 @@ class MainActivity : ComponentActivity() {
                                                                 }
                                                             ) {
                                                                 DropdownMenuItem(
-                                                                    text = { Text("كل المباني") },
+                                                                    text = { Text(stringResource(R.string.clients_filter_all_buildings)) },
                                                                     onClick = {
                                                                         selectedFilterBuildingId = null
                                                                         buildingFilterExpanded = false
@@ -410,8 +511,10 @@ class MainActivity : ComponentActivity() {
                                                                 }
                                                             }
                                                         }
-
-                                                        Text("الباقة", style = MaterialTheme.typography.labelMedium)
+                                                        Text(
+                                                            stringResource(R.string.clients_filter_package_label),
+                                                            style = MaterialTheme.typography.labelMedium
+                                                        )
                                                         val packageTypes =
                                                             clients.map { it.packageType }.distinct().sorted()
                                                         var packageFilterExpanded by remember { mutableStateOf(false) }
@@ -423,7 +526,8 @@ class MainActivity : ComponentActivity() {
                                                         ) {
                                                             OutlinedTextField(
                                                                 readOnly = true,
-                                                                value = selectedFilterPackage ?: "كل الباقات",
+                                                                value = selectedFilterPackage
+                                                                    ?: stringResource(R.string.clients_filter_all_packages),
                                                                 onValueChange = {},
                                                                 trailingIcon = {
                                                                     ExposedDropdownMenuDefaults.TrailingIcon(
@@ -441,7 +545,7 @@ class MainActivity : ComponentActivity() {
                                                                 }
                                                             ) {
                                                                 DropdownMenuItem(
-                                                                    text = { Text("كل الباقات") },
+                                                                    text = { Text(stringResource(R.string.clients_filter_all_packages)) },
                                                                     onClick = {
                                                                         selectedFilterPackage = null
                                                                         packageFilterExpanded = false
@@ -458,7 +562,6 @@ class MainActivity : ComponentActivity() {
                                                                 }
                                                             }
                                                         }
-
                                                         Row(
                                                             verticalAlignment = Alignment.CenterVertically
                                                         ) {
@@ -466,13 +569,13 @@ class MainActivity : ComponentActivity() {
                                                                 checked = sortByStartMonth,
                                                                 onCheckedChange = { sortByStartMonth = it }
                                                             )
-                                                            Text("فرز حسب تاريخ بداية الاشتراك")
+                                                            Text(stringResource(R.string.clients_filter_sort_by_start))
                                                         }
                                                     }
                                                 },
                                                 confirmButton = {
                                                     Button(onClick = { showFilterDialog = false }) {
-                                                        Text("تطبيق")
+                                                        Text(stringResource(R.string.clients_filter_apply))
                                                     }
                                                 },
                                                 dismissButton = {
@@ -482,7 +585,7 @@ class MainActivity : ComponentActivity() {
                                                         sortByStartMonth = false
                                                         showFilterDialog = false
                                                     }) {
-                                                        Text("مسح الفلاتر")
+                                                        Text(stringResource(R.string.clients_filter_clear))
                                                     }
                                                 }
                                             )
@@ -519,13 +622,10 @@ class MainActivity : ComponentActivity() {
                                                             notes = notes
                                                         )
                                                         clientViewModel.insert(newClient)
-
                                                         kotlinx.coroutines.delay(300)
-
                                                         val allClients = clients
                                                         val insertedClient =
                                                             allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
-
                                                         insertedClient?.let { client ->
                                                             paymentViewModel.createPaymentsForClient(
                                                                 clientId = client.id,
@@ -536,7 +636,6 @@ class MainActivity : ComponentActivity() {
                                                                 firstMonthAmount = firstMonthAmount
                                                             )
                                                         }
-
                                                         showClientDialog = false
                                                     }
                                                 },
@@ -549,11 +648,9 @@ class MainActivity : ComponentActivity() {
                                     val clientPayments by paymentViewModel
                                         .getClientPayments(client.id)
                                         .observeAsState(emptyList())
-
                                     val clientMonthUi by paymentViewModel
                                         .getClientMonthPaymentsUi(client.id)
                                         .observeAsState(emptyList())
-
                                     ClientDetailsScreen(
                                         client = client,
                                         buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
@@ -620,7 +717,6 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onBack = { selectedClient = null }
                                     )
-
                                     if (showEditClientDialog) {
                                         ClientEditDialog(
                                             buildingList = buildings,
@@ -648,10 +744,8 @@ class MainActivity : ComponentActivity() {
                                                        address,
                                                        packageType,
                                                        notes ->
-
                                                 val oldPrice = client.price
                                                 val newPrice = price
-
                                                 clientViewModel.update(
                                                     client.copy(
                                                         name = name,
@@ -667,14 +761,12 @@ class MainActivity : ComponentActivity() {
                                                         notes = notes
                                                     )
                                                 )
-
                                                 if (newPrice != oldPrice) {
                                                     paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
                                                         clientId = client.id,
                                                         newAmount = newPrice
                                                     )
                                                 }
-
                                                 showEditClientDialog = false
                                                 selectedClient = null
                                             },
@@ -683,10 +775,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-
                             currentScreen == "buildings" && selectedBuilding == null -> {
                                 BuildingListScreen(
                                     buildings = buildings,
+                                    searchQuery = buildingSearchQuery,
                                     onAddBuilding = { showBuildingDialog = true },
                                     onBuildingClick = { selectedBuilding = it },
                                     onSearch = { buildingViewModel.setSearchQuery(it) }
@@ -707,7 +799,6 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-
                             selectedBuilding != null -> {
                                 if (selectedClient == null) {
                                     BuildingDetailsScreen(
@@ -718,13 +809,10 @@ class MainActivity : ComponentActivity() {
                                         onAddClient = { client ->
                                             scope.launch {
                                                 clientViewModel.insert(client)
-
                                                 kotlinx.coroutines.delay(300)
-
                                                 val allClients = clients
                                                 val insertedClient =
                                                     allClients.lastOrNull { it.subscriptionNumber == client.subscriptionNumber }
-
                                                 insertedClient?.let { newClient ->
                                                     paymentViewModel.createPaymentsForClient(
                                                         clientId = newClient.id,
@@ -786,11 +874,11 @@ class MainActivity : ComponentActivity() {
 
                                     if (showEditClientDialog && selectedClient != null) {
                                         ClientEditDialog(
-                                            buildingList = listOf(selectedBuilding!!),
+                                            buildingList = buildings,
                                             initialName = selectedClient!!.name,
                                             initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
                                             initialPrice = selectedClient!!.price.toString(),
-                                            initialBuildingId = selectedBuilding!!.id,
+                                            initialBuildingId = selectedClient!!.buildingId,
                                             initialStartMonth = selectedClient!!.startMonth,
                                             initialStartDay = selectedClient!!.startDay,
                                             initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
@@ -799,7 +887,7 @@ class MainActivity : ComponentActivity() {
                                             initialAddress = selectedClient!!.address,
                                             initialPackageType = selectedClient!!.packageType,
                                             initialNotes = selectedClient!!.notes,
-                                            buildingSelectionEnabled = false,
+                                            buildingSelectionEnabled = true,
                                             onSave = { name,
                                                        subscriptionNumber,
                                                        price: Double,
@@ -811,10 +899,8 @@ class MainActivity : ComponentActivity() {
                                                        address,
                                                        packageType,
                                                        notes ->
-
                                                 val oldPrice = selectedClient!!.price
                                                 val newPrice = price
-
                                                 clientViewModel.update(
                                                     selectedClient!!.copy(
                                                         name = name,
@@ -830,14 +916,12 @@ class MainActivity : ComponentActivity() {
                                                         notes = notes
                                                     )
                                                 )
-
                                                 if (newPrice != oldPrice) {
                                                     paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
                                                         clientId = selectedClient!!.id,
                                                         newAmount = newPrice
                                                     )
                                                 }
-
                                                 showEditClientDialog = false
                                                 selectedClient = null
                                             },
@@ -849,11 +933,9 @@ class MainActivity : ComponentActivity() {
                                     val clientPayments by paymentViewModel
                                         .getClientPayments(client.id)
                                         .observeAsState(emptyList())
-
                                     val clientMonthUi by paymentViewModel
                                         .getClientMonthPaymentsUi(client.id)
                                         .observeAsState(emptyList())
-
                                     ClientDetailsScreen(
                                         client = client,
                                         buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
@@ -916,10 +998,9 @@ class MainActivity : ComponentActivity() {
                                             selectedClient = null
                                         }
                                     )
-
                                     if (showEditClientDialog) {
                                         ClientEditDialog(
-                                            buildingList = listOf(selectedBuilding!!),
+                                            buildingList = buildings,
                                             initialName = client.name,
                                             initialSubscriptionNumber = client.subscriptionNumber,
                                             initialPrice = client.price.toString(),
@@ -932,7 +1013,7 @@ class MainActivity : ComponentActivity() {
                                             initialAddress = client.address,
                                             initialPackageType = client.packageType,
                                             initialNotes = client.notes,
-                                            buildingSelectionEnabled = false,
+                                            buildingSelectionEnabled = true,
                                             onSave = { name,
                                                        subscriptionNumber,
                                                        price: Double,
@@ -944,10 +1025,8 @@ class MainActivity : ComponentActivity() {
                                                        address,
                                                        packageType,
                                                        notes ->
-
                                                 val oldPrice = client.price
                                                 val newPrice = price
-
                                                 clientViewModel.update(
                                                     client.copy(
                                                         name = name,
@@ -963,14 +1042,12 @@ class MainActivity : ComponentActivity() {
                                                         notes = notes
                                                     )
                                                 )
-
                                                 if (newPrice != oldPrice) {
                                                     paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
                                                         clientId = client.id,
                                                         newAmount = newPrice
                                                     )
                                                 }
-
                                                 showEditClientDialog = false
                                                 selectedClient = null
                                             },
@@ -979,30 +1056,145 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-
                             currentScreen == "stats" -> {
                                 LaunchedEffect(selectedMonth) {
                                     paymentViewModel.setStatsMonth(selectedMonth)
                                 }
-
                                 val clientsCount by clientViewModel.clientsCount.observeAsState(0)
                                 val monthStats by paymentViewModel.monthStats.observeAsState(null)
-
-                                StatisticsScreen(
-                                    clientsCount = clientsCount,
-                                    buildingsCount = buildings.size,
-                                    monthStats = monthStats,
-                                    monthOptions = monthOptions,
-                                    selectedMonth = selectedMonth,
-                                    onMonthChange = { newMonth ->
-                                        selectedMonth = newMonth
-                                        paymentViewModel.setStatsMonth(newMonth)
-                                    },
-                                    allClients = clients
-                                )
+                                if (!showDailyCollection) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                showDailyCollection = true
+                                                loadDailyCollectionFor(selectedDailyDateMillis)
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.CenterHorizontally)
+                                                .padding(bottom = 12.dp)
+                                        ) {
+                                            Text(stringResource(R.string.stats_daily_collection))
+                                        }
+                                        StatisticsScreen(
+                                            clientsCount = clientsCount,
+                                            buildingsCount = buildings.size,
+                                            monthStats = monthStats,
+                                            monthOptions = monthOptions,
+                                            selectedMonth = selectedMonth,
+                                            onMonthChange = { newMonth ->
+                                                selectedMonth = newMonth
+                                                paymentViewModel.setStatsMonth(newMonth)
+                                            },
+                                            allClients = clients
+                                        )
+                                    }
+                                } else {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        DailyCollectionScreen(
+                                            dailyCollection = dailyUi,
+                                            selectedDateMillis = selectedDailyDateMillis,
+                                            onChangeDate = { newMillis ->
+                                                selectedDailyDateMillis = newMillis
+                                                loadDailyCollectionFor(newMillis)
+                                            }
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        OutlinedButton(
+                                            onClick = { showDailyCollection = false },
+                                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                                        ) {
+                                            Text(stringResource(R.string.stats_back_to_statistics))
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
+                    } // ← إغلاق Surface
+                } // ← إغلاق Scaffold content lambda
+
+                // ✅ حوارات الجذر (خارج Scaffold تمامًا - كما كان في الإصدار القديم)
+                if (showEditBuildingDialog && selectedBuilding != null) {
+                    BuildingEditDialog(
+                        initialName = selectedBuilding!!.name,
+                        initialLocation = selectedBuilding!!.location,
+                        initialNotes = selectedBuilding!!.notes,
+                        onSave = { name, location, notes ->
+                            buildingViewModel.update(
+                                selectedBuilding!!.copy(
+                                    name = name,
+                                    location = location,
+                                    notes = notes
+                                )
+                            )
+                            showEditBuildingDialog = false
+                        },
+                        onDismiss = { showEditBuildingDialog = false }
+                    )
+                }
+
+                if (showEditClientDialog && selectedClient != null) {
+                    ClientEditDialog(
+                        buildingList = buildings,
+                        initialName = selectedClient!!.name,
+                        initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
+                        initialPrice = selectedClient!!.price.toString(),
+                        initialBuildingId = selectedClient!!.buildingId,
+                        initialStartMonth = selectedClient!!.startMonth,
+                        initialStartDay = selectedClient!!.startDay,
+                        initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
+                            ?: "",
+                        initialPhone = selectedClient!!.phone,
+                        initialAddress = selectedClient!!.address,
+                        initialPackageType = selectedClient!!.packageType,
+                        initialNotes = selectedClient!!.notes,
+                        buildingSelectionEnabled = true,
+                        onSave = { name,
+                                   subscriptionNumber,
+                                   price: Double,
+                                   buildingId,
+                                   startMonth,
+                                   startDay,
+                                   firstMonthAmount: Double?,
+                                   phone,
+                                   address,
+                                   packageType,
+                                   notes ->
+                            val oldPrice = selectedClient!!.price
+                            val newPrice = price
+                            clientViewModel.update(
+                                selectedClient!!.copy(
+                                    name = name,
+                                    subscriptionNumber = subscriptionNumber,
+                                    price = newPrice,
+                                    firstMonthAmount = firstMonthAmount,
+                                    buildingId = buildingId,
+                                    startMonth = startMonth,
+                                    startDay = startDay,
+                                    phone = phone,
+                                    address = address,
+                                    packageType = packageType,
+                                    notes = notes
+                                )
+                            )
+                            if (newPrice != oldPrice) {
+                                paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                    clientId = selectedClient!!.id,
+                                    newAmount = newPrice
+                                )
+                            }
+                            showEditClientDialog = false
+                            selectedClient = null
+                        },
+                        onDismiss = { showEditClientDialog = false }
+                    )
                 }
             }
         }

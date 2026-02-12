@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ProNetwork</string>
+    <string name="app_name">Pro Network Spot</string>
     <string name="clients">Clients</string>
     <string name="search">Search by name or ID</string>
     <string name="mark_as_paid">Mark as Paid</string>
@@ -18,4 +18,451 @@
     <string name="price">Price (SAR)</string>
     <string name="save">Save</string>
     <string name="month">Month: %s</string>
+    <!-- Bottom navigation -->
+    <string name="screen_clients">Clients</string>
+    <string name="screen_buildings">Buildings</string>
+    <string name="screen_stats">Statistics</string>
+
+    <!-- Common actions -->
+    <string name="action_add">Add</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_cancel">Cancel</string>
+    <!-- Clients screen -->
+    <string name="clients_title_with_month">Clients (%1$s)</string>
+    <string name="clients_filters_show">Search options</string>
+    <string name="clients_filters_hide">Hide search</string>
+    <string name="clients_browse_by_month">Browse clients by month</string>
+    <string name="clients_search_placeholder">Search...</string>
+    <string name="clients_filter_and_sort">Filter and sort</string>
+    <string name="clients_filter_building_label">Building</string>
+    <string name="clients_filter_all_buildings">All buildings</string>
+    <string name="clients_filter_package_label">Package</string>
+    <string name="clients_filter_all_packages">All packages</string>
+    <string name="clients_filter_sort_by_start">Sort by subscription start date</string>
+    <string name="clients_filter_apply">Apply</string>
+    <string name="clients_filter_clear">Clear filters</string>
+    <string name="clients_add_requires_building">
+        Please add a building first before adding a client.
+    </string>
+
+    <!-- Stats & daily collection -->
+    <string name="stats_daily_collection">Daily collection</string>
+    <string name="stats_back_to_statistics">Back to statistics</string>
+
+    <!-- Buildings screen -->
+    <string name="buildings_search_label">Search building</string>
+    <string name="buildings_search_clear">Clear search</string>
+    <string name="buildings_add_button">Add building</string>
+    <string name="buildings_name_label">Building name: %1$s</string>
+    <string name="buildings_location_label">Location: %1$s</string>
+    <string name="buildings_notes_label">Notes: %1$s</string>
+
+    <!-- Building details -->
+    <string name="building_details_back">Back</string>
+    <string name="building_details_add_client">Add client</string>
+
+    <string name="building_details_info_title">Building information</string>
+    <string name="building_details_location_label">Location:</string>
+    <string name="building_details_notes_label">Notes:</string>
+    <string name="building_details_floors_label">Number of floors:</string>
+    <string name="building_details_manager_label">Manager name:</string>
+    <string name="building_details_edit_building">Edit building</string>
+    <string name="building_details_delete_building">Delete building</string>
+
+    <string name="building_details_browse_by_month">Browse clients by month</string>
+    <string name="building_details_clients_in_month">
+        Building clients in %1$s:
+    </string>
+
+    <string name="building_details_client_name_label">Name:</string>
+    <string name="building_details_client_subscription_label">Subscription number:</string>
+    <string name="building_details_client_phone_label">Phone:</string>
+
+    <string name="building_details_status_unpaid">Unpaid</string>
+    <string name="building_details_status_partial">Partially paid</string>
+    <string name="building_details_status_full">Paid</string>
+    <string name="building_details_status_label">Status:</string>
+
+    <string name="building_details_confirm_payment">Confirm</string>
+    <string name="building_details_revert_payment">Revert</string>
+    <string name="building_details_edit_client">Edit client</string>
+    <string name="building_details_delete_client">Delete client</string>
+    <string name="building_details_no_clients_this_month">
+        No clients in this month.
+    </string>
+
+    <string name="building_details_dialog_confirm_title">Confirm payment</string>
+    <string name="building_details_dialog_revert_title">Revert payment</string>
+    <string name="building_details_dialog_confirm_text">
+        Are you sure you want to confirm payment for month %1$s?
+    </string>
+    <string name="building_details_dialog_revert_text">
+        Are you sure you want to revert payment for month %1$s?
+    </string>
+    <string name="building_details_dialog_client_name">
+        Client: %1$s
+    </string>
+    <string name="building_details_dialog_month">Month: %1$s</string>
+    <string name="building_details_dialog_amount">
+        Amount: %1$.2f SAR
+    </string>
+    <string name="building_details_dialog_yes_confirm">
+        Yes, confirm
+    </string>
+    <string name="building_details_dialog_yes_revert">
+        Yes, revert
+    </string>
+
+    <string name="building_details_delete_building_title">
+        Confirm building deletion
+    </string>
+    <string name="building_details_delete_building_text">
+        Are you sure you want to delete the building "%1$s"?
+    </string>
+    <string name="building_details_delete_building_warning">
+        Warning: all clients linked to this building will be deleted.
+    </string>
+    <string name="building_details_delete_building_confirm">
+        Yes, delete
+    </string>
+
+    <string name="building_details_delete_client_title">
+        Confirm client deletion
+    </string>
+    <string name="building_details_delete_client_full_text">
+        Are you sure you want to delete the client "%1$s" completely for all months?
+    </string>
+    <string name="building_details_delete_client_full_warning">
+        Warning: the client will be deleted permanently.
+    </string>
+    <string name="building_details_delete_client_stop_text">
+        Do you want to stop the subscription for client "%1$s" starting from month %2$s?
+    </string>
+    <string name="building_details_delete_client_stop_info">
+        The client will remain visible for months before %1$s.
+    </string>
+    <string name="building_details_delete_client_confirm">Delete</string>
+
+    <!-- Clients list screen -->
+    <string name="clients_count_label">Clients count: %1$d</string>
+    <string name="clients_add_button">Add client</string>
+    <string name="clients_no_clients_in_month">
+        No clients in this month.
+    </string>
+    <string name="clients_building_none">No building</string>
+
+    <string name="clients_item_name_label">Name:</string>
+    <string name="clients_item_building_label">Building:</string>
+    <string name="clients_item_subscription_label">Subscription number:</string>
+    <string name="clients_item_package_label">Package:</string>
+
+    <string name="clients_status_unpaid">Unpaid</string>
+    <string name="clients_status_partial">Partially paid</string>
+    <string name="clients_status_full">Paid</string>
+    <string name="clients_status_label">Status:</string>
+
+    <string name="clients_dialog_confirm_title">Confirm payment</string>
+    <string name="clients_dialog_revert_title">Revert payment</string>
+    <string name="clients_dialog_confirm_text">
+        Are you sure you want to confirm payment for month %1$s?
+    </string>
+    <string name="clients_dialog_revert_text">
+        Are you sure you want to revert payment for month %1$s?
+    </string>
+    <string name="clients_dialog_client_name">
+        Client: %1$s
+    </string>
+    <string name="clients_dialog_month">Month: %1$s</string>
+    <string name="clients_dialog_amount">
+        Amount: %1$.2f SAR
+    </string>
+    <string name="clients_dialog_yes_confirm">
+        Yes, confirm
+    </string>
+    <string name="clients_dialog_yes_revert">
+        Yes, revert
+    </string>
+
+    <!-- Client details screen -->
+    <string name="client_details_title">Client details</string>
+
+    <!-- Client info card -->
+    <string name="client_details_info_title">Client information</string>
+    <string name="client_details_name_label">Name:</string>
+    <string name="client_details_subscription_label">Subscription number:</string>
+    <string name="client_details_building_label">Building:</string>
+    <string name="client_details_package_label">Package:</string>
+    <string name="client_details_monthly_price_label">Monthly price:</string>
+    <string name="client_details_monthly_price_value">%1$.2f SAR</string>
+    <string name="client_details_start_month_label">Start month:</string>
+    <string name="client_details_room_label">Room number:</string>
+    <string name="client_details_phone_label">Phone number:</string>
+    <string name="client_details_address_label">Address:</string>
+    <string name="client_details_notes_label">Notes:</string>
+
+    <!-- Actions -->
+    <string name="client_details_edit_button">Edit</string>
+    <string name="client_details_delete_button">Delete</string>
+
+    <!-- Monthly payments summary -->
+    <string name="client_details_monthly_history_title">
+        Monthly payments history
+    </string>
+    <string name="client_details_monthly_history_counter">
+        %1$d/%2$d
+    </string>
+
+    <!-- Month status texts -->
+    <string name="client_details_status_full">
+        Fully paid (%1$.2f / %2$.2f)
+    </string>
+    <string name="client_details_status_partial">
+        Partially paid (%1$.2f / %2$.2f), remaining %3$.2f SAR
+    </string>
+    <string name="client_details_status_unpaid">
+        Unpaid (%1$.2f SAR)
+    </string>
+    <string name="client_details_month_amount_value">
+        %1$.2f SAR
+    </string>
+
+    <string name="client_details_month_transactions_title">
+        Transactions for this month:
+    </string>
+    <string name="client_details_month_transaction_line">
+        - %1$.2f SAR (%2$s) - %3$s
+    </string>
+    <string name="client_details_month_transaction_delete">Delete</string>
+
+    <!-- Month action buttons -->
+    <string name="client_details_action_cancel_payment">
+        Revert payment
+    </string>
+    <string name="client_details_action_confirm_full_payment">
+        Confirm full payment
+    </string>
+    <string name="client_details_action_partial_payment">
+        Partial payment
+    </string>
+    <string name="client_details_action_refund">
+        Refund
+    </string>
+
+    <!-- Partial payment dialog -->
+    <string name="client_details_partial_title">
+        Partial payment - %1$s
+    </string>
+    <string name="client_details_partial_text">
+        Enter the amount paid by the client for this month:
+    </string>
+    <string name="client_details_partial_amount_label">
+        Amount (SAR)
+    </string>
+    <string name="client_details_partial_month_price">
+        Monthly price: %1$.2f SAR
+    </string>
+    <string name="client_details_partial_confirm">
+        Confirm partial payment
+    </string>
+
+    <!-- Full payment confirm dialog -->
+    <string name="client_details_full_confirm_title">
+        Confirm full payment
+    </string>
+    <string name="client_details_full_confirm_text">
+        Are you sure you want to confirm full payment for %1$s with amount %2$.2f SAR?
+    </string>
+    <string name="client_details_full_confirm_yes">
+        Yes, confirm
+    </string>
+
+    <!-- Cancel payment dialog -->
+    <string name="client_details_cancel_confirm_title">
+        Revert payment
+    </string>
+    <string name="client_details_cancel_confirm_text">
+        Are you sure you want to revert payment for %1$s?\nAll payment transactions for this month will be deleted.
+    </string>
+    <string name="client_details_cancel_confirm_yes">
+        Yes, revert
+    </string>
+
+    <!-- Delete transaction dialog -->
+    <string name="client_details_delete_tx_title">
+        Delete payment transaction
+    </string>
+    <string name="client_details_delete_tx_text">
+        Are you sure you want to permanently delete this transaction? This action cannot be undone.
+    </string>
+    <string name="client_details_delete_tx_yes">
+        Yes, delete
+    </string>
+
+    <!-- Refund dialog -->
+    <string name="client_details_refund_title">
+        Refund - %1$s
+    </string>
+    <string name="client_details_refund_text">
+        Enter the amount you want to refund for this month:
+    </string>
+    <string name="client_details_refund_amount_label">
+        Amount (SAR, will be recorded as negative)
+    </string>
+    <string name="client_details_refund_reason_label">
+        Refund reason (required)
+    </string>
+    <string name="client_details_refund_max">
+        Maximum refundable amount: %1$.2f SAR
+    </string>
+    <string name="client_details_refund_reason_required">
+        You must provide a refund reason.
+    </string>
+    <string name="client_details_refund_confirm">
+        Confirm refund
+    </string>
+
+    <!-- Delete client dialog -->
+    <string name="client_details_delete_client_title">
+        Confirm client deletion
+    </string>
+    <string name="client_details_delete_client_text">
+        Are you sure you want to delete the client "%1$s"? All payment records related to this client will be deleted. This action cannot be undone.
+    </string>
+    <string name="client_details_delete_client_yes">
+        Yes, delete
+    </string>
+
+    <!-- Client edit dialog -->
+    <string name="client_edit_title_add">Add new client</string>
+    <string name="client_edit_title_edit">Edit client</string>
+
+    <string name="client_edit_name_label">Name *</string>
+    <string name="client_edit_name_error">Please enter the name</string>
+
+    <string name="client_edit_subscription_label">Subscription number *</string>
+    <string name="client_edit_subscription_error">
+        Please enter the subscription number
+    </string>
+
+    <string name="client_edit_price_label">
+        Full monthly price (SAR) *
+    </string>
+    <string name="client_edit_price_error">
+        Please enter the monthly price
+    </string>
+
+    <string name="client_edit_package_label">Package *</string>
+    <string name="client_edit_package_error">Please select a package</string>
+
+    <string name="client_edit_start_section_title">
+        Subscription start date
+    </string>
+    <string name="client_edit_start_month_label">
+        Month (yyyy-MM) *
+    </string>
+    <string name="client_edit_start_month_placeholder">2026-01</string>
+    <string name="client_edit_start_month_icon_cd">
+        Pick date
+    </string>
+    <string name="client_edit_start_month_error">
+        Please enter the start month
+    </string>
+
+    <string name="client_edit_start_day_label">Day *</string>
+    <string name="client_edit_start_day_placeholder">1-30</string>
+    <string name="client_edit_start_day_error">
+        Please enter the start day
+    </string>
+
+    <string name="client_edit_first_month_amount_label">
+        Actual first month amount (SAR) *
+    </string>
+    <string name="client_edit_first_month_amount_error">
+        Please enter the first month amount
+    </string>
+    <string name="client_edit_first_month_hint">
+        Remaining days: %1$d of %2$d days
+    </string>
+
+    <string name="client_edit_building_label">Building *</string>
+    <string name="client_edit_building_error">
+        Please select a building
+    </string>
+
+    <string name="client_edit_phone_label">Phone number</string>
+    <string name="client_edit_address_label">Address</string>
+    <string name="client_edit_notes_label">Notes</string>
+
+    <string name="client_edit_cancel_button">Cancel</string>
+    <string name="client_edit_save_button">Save</string>
+
+    <!-- Date picker dialog -->
+    <string name="month_picker_title">
+        Select month and year
+    </string>
+    <string name="month_picker_cancel">Cancel</string>
+    <string name="month_picker_confirm">Confirm</string>
+
+    <!-- ClientEditScreen top bar & save -->
+    <string name="client_edit_screen_title_add">Add client</string>
+    <string name="client_edit_screen_title_edit">Edit client</string>
+    <string name="client_edit_screen_save_button">Save</string>
+
+    <!-- Common content descriptions -->
+    <string name="cd_navigate_back">Navigate back</string>
+
+    <!-- ClientEditScreen specific placeholders/labels -->
+    <string name="client_edit_building_placeholder">Select building</string>
+
+    <!-- Simple fixed dates for ClientEditScreen dropdown -->
+    <string name="client_edit_date_jan_1">1 January</string>
+    <string name="client_edit_date_feb_1">1 February</string>
+    <string name="client_edit_date_mar_1">1 March</string>
+    <string name="client_edit_date_apr_1">1 April</string>
+    <string name="client_edit_date_may_1">1 May</string>
+    <string name="client_edit_date_jun_1">1 June</string>
+    <string name="client_edit_date_jul_1">1 July</string>
+    <string name="client_edit_date_aug_1">1 August</string>
+    <string name="client_edit_date_sep_1">1 September</string>
+    <string name="client_edit_date_oct_1">1 October</string>
+    <string name="client_edit_date_nov_1">1 November</string>
+    <string name="client_edit_date_dec_1">1 December</string>
+
+    <!-- Building edit dialog -->
+    <string name="building_edit_title_add">Add building</string>
+    <string name="building_edit_title_edit">Edit building</string>
+    <string name="building_edit_name_label">Building name</string>
+    <string name="building_edit_location_label">Location (link or description)</string>
+    <string name="building_edit_notes_label">Notes</string>
+    <string name="building_edit_save_button">Save</string>
+
+    <!-- Daily collection screen -->
+    <string name="daily_collection_prev_day">Previous day</string>
+    <string name="daily_collection_next_day">Next day</string>
+    <string name="daily_collection_date_label">Date: %1$s</string>
+    <string name="daily_collection_total_title">Total collection for this day</string>
+    <string name="daily_collection_total_value">%1$.2f SAR</string>
+    <string name="daily_collection_by_building_title">Details by building:</string>
+    <string name="daily_collection_empty_for_day">No collections on this day.</string>
+    <string name="daily_collection_building_name">Building: %1$s</string>
+    <string name="daily_collection_clients_count">Clients: %1$d</string>
+    <string name="daily_collection_building_total">Amount: %1$.2f SAR</string>
+
+    <!-- Statistics screen -->
+    <string name="stats_month_label">Month</string>
+    <string name="stats_total_clients">Total clients</string>
+    <string name="stats_total_buildings">Total buildings</string>
+    <string name="stats_paid_clients">Fully paid clients</string>
+    <string name="stats_partial_clients">Partially paid clients</string>
+    <string name="stats_unpaid_clients">Unpaid clients</string>
+    <string name="stats_total_paid_amount">Total collected amount</string>
+    <string name="stats_total_unpaid_amount">Total remaining amount</string>
+    <string name="currency_suffix_sar">SAR</string>
+    <string name="stats_amount_with_suffix">%1$s %2$s</string>
+
+    <string name="building_details_show_future_clients">Show future clients</string>
+
+
 </resources>

@@ -10,7 +10,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.pronetwork.app.R
 import com.pronetwork.app.data.Client
 import kotlinx.coroutines.launch
 
@@ -51,7 +53,7 @@ fun ClientDetailsBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "تفاصيل العميل",
+                    text = stringResource(R.string.client_details_title),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -64,8 +66,8 @@ fun ClientDetailsBottomSheet(
                         )
                     ) {
                         Icon(
-                            Icons.Filled.Edit,
-                            contentDescription = "تعديل",
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = stringResource(R.string.client_details_edit_button),
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
@@ -77,8 +79,8 @@ fun ClientDetailsBottomSheet(
                         )
                     ) {
                         Icon(
-                            Icons.Filled.Delete,
-                            contentDescription = "حذف",
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.client_details_delete_button),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -95,17 +97,29 @@ fun ClientDetailsBottomSheet(
                 )
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    DetailRow(label = "الاسم", value = client.name)
+                    DetailRow(
+                        label = stringResource(R.string.client_details_name_label),
+                        value = client.name
+                    )
                     Spacer(Modifier.height(12.dp))
-                    DetailRow(label = "رقم الاشتراك", value = client.subscriptionNumber)
+                    DetailRow(
+                        label = stringResource(R.string.client_details_subscription_label),
+                        value = client.subscriptionNumber
+                    )
 
                     Spacer(Modifier.height(16.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(16.dp))
 
-                    DetailRow(label = "المبنى", value = buildingName)
+                    DetailRow(
+                        label = stringResource(R.string.client_details_building_label),
+                        value = buildingName
+                    )
                     Spacer(Modifier.height(12.dp))
-                    DetailRow(label = "الباقة", value = client.packageType)
+                    DetailRow(
+                        label = stringResource(R.string.client_details_package_label),
+                        value = client.packageType
+                    )
 
                     Spacer(Modifier.height(16.dp))
                     HorizontalDivider()
@@ -117,20 +131,23 @@ fun ClientDetailsBottomSheet(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                text = "السعر",
+                                text = stringResource(R.string.client_details_monthly_price_label),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "${client.price} ريال",
+                                text = stringResource(
+                                    R.string.client_details_monthly_price_value,
+                                    client.price
+                                ),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Column(Modifier.weight(1f)) {
                             Text(
-                                text = "شهر البداية",
+                                text = stringResource(R.string.client_details_start_month_label),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -147,17 +164,26 @@ fun ClientDetailsBottomSheet(
                         Spacer(Modifier.height(16.dp))
                         HorizontalDivider()
                         Spacer(Modifier.height(16.dp))
-                        DetailRow(label = "رقم الجوال", value = client.phone)
+                        DetailRow(
+                            label = stringResource(R.string.client_details_phone_label),
+                            value = client.phone
+                        )
                     }
 
                     if (client.address.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
-                        DetailRow(label = "العنوان", value = client.address)
+                        DetailRow(
+                            label = stringResource(R.string.client_details_address_label),
+                            value = client.address
+                        )
                     }
 
                     if (client.roomNumber?.isNotEmpty() == true) {
                         Spacer(Modifier.height(12.dp))
-                        DetailRow(label = "رقم الغرفة", value = client.roomNumber!!)
+                        DetailRow(
+                            label = stringResource(R.string.client_details_room_label),
+                            value = client.roomNumber!!
+                        )
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -166,7 +192,7 @@ fun ClientDetailsBottomSheet(
 
                     if (client.notes.isNotEmpty()) {
                         Text(
-                            text = "ملاحظات",
+                            text = stringResource(R.string.client_details_notes_label),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -196,9 +222,18 @@ fun ClientDetailsBottomSheet(
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("⚠️ تأكيد الحذف") },
+                title = {
+                    Text(
+                        text = stringResource(R.string.client_details_delete_client_title)
+                    )
+                },
                 text = {
-                    Text("هل أنت متأكد من حذف العميل \"${client.name}\"؟\n\nلا يمكن التراجع عن هذا الإجراء.")
+                    Text(
+                        text = stringResource(
+                            R.string.client_details_delete_client_text,
+                            client.name
+                        )
+                    )
                 },
                 confirmButton = {
                     Button(
@@ -215,12 +250,14 @@ fun ClientDetailsBottomSheet(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("نعم، احذف")
+                        Text(
+                            text = stringResource(R.string.client_details_delete_client_yes)
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { showDeleteDialog = false }) {
-                        Text("إلغاء")
+                        Text(text = stringResource(R.string.action_cancel))
                     }
                 }
             )

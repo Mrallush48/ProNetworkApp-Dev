@@ -8,6 +8,8 @@ import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.repository.PaymentRepository
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import kotlinx.coroutines.launch
+import com.pronetwork.app.data.DailyBuildingCollection
+import android.util.Log
 
 // enum جديد لحالة الدفع
 enum class PaymentStatus {
@@ -86,6 +88,23 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         return mediator
     }
 
+    // ================== تحصيل يومي لكل مبنى ==================
+
+    fun getDailyBuildingCollectionsForDay(
+        dayStartMillis: Long,
+        dayEndMillis: Long
+    ): LiveData<List<DailyBuildingCollection>> {
+        val result = MutableLiveData<List<DailyBuildingCollection>>()
+
+        viewModelScope.launch {
+            val list = transactionRepository.getDailyBuildingCollectionsForDay(dayStartMillis, dayEndMillis)
+            result.postValue(list)
+        }
+
+        return result
+    }
+
+
     // ================== إحصائيات شهرية عامة ==================
 
     // الشهر المختار للإحصائيات (مثل "2026-01")
@@ -104,67 +123,70 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
 
     // LiveData للإحصائيات الشهرية الجاهزة
     val monthStats: LiveData<MonthStats> = _selectedStatsMonth.switchMap { month ->
-        val paidCountLive = paymentRepository.getPaidCountByMonth(month)
-        val unpaidCountLive = paymentRepository.getUnpaidCountByMonth(month)
-        val totalPaidLive = paymentRepository.getTotalPaidAmountByMonth(month)
-        val totalUnpaidLive = paymentRepository.getTotalUnpaidAmountByMonth(month)
         val paymentsLive = paymentRepository.getPaymentsByMonth(month)
 
         MediatorLiveData<MonthStats>().apply {
-            var paidCount: Int? = null
-            var unpaidCount: Int? = null
-            var totalPaid: Double? = null
-            var totalUnpaid: Double? = null
             var payments: List<Payment>? = null
 
             fun update() {
-                val pc = paidCount
-                val uc = unpaidCount
-                val tp = totalPaid
-                val tu = totalUnpaid
-                val ps = payments
-                if (pc != null && uc != null && tp != null && tu != null && ps != null) {
-                    // العملاء المدفوع لهم كلياً حسب isPaid
-                    val fullPaid = pc
-                    // العملاء غير المدفوعين كلياً
-                    val notPaid = uc
-                    // العملاء ذوو الدفع الجزئي = الموجودون في payments لكن isPaid = false
-                    // (لاحقاً يمكن تحسينها بالاعتماد على مجموع الترانزكشنات)
-                    val partialPaid = ps.count { !it.isPaid && it.amount > 0.0 }
+                val ps = payments ?: return
 
-                    value = MonthStats(
-                        month = month,
-                        paidCount = fullPaid,
-                        partiallyPaidCount = partialPaid,
-                        unpaidCount = notPaid,
-                        totalPaidAmount = tp,
-                        totalUnpaidAmount = tu
+                viewModelScope.launch {
+                    val ids = ps.map { it.id }
+                    val totalsMap = transactionRepository.getTotalsForPayments(ids)
+
+                    var fullPaidCount = 0
+                    var partialPaidCount = 0
+                    var unpaidCount = 0
+                    var totalRemaining = 0.0
+                    var totalPaidAmount = 0.0
+
+                    ps.forEach { p ->
+                        val paidForThis = totalsMap[p.id] ?: 0.0
+                        val remainingForThis = (p.amount - paidForThis).coerceAtLeast(0.0)
+
+                        totalPaidAmount += paidForThis
+
+                        when {
+                            paidForThis <= 0.0 -> {
+                                // لا يوجد أي دفع لهذا الشهر
+                                unpaidCount += 1
+                                totalRemaining += p.amount
+                            }
+                            paidForThis < p.amount -> {
+                                // دفع جزئي
+                                partialPaidCount += 1
+                                totalRemaining += remainingForThis
+                            }
+                            else -> {
+                                // مدفوع بالكامل
+                                fullPaidCount += 1
+                                // لا يضاف شيء للمتبقي
+                            }
+                        }
+                    }
+
+                    postValue(
+                        MonthStats(
+                            month = month,
+                            paidCount = fullPaidCount,
+                            partiallyPaidCount = partialPaidCount,
+                            unpaidCount = unpaidCount,
+                            totalPaidAmount = totalPaidAmount,
+                            totalUnpaidAmount = totalRemaining
+                        )
                     )
                 }
             }
 
-            addSource(paidCountLive) {
-                paidCount = it ?: 0
-                update()
-            }
-            addSource(unpaidCountLive) {
-                unpaidCount = it ?: 0
-                update()
-            }
-            addSource(totalPaidLive) {
-                totalPaid = it ?: 0.0
-                update()
-            }
-            addSource(totalUnpaidLive) {
-                totalUnpaid = it ?: 0.0
-                update()
-            }
             addSource(paymentsLive) {
                 payments = it ?: emptyList()
                 update()
             }
         }
     }
+
+
 
     fun setStatsMonth(month: String) {
         _selectedStatsMonth.value = month
@@ -254,6 +276,39 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         return result
     }
 
+    /**
+     * إرجاع حالة دفع شهر واحد لعميل واحد (UNPAID / PARTIAL / FULL)
+     * مبنية على مجموع الحركات (transactions) وقيمة amount في جدول payments.
+     */
+    fun getClientMonthStatus(clientId: Int, month: String): LiveData<PaymentStatus> {
+        val result = MutableLiveData<PaymentStatus>()
+
+        viewModelScope.launch {
+            // 1) احصل على الـ Payment لهذا الشهر (قد يكون null إذا لم يُنشأ بعد)
+            val payment = paymentRepository.getPayment(clientId, month)
+
+            if (payment == null) {
+                // لا يوجد سجل دفع → غير مدفوع
+                result.postValue(PaymentStatus.UNPAID)
+                return@launch
+            }
+
+            // 2) احسب مجموع ما دُفع لهذا الـ Payment من جدول الحركات
+            val totalPaid = transactionRepository.getTotalPaidForPayment(payment.id)
+
+            // 3) طبّق نفس قاعدة الحالة التي تستخدمها في الإحصائيات
+            val status = when {
+                totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                totalPaid < payment.amount -> PaymentStatus.PARTIAL
+                else -> PaymentStatus.FULL
+            }
+
+            result.postValue(status)
+        }
+
+        return result
+    }
+
     // ================== حذف حركة فردية ==================
 
     fun deleteTransaction(transactionId: Int) = viewModelScope.launch {
@@ -324,7 +379,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 PaymentTransaction(
                     paymentId = paymentId,
                     amount = remaining,
-                    notes = "استكمال دفع كامل"
+                    notes = "full payment"
                 )
             )
         }
@@ -352,7 +407,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 PaymentTransaction(
                     paymentId = paymentId,
                     amount = partialAmount,
-                    notes = "دفع جزئي"
+                    notes = "partial payment"
                 )
             )
 
@@ -393,7 +448,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         month: String,
         monthAmount: Double,
         refundAmount: Double,
-        reason: String = "حركة عكسية / استرجاع"
+        reason: String = "Refund"
     ) = viewModelScope.launch {
         // نضمن وجود Payment لهذا الشهر
         val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)

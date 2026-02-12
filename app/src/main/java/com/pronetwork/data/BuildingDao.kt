@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface BuildingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(building: Building)
+    suspend fun insert(building: Building): Long
 
     @Update
     suspend fun update(building: Building)

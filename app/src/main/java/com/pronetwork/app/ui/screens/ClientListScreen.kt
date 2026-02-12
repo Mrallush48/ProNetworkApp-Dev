@@ -12,9 +12,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.pronetwork.app.R
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
+import com.pronetwork.app.viewmodel.PaymentStatus
 import com.pronetwork.app.viewmodel.PaymentViewModel
 import kotlinx.coroutines.launch
 
@@ -30,7 +33,7 @@ fun ClientListScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ✅ تعديل: استخدام Triple لتمرير المبلغ الصحيح
+    // نحفظ Client + month + monthAmount
     var showPaymentDialog by remember { mutableStateOf<Triple<Client, String, Double>?>(null) }
 
     Column(Modifier.fillMaxSize()) {
@@ -39,10 +42,14 @@ fun ClientListScreen(
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "عدد العملاء: ${clients.size}",
+                text = stringResource(
+                    R.string.clients_count_label,
+                    clients.size
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -52,7 +59,10 @@ fun ClientListScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("إضافة عميل", color = MaterialTheme.colorScheme.onPrimary)
+                Text(
+                    text = stringResource(R.string.clients_add_button),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
 
@@ -64,33 +74,39 @@ fun ClientListScreen(
                     .padding(top = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("لا يوجد عملاء في هذا الشهر.")
+                Text(
+                    text = stringResource(R.string.clients_no_clients_in_month)
+                )
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(clients, key = { it.id }) { client ->
                     val buildingName =
-                        buildings.firstOrNull { it.id == client.buildingId }?.name ?: "بدون مبنى"
+                        buildings.firstOrNull { it.id == client.buildingId }?.name
+                            ?: stringResource(R.string.clients_building_none)
 
-                    // ✅ تعديل: جلب المبلغ من Payment (إذا موجود)
+                    // نقرأ حالة الشهر من ال ViewModel (UNPAID / PARTIAL / FULL)
+                    val status by paymentViewModel
+                        .getClientMonthStatus(client.id, selectedMonth)
+                        .observeAsState(initial = PaymentStatus.UNPAID)
+
+                    // قيمة Payment لعرض المبلغ الصحيح
                     val payment by paymentViewModel
                         .getPaymentLive(client.id, selectedMonth)
                         .observeAsState(null)
-                    val isPaid = payment?.isPaid ?: false
-                    val monthAmount = payment?.amount ?: client.price  // ✅ استخدام المبلغ من Payment أولاً
+
+                    val monthAmount = payment?.amount ?: client.price
 
                     ClientCardItem(
                         client = client,
                         buildingName = buildingName,
-                        isPaid = isPaid,
-                        monthAmount = monthAmount,      // ✅ تمرير المبلغ الصحيح
+                        status = status,
+                        monthAmount = monthAmount,
                         onClientClick = onClientClick,
-                        onShowPaymentDialog = { shouldPay ->
-                            // ✅ تعديل: إرسال المبلغ الصحيح مع Triple
+                        onShowPaymentDialog = {
                             showPaymentDialog = Triple(client, selectedMonth, monthAmount)
                         }
                     )
@@ -100,7 +116,7 @@ fun ClientListScreen(
 
         SnackbarHost(hostState = snackbarHostState)
 
-        // ✅ تعديل: حوار الدفع باستخدام Triple
+        // حوار الدفع باستخدام Triple
         showPaymentDialog?.let { (client, month, monthAmount) ->
             val paymentState by paymentViewModel
                 .getPaymentLive(client.id, month)
@@ -123,17 +139,26 @@ fun ClientListScreen(
                 },
                 title = {
                     Text(
-                        if (shouldPay) "تأكيد الدفع" else "تراجع عن الدفع",
+                        text = if (shouldPay)
+                            stringResource(R.string.clients_dialog_confirm_title)
+                        else
+                            stringResource(R.string.clients_dialog_revert_title),
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
                 text = {
                     Column {
                         Text(
-                            if (shouldPay)
-                                "هل أنت متأكد من تأكيد دفع شهر $month؟"
+                            text = if (shouldPay)
+                                stringResource(
+                                    R.string.clients_dialog_confirm_text,
+                                    month
+                                )
                             else
-                                "هل أنت متأكد من التراجع عن دفع شهر $month؟"
+                                stringResource(
+                                    R.string.clients_dialog_revert_text,
+                                    month
+                                )
                         )
                         Spacer(Modifier.height(8.dp))
                         Card(
@@ -142,10 +167,23 @@ fun ClientListScreen(
                             )
                         ) {
                             Column(Modifier.padding(12.dp)) {
-                                Text("العميل: ${client.name}")
-                                Text("الشهر: $month")
                                 Text(
-                                    "المبلغ: $monthAmount ريال",     // ✅ استخدام المبلغ الصحيح
+                                    text = stringResource(
+                                        R.string.clients_dialog_client_name,
+                                        client.name
+                                    )
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.clients_dialog_month,
+                                        month
+                                    )
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.clients_dialog_amount,
+                                        monthAmount
+                                    ),
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -168,7 +206,6 @@ fun ClientListScreen(
                                         month = month
                                     )
                                 }
-
                             }
                             showPaymentDialog = null
                         },
@@ -179,12 +216,17 @@ fun ClientListScreen(
                                 MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text(if (shouldPay) "نعم، تأكيد" else "نعم، تراجع")
+                        Text(
+                            text = if (shouldPay)
+                                stringResource(R.string.clients_dialog_yes_confirm)
+                            else
+                                stringResource(R.string.clients_dialog_yes_revert)
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { showPaymentDialog = null }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -196,20 +238,20 @@ fun ClientListScreen(
 private fun ClientCardItem(
     client: Client,
     buildingName: String,
-    isPaid: Boolean,
-    monthAmount: Double,              // ✅ معلمة جديدة
+    status: PaymentStatus,
+    monthAmount: Double,
     onClientClick: (Client) -> Unit,
-    onShowPaymentDialog: (Boolean) -> Unit // true = تأكيد, false = تراجع
+    onShowPaymentDialog: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(5.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isPaid)
-                MaterialTheme.colorScheme.secondaryContainer
-            else
-                MaterialTheme.colorScheme.surface
+            containerColor = when (status) {
+                PaymentStatus.FULL -> MaterialTheme.colorScheme.secondaryContainer
+                PaymentStatus.PARTIAL -> MaterialTheme.colorScheme.surfaceVariant
+                PaymentStatus.UNPAID -> MaterialTheme.colorScheme.surface
+            }
         )
     ) {
         Row(
@@ -224,39 +266,106 @@ private fun ClientCardItem(
                     .weight(1f)
                     .clickable { onClientClick(client) }
             ) {
-                Text("الاسم: ${client.name}", style = MaterialTheme.typography.titleMedium)
-                Text("المبنى: $buildingName")
-                Text("رقم الاشتراك: ${client.subscriptionNumber}")
-                Text("الباقة: ${client.packageType}")
                 Text(
-                    "الحالة: ${if (isPaid) "مدفوع" else "غير مدفوع"}",
-                    color = if (isPaid)
-                        MaterialTheme.colorScheme.tertiary
-                    else
-                        MaterialTheme.colorScheme.error
+                    text = stringResource(R.string.clients_item_name_label),
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    text = client.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = stringResource(R.string.clients_item_building_label),
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    text = buildingName,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = stringResource(R.string.clients_item_subscription_label),
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    text = client.subscriptionNumber,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = stringResource(R.string.clients_item_package_label),
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    text = client.packageType,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                val statusText = when (status) {
+                    PaymentStatus.UNPAID ->
+                        stringResource(R.string.clients_status_unpaid)
+                    PaymentStatus.PARTIAL ->
+                        stringResource(R.string.clients_status_partial)
+                    PaymentStatus.FULL ->
+                        stringResource(R.string.clients_status_full)
+                }
+                val statusColor = when (status) {
+                    PaymentStatus.UNPAID -> MaterialTheme.colorScheme.error
+                    PaymentStatus.PARTIAL -> MaterialTheme.colorScheme.primary
+                    PaymentStatus.FULL -> MaterialTheme.colorScheme.tertiary
+                }
+
+                Text(
+                    text = stringResource(R.string.clients_status_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = statusColor
+                )
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = statusColor
                 )
             }
 
             Spacer(Modifier.width(8.dp))
 
-            if (!isPaid) {
-                Button(
-                    onClick = { onShowPaymentDialog(true) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    )
-                ) {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("تأكيد", color = MaterialTheme.colorScheme.onTertiary)
+            when (status) {
+                PaymentStatus.UNPAID, PaymentStatus.PARTIAL -> {
+                    Button(
+                        onClick = onShowPaymentDialog,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.building_details_confirm_payment),
+                            color = MaterialTheme.colorScheme.onTertiary
+                        )
+                    }
                 }
-            } else {
-                OutlinedButton(
-                    onClick = { onShowPaymentDialog(false) }
-                ) {
-                    Icon(Icons.Filled.Close, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("تراجع", color = MaterialTheme.colorScheme.primary)
+
+                PaymentStatus.FULL -> {
+                    OutlinedButton(
+                        onClick = onShowPaymentDialog
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.building_details_revert_payment),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

@@ -1,7 +1,12 @@
 package com.pronetwork.app.data
 
 import androidx.lifecycle.LiveData
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 
 @Dao
 interface PaymentTransactionDao {
@@ -43,6 +48,28 @@ interface PaymentTransactionDao {
 
     @Query("SELECT paymentId FROM payment_transactions WHERE id = :transactionId LIMIT 1")
     suspend fun getPaymentIdByTransactionId(transactionId: Int): Int?
+
+    // تحصيل يومي لكل مبنى (مع الحفاظ على منطقك، فقط تعديل بسيط في count)
+    @Query(
+        """
+    SELECT 
+        c.buildingId AS buildingId,
+        COALESCE(b.name, 'مبنى غير معروف') AS buildingName,
+        COALESCE(SUM(pt.amount), 0) AS totalAmount,
+        COUNT(DISTINCT c.id) AS clientsCount
+    FROM payment_transactions AS pt
+    INNER JOIN payments AS p ON p.id = pt.paymentId
+    INNER JOIN clients AS c ON c.id = p.clientId
+    LEFT JOIN buildings AS b ON b.id = c.buildingId
+    WHERE pt.date >= :dayStartMillis AND pt.date < :dayEndMillis
+    GROUP BY c.buildingId, b.name
+    ORDER BY b.name COLLATE NOCASE ASC
+    """
+    )
+    suspend fun getDailyBuildingCollectionsForDay(
+        dayStartMillis: Long,
+        dayEndMillis: Long
+    ): List<DailyBuildingCollection>
 
     data class PaymentTotal(
         val paymentId: Int,

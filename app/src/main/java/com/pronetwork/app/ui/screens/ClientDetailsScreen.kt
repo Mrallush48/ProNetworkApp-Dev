@@ -14,9 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LiveData
+import com.pronetwork.app.R
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentTransaction
@@ -34,45 +36,44 @@ fun ClientDetailsScreen(
     monthUiList: List<ClientMonthPaymentUi>,
     onEdit: (Client) -> Unit,
     onDelete: (Client) -> Unit,
-    onTogglePayment: (month: String, monthAmount: Double, shouldPay: Boolean) -> Unit,           // ✅ تعديل: إضافة monthAmount
-    onPartialPaymentRequest: (month: String, monthAmount: Double, partialAmount: Double) -> Unit,    // ✅ تعديل: إضافة monthAmount
+    onTogglePayment: (month: String, monthAmount: Double, shouldPay: Boolean) -> Unit,
+    onPartialPaymentRequest: (month: String, monthAmount: Double, partialAmount: Double) -> Unit,
     getMonthTransactions: (String) -> LiveData<List<PaymentTransaction>>,
     onDeleteTransaction: (Int) -> Unit,
-    onAddReverseTransaction: (month: String, monthAmount: Double, refundAmount: Double, reason: String) -> Unit, // ✅ تعديل: إضافة monthAmount
+    onAddReverseTransaction: (month: String, monthAmount: Double, refundAmount: Double, reason: String) -> Unit,
     onBack: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // للحوار الخاص بالدفع الجزئي
     var partialPaymentMonth by remember { mutableStateOf<String?>(null) }
     var partialPaymentAmountText by remember { mutableStateOf("") }
-    var partialPaymentMonthAmount by remember { mutableStateOf(0.0) }   // ✅ جديد: لتخزين مبلغ الشهر
+    var partialPaymentMonthAmount by remember { mutableStateOf(0.0) }
 
-    // للحوار الخاص بتأكيد الدفع الكامل
     var confirmFullPaymentMonth by remember { mutableStateOf<String?>(null) }
-    var confirmFullPaymentMonthAmount by remember { mutableStateOf(0.0) } // ✅ جديد: لتخزين مبلغ الشهر
+    var confirmFullPaymentMonthAmount by remember { mutableStateOf(0.0) }
 
-    // للحوار الخاص بتأكيد التراجع عن الدفع
     var confirmCancelPaymentMonth by remember { mutableStateOf<String?>(null) }
-    var confirmCancelPaymentMonthAmount by remember { mutableStateOf(0.0) } // ✅ جديد: لتخزين مبلغ الشهر
+    var confirmCancelPaymentMonthAmount by remember { mutableStateOf(0.0) }
 
-    // للحوار الخاص بحذف الحركة
     var deleteTransactionId by remember { mutableStateOf<Int?>(null) }
 
-    // للحوار الخاص بالحركة العكسية (استرجاع/رصيد)
     var reverseMonth by remember { mutableStateOf<String?>(null) }
     var reverseAmountText by remember { mutableStateOf("") }
     var reverseReasonText by remember { mutableStateOf("") }
     var reverseMaxAmount by remember { mutableStateOf(0.0) }
-    var reverseMonthAmount by remember { mutableStateOf(0.0) } // ✅ جديد: لتخزين مبلغ الشهر
+    var reverseMonthAmount by remember { mutableStateOf(0.0) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("تفاصيل العميل") },
+                title = { Text(stringResource(R.string.client_details_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_navigate_back)
+                        )
+
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -100,7 +101,7 @@ fun ClientDetailsScreen(
                 ) {
                     Column(Modifier.padding(20.dp)) {
                         Text(
-                            "معلومات العميل",
+                            text = stringResource(R.string.client_details_info_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -112,19 +113,25 @@ fun ClientDetailsScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text("الاسم:", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    text = stringResource(R.string.client_details_name_label),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    client.name,
+                                    text = client.name,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Column(Modifier.weight(1f)) {
-                                Text("رقم الاشتراك:", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    text = stringResource(R.string.client_details_subscription_label),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    client.subscriptionNumber,
+                                    text = client.subscriptionNumber,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -140,14 +147,26 @@ fun ClientDetailsScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text("المبنى:", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    text = stringResource(R.string.client_details_building_label),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
-                                Text(buildingName, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = buildingName,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
                             }
                             Column(Modifier.weight(1f)) {
-                                Text("الباقة:", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    text = stringResource(R.string.client_details_package_label),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
-                                Text(client.packageType, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = client.packageType,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
                             }
                         }
 
@@ -158,20 +177,29 @@ fun ClientDetailsScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text("السعر الشهري:", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    text = stringResource(R.string.client_details_monthly_price_label),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "${client.price} ريال",
+                                    text = stringResource(
+                                        R.string.client_details_monthly_price_value,
+                                        client.price
+                                    ),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
                             Column(Modifier.weight(1f)) {
-                                Text("شهر البداية:", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    text = stringResource(R.string.client_details_start_month_label),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    formatYearMonth(client.startMonth),
+                                    text = formatYearMonth(client.startMonth),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -179,32 +207,53 @@ fun ClientDetailsScreen(
 
                         if (!client.roomNumber.isNullOrEmpty()) {
                             Spacer(Modifier.height(16.dp))
-                            Text("رقم الغرفة:", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = stringResource(R.string.client_details_room_label),
+                                style = MaterialTheme.typography.labelMedium
+                            )
                             Spacer(Modifier.height(4.dp))
-                            Text(client.roomNumber, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = client.roomNumber,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
 
                         if (client.phone.isNotEmpty()) {
                             Spacer(Modifier.height(16.dp))
                             HorizontalDivider()
                             Spacer(Modifier.height(16.dp))
-                            Text("رقم الجوال:", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = stringResource(R.string.client_details_phone_label),
+                                style = MaterialTheme.typography.labelMedium
+                            )
                             Spacer(Modifier.height(4.dp))
-                            Text(client.phone, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = client.phone,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
 
                         if (client.address.isNotEmpty()) {
                             Spacer(Modifier.height(16.dp))
-                            Text("العنوان:", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = stringResource(R.string.client_details_address_label),
+                                style = MaterialTheme.typography.labelMedium
+                            )
                             Spacer(Modifier.height(4.dp))
-                            Text(client.address, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = client.address,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
 
                         if (client.notes.isNotEmpty()) {
                             Spacer(Modifier.height(16.dp))
                             HorizontalDivider()
                             Spacer(Modifier.height(16.dp))
-                            Text("ملاحظات:", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = stringResource(R.string.client_details_notes_label),
+                                style = MaterialTheme.typography.labelMedium
+                            )
                             Spacer(Modifier.height(8.dp))
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -213,7 +262,7 @@ fun ClientDetailsScreen(
                                 )
                             ) {
                                 Text(
-                                    client.notes,
+                                    text = client.notes,
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(16.dp)
                                 )
@@ -238,7 +287,7 @@ fun ClientDetailsScreen(
                     ) {
                         Icon(Icons.Filled.Edit, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text("تعديل")
+                        Text(stringResource(R.string.client_details_edit_button))
                     }
 
                     OutlinedButton(
@@ -250,12 +299,12 @@ fun ClientDetailsScreen(
                     ) {
                         Icon(Icons.Filled.Delete, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text("حذف")
+                        Text(stringResource(R.string.client_details_delete_button))
                     }
                 }
             }
 
-            // سجل المدفوعات باستخدام monthUiList
+            // سجل المدفوعات الشهرية
             if (monthUiList.isNotEmpty()) {
                 item {
                     Card(
@@ -272,14 +321,18 @@ fun ClientDetailsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "سجل المدفوعات الشهرية",
+                                text = stringResource(R.string.client_details_monthly_history_title),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             val paidCount = monthUiList.count { it.status == PaymentStatus.FULL }
                             Text(
-                                "$paidCount/${monthUiList.size}",
+                                text = stringResource(
+                                    R.string.client_details_monthly_history_counter,
+                                    paidCount,
+                                    monthUiList.size
+                                ),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.secondary
@@ -292,23 +345,34 @@ fun ClientDetailsScreen(
                     val month = item.month
                     val isPaidFull = item.status == PaymentStatus.FULL
                     val isPartial = item.status == PaymentStatus.PARTIAL
-                    val monthAmount = item.monthAmount // ✅ المبلغ الصحيح من monthUiList
+                    val monthAmount = item.monthAmount
 
-                    // ✅ تعديل: إزالة remember وربط مباشر بـ LiveData
                     val transactions by getMonthTransactions(month).observeAsState(emptyList())
 
                     val statusText: String
                     val statusColor = when {
                         isPaidFull -> {
-                            statusText = "مدفوع بالكامل (${item.totalPaid} / ${item.monthAmount})"
+                            statusText = stringResource(
+                                R.string.client_details_status_full,
+                                item.totalPaid,
+                                item.monthAmount
+                            )
                             MaterialTheme.colorScheme.tertiary
                         }
                         isPartial -> {
-                            statusText = "مدفوع جزئيًا (${item.totalPaid} / ${item.monthAmount})، المتبقي ${item.remaining} ريال"
+                            statusText = stringResource(
+                                R.string.client_details_status_partial,
+                                item.totalPaid,
+                                item.monthAmount,
+                                item.remaining
+                            )
                             MaterialTheme.colorScheme.secondary
                         }
                         else -> {
-                            statusText = "غير مدفوع (${item.monthAmount} ريال)"
+                            statusText = stringResource(
+                                R.string.client_details_status_unpaid,
+                                item.monthAmount
+                            )
                             MaterialTheme.colorScheme.error
                         }
                     }
@@ -330,21 +394,24 @@ fun ClientDetailsScreen(
                                 .padding(16.dp)
                         ) {
                             Text(
-                                formatYearMonth(month),
+                                text = formatYearMonth(month),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(Modifier.height(4.dp))
 
                             Text(
-                                statusText,
+                                text = statusText,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = statusColor
                             )
 
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "${item.monthAmount} ريال",
+                                text = stringResource(
+                                    R.string.client_details_month_amount_value,
+                                    item.monthAmount
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -353,19 +420,28 @@ fun ClientDetailsScreen(
                             if (transactions.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "حركات هذا الشهر:",
+                                    text = stringResource(
+                                        R.string.client_details_month_transactions_title
+                                    ),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 transactions.forEach { tx: PaymentTransaction ->
-                                    // ✅ تعديل: إزالة remember وحساب مباشر
-                                    val dateText = DateFormat.format("yyyy-MM-dd HH:mm", tx.date).toString()
+                                    val dateText = DateFormat.format(
+                                        "yyyy-MM-dd HH:mm",
+                                        tx.date
+                                    ).toString()
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "- ${tx.amount} ريال (${tx.notes ?: ""}) - $dateText",
+                                            text = stringResource(
+                                                R.string.client_details_month_transaction_line,
+                                                tx.amount,
+                                                tx.notes ?: "",
+                                                dateText
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                             modifier = Modifier.weight(1f)
                                         )
@@ -377,7 +453,9 @@ fun ClientDetailsScreen(
                                                 }
                                             ) {
                                                 Text(
-                                                    text = "حذف",
+                                                    text = stringResource(
+                                                        R.string.client_details_month_transaction_delete
+                                                    ),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.error
                                                 )
@@ -394,53 +472,66 @@ fun ClientDetailsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 if (isPaidFull) {
-                                    // عندما يكون مدفوع بالكامل: نعرض زر تراجع عن الدفع
                                     OutlinedButton(
                                         onClick = {
                                             confirmCancelPaymentMonth = month
-                                            confirmCancelPaymentMonthAmount = monthAmount   // ✅
+                                            confirmCancelPaymentMonthAmount = monthAmount
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("تراجع عن الدفع")
+                                        Text(
+                                            stringResource(
+                                                R.string.client_details_action_cancel_payment
+                                            )
+                                        )
                                     }
                                 } else {
-                                    // عندما لا يكون مدفوع بالكامل: تأكيد كامل + دفع جزئي
                                     Button(
                                         onClick = {
                                             confirmFullPaymentMonth = month
-                                            confirmFullPaymentMonthAmount = monthAmount   // ✅
+                                            confirmFullPaymentMonthAmount = monthAmount
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("تأكيد الدفع الكامل")
+                                        Text(
+                                            stringResource(
+                                                R.string.client_details_action_confirm_full_payment
+                                            )
+                                        )
                                     }
 
                                     OutlinedButton(
                                         onClick = {
                                             partialPaymentMonth = month
                                             partialPaymentAmountText = ""
-                                            partialPaymentMonthAmount = monthAmount       // ✅
+                                            partialPaymentMonthAmount = monthAmount
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("دفع جزئي")
+                                        Text(
+                                            stringResource(
+                                                R.string.client_details_action_partial_payment
+                                            )
+                                        )
                                     }
                                 }
 
                                 if (item.totalPaid > 0.0) {
-                                    // زر استرجاع مبلغ
                                     OutlinedButton(
                                         onClick = {
                                             reverseMonth = month
                                             reverseAmountText = ""
                                             reverseReasonText = ""
-                                            reverseMaxAmount = item.totalPaid   // سقف الاسترجاع
-                                            reverseMonthAmount = monthAmount    // ✅
+                                            reverseMaxAmount = item.totalPaid
+                                            reverseMonthAmount = monthAmount
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("استرجاع مبلغ")
+                                        Text(
+                                            stringResource(
+                                                R.string.client_details_action_refund
+                                            )
+                                        )
                                     }
                                 }
                             }
@@ -457,20 +548,36 @@ fun ClientDetailsScreen(
             val month = partialPaymentMonth!!
             AlertDialog(
                 onDismissRequest = { partialPaymentMonth = null },
-                title = { Text("دفع جزئي - ${formatYearMonth(month)}") },
+                title = {
+                    Text(
+                        stringResource(
+                            R.string.client_details_partial_title,
+                            formatYearMonth(month)
+                        )
+                    )
+                },
                 text = {
                     Column {
-                        Text("أدخل المبلغ الذي دفعه العميل لهذا الشهر:")
+                        Text(stringResource(R.string.client_details_partial_text))
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = partialPaymentAmountText,
                             onValueChange = { partialPaymentAmountText = it },
                             singleLine = true,
-                            label = { Text("المبلغ بالريال") }
+                            label = {
+                                Text(
+                                    stringResource(
+                                        R.string.client_details_partial_amount_label
+                                    )
+                                )
+                            }
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "السعر الشهري: ${partialPaymentMonthAmount} ريال", // ✅ تعديل: استخدام monthAmount
+                            text = stringResource(
+                                R.string.client_details_partial_month_price,
+                                partialPaymentMonthAmount
+                            ),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -480,17 +587,25 @@ fun ClientDetailsScreen(
                         onClick = {
                             val amount = partialPaymentAmountText.toDoubleOrNull()
                             if (amount != null && amount > 0.0) {
-                                onPartialPaymentRequest(month, partialPaymentMonthAmount, amount) // ✅ تعديل: إرسال monthAmount
+                                onPartialPaymentRequest(
+                                    month,
+                                    partialPaymentMonthAmount,
+                                    amount
+                                )
                                 partialPaymentMonth = null
                             }
                         }
                     ) {
-                        Text("تأكيد الدفع الجزئي")
+                        Text(
+                            stringResource(
+                                R.string.client_details_partial_confirm
+                            )
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { partialPaymentMonth = null }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -501,56 +616,89 @@ fun ClientDetailsScreen(
             val month = confirmFullPaymentMonth!!
             AlertDialog(
                 onDismissRequest = { confirmFullPaymentMonth = null },
-                title = { Text("تأكيد الدفع الكامل") },
+                title = {
+                    Text(
+                        stringResource(
+                            R.string.client_details_full_confirm_title
+                        )
+                    )
+                },
                 text = {
                     Text(
-                        "هل أنت متأكد من تأكيد الدفع الكامل لشهر ${formatYearMonth(month)} " +
-                                "بقيمة ${confirmFullPaymentMonthAmount} ريال؟" // ✅ تعديل: استخدام monthAmount
+                        stringResource(
+                            R.string.client_details_full_confirm_text,
+                            formatYearMonth(month),
+                            confirmFullPaymentMonthAmount
+                        )
                     )
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            onTogglePayment(month, confirmFullPaymentMonthAmount, true) // ✅ تعديل: إرسال monthAmount
+                            onTogglePayment(
+                                month,
+                                confirmFullPaymentMonthAmount,
+                                true
+                            )
                             confirmFullPaymentMonth = null
                         }
                     ) {
-                        Text("نعم، تأكيد")
+                        Text(
+                            stringResource(
+                                R.string.client_details_full_confirm_yes
+                            )
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { confirmFullPaymentMonth = null }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
         }
 
-        // حوار التراجع عن الدفع الكامل
+        // حوار التراجع عن الدفع
         if (confirmCancelPaymentMonth != null) {
             val month = confirmCancelPaymentMonth!!
             AlertDialog(
                 onDismissRequest = { confirmCancelPaymentMonth = null },
-                title = { Text("تراجع عن الدفع") },
+                title = {
+                    Text(
+                        stringResource(
+                            R.string.client_details_cancel_confirm_title
+                        )
+                    )
+                },
                 text = {
                     Text(
-                        "هل أنت متأكد من التراجع عن دفع شهر ${formatYearMonth(month)}؟\n" +
-                                "سيتم اعتبار الشهر غير مدفوع، وسيتم حذف جميع حركات الدفع لهذا الشهر."
+                        stringResource(
+                            R.string.client_details_cancel_confirm_text,
+                            formatYearMonth(month)
+                        )
                     )
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            onTogglePayment(month, confirmCancelPaymentMonthAmount, false) // ✅ تعديل: إرسال monthAmount
+                            onTogglePayment(
+                                month,
+                                confirmCancelPaymentMonthAmount,
+                                false
+                            )
                             confirmCancelPaymentMonth = null
                         }
                     ) {
-                        Text("نعم، تراجع")
+                        Text(
+                            stringResource(
+                                R.string.client_details_cancel_confirm_yes
+                            )
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { confirmCancelPaymentMonth = null }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -560,9 +708,19 @@ fun ClientDetailsScreen(
         if (deleteTransactionId != null) {
             AlertDialog(
                 onDismissRequest = { deleteTransactionId = null },
-                title = { Text("حذف حركة الدفع") },
+                title = {
+                    Text(
+                        stringResource(
+                            R.string.client_details_delete_tx_title
+                        )
+                    )
+                },
                 text = {
-                    Text("هل أنت متأكد من حذف هذه الحركة نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.")
+                    Text(
+                        stringResource(
+                            R.string.client_details_delete_tx_text
+                        )
+                    )
                 },
                 confirmButton = {
                     Button(
@@ -574,49 +732,81 @@ fun ClientDetailsScreen(
                             deleteTransactionId = null
                         }
                     ) {
-                        Text("نعم، حذف")
+                        Text(
+                            stringResource(
+                                R.string.client_details_delete_tx_yes
+                            )
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { deleteTransactionId = null }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
         }
 
-        // حوار الحركة العكسية (استرجاع/رصيد)
+        // حوار الاسترجاع
         if (reverseMonth != null) {
             val month = reverseMonth!!
             AlertDialog(
                 onDismissRequest = { reverseMonth = null },
-                title = { Text("استرجاع مبلغ - ${formatYearMonth(month)}") },
+                title = {
+                    Text(
+                        stringResource(
+                            R.string.client_details_refund_title,
+                            formatYearMonth(month)
+                        )
+                    )
+                },
                 text = {
                     Column {
-                        Text("أدخل المبلغ الذي تريد استرجاعه من هذا الشهر:")
+                        Text(
+                            stringResource(
+                                R.string.client_details_refund_text
+                            )
+                        )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = reverseAmountText,
                             onValueChange = { reverseAmountText = it },
                             singleLine = true,
-                            label = { Text("المبلغ بالريال (سيُسجّل بالسالب)") }
+                            label = {
+                                Text(
+                                    stringResource(
+                                        R.string.client_details_refund_amount_label
+                                    )
+                                )
+                            }
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = reverseReasonText,
                             onValueChange = { reverseReasonText = it },
                             singleLine = false,
-                            label = { Text("سبب الاسترجاع (إجباري)") }
+                            label = {
+                                Text(
+                                    stringResource(
+                                        R.string.client_details_refund_reason_label
+                                    )
+                                )
+                            }
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "الحد الأقصى للاسترداد: ${reverseMaxAmount} ريال",
+                            text = stringResource(
+                                R.string.client_details_refund_max,
+                                reverseMaxAmount
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
                         if (reverseReasonText.isBlank()) {
                             Text(
-                                "يجب كتابة سبب الاسترجاع.",
+                                text = stringResource(
+                                    R.string.client_details_refund_reason_required
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -632,25 +822,39 @@ fun ClientDetailsScreen(
                     Button(
                         onClick = {
                             val amount = reverseAmountText.toDoubleOrNull()
-                            if (amount != null && amount > 0.0 && amount <= reverseMaxAmount && reverseReasonText.isNotBlank()) {
+                            if (amount != null &&
+                                amount > 0.0 &&
+                                amount <= reverseMaxAmount &&
+                                reverseReasonText.isNotBlank()
+                            ) {
                                 val reason = reverseReasonText.trim()
-                                onAddReverseTransaction(month, reverseMonthAmount, amount, reason) // ✅ تعديل: إرسال monthAmount
+                                onAddReverseTransaction(
+                                    month,
+                                    reverseMonthAmount,
+                                    amount,
+                                    reason
+                                )
                                 reverseMonth = null
                             }
                         },
                         enabled = canConfirm
                     ) {
-                        Text("تأكيد الاسترجاع")
+                        Text(
+                            stringResource(
+                                R.string.client_details_refund_confirm
+                            )
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { reverseMonth = null }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
         }
 
+        // حوار حذف العميل
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
@@ -663,13 +867,19 @@ fun ClientDetailsScreen(
                     )
                 },
                 title = {
-                    Text("تأكيد الحذف", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = stringResource(
+                            R.string.client_details_delete_client_title
+                        ),
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 text = {
                     Text(
-                        "هل أنت متأكد من حذف العميل \"${client.name}\"؟\n\n" +
-                                "سيتم حذف جميع سجلات المدفوعات المرتبطة بهذا العميل.\n\n" +
-                                "لا يمكن التراجع عن هذا الإجراء."
+                        text = stringResource(
+                            R.string.client_details_delete_client_text,
+                            client.name
+                        )
                     )
                 },
                 confirmButton = {
@@ -683,12 +893,16 @@ fun ClientDetailsScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("نعم، احذف")
+                        Text(
+                            stringResource(
+                                R.string.client_details_delete_client_yes
+                            )
+                        )
                     }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { showDeleteDialog = false }) {
-                        Text("إلغاء")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -701,7 +915,7 @@ private fun formatYearMonth(yearMonth: String): String {
         val (year, month) = yearMonth.split("-").map { it.toInt() }
         val calendar = Calendar.getInstance()
         calendar.set(year, month - 1, 1)
-        val monthFormat = SimpleDateFormat("MMMM yyyy", Locale("ar"))
+        val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
         monthFormat.format(calendar.time)
     } catch (e: Exception) {
         yearMonth

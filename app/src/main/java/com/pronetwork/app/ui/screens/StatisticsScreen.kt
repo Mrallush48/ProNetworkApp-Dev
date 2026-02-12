@@ -1,35 +1,31 @@
 package com.pronetwork.app.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.pronetwork.app.R
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.viewmodel.PaymentViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
     clientsCount: Int,
     buildingsCount: Int,
-    // إحصائيات الشهر المختار من PaymentViewModel
     monthStats: PaymentViewModel.MonthStats?,
-    // قائمة الشهور المتاحة بصيغة yyyy-MM
     monthOptions: List<String>,
-    // الشهر الحالي المختار في ViewModel
     selectedMonth: String,
-    // تغيير الشهر في الـ ViewModel
     onMonthChange: (String) -> Unit,
-    // يمكن استخدامه لاحقاً لإظهار قائمة المتأخرين بدقة من payments
     allClients: List<Client> = emptyList()
 ) {
     var monthDropdownExpanded by remember { mutableStateOf(false) }
 
-    // نضمن أن selectedMonth دائمًا ضمن options
     val safeSelectedMonth = remember(selectedMonth, monthOptions) {
         if (monthOptions.contains(selectedMonth)) selectedMonth
         else monthOptions.firstOrNull().orEmpty()
@@ -42,7 +38,7 @@ fun StatisticsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            "إحصائيات التطبيق",
+            text = stringResource(R.string.screen_stats),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -57,7 +53,7 @@ fun StatisticsScreen(
                 value = safeSelectedMonth,
                 onValueChange = { },
                 readOnly = true,
-                label = { Text("الشهر") },
+                label = { Text(stringResource(R.string.stats_month_label)) },
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthDropdownExpanded)
                 },
@@ -87,31 +83,36 @@ fun StatisticsScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatCard(
-                title = "إجمالي العملاء",
+                title = stringResource(R.string.stats_total_clients),
                 value = clientsCount.toString(),
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "المباني",
+                title = stringResource(R.string.stats_total_buildings),
                 value = buildingsCount.toString(),
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // إذا كانت إحصائيات الشهر جاهزة نعرضها، وإلا نظهر حالة تحميل بسيطة
         if (monthStats != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatCard(
-                    title = "العملاء المدفوع لهم",
+                    title = stringResource(R.string.stats_paid_clients),
                     value = monthStats.paidCount.toString(),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "العملاء غير المدفوع لهم",
+                    title = stringResource(R.string.stats_partial_clients),
+                    value = monthStats.partiallyPaidCount.toString(),
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = stringResource(R.string.stats_unpaid_clients),
                     value = monthStats.unpaidCount.toString(),
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f)
@@ -123,20 +124,19 @@ fun StatisticsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatCard(
-                    title = "إجمالي المبلغ المحصل",
-                    value = formatCurrency(monthStats.totalPaidAmount),
+                    title = stringResource(R.string.stats_total_paid_amount),
+                    value = formatCurrencyLocalized(monthStats.totalPaidAmount),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "إجمالي المبلغ المتبقي",
-                    value = formatCurrency(monthStats.totalUnpaidAmount),
+                    title = stringResource(R.string.stats_total_unpaid_amount),
+                    value = formatCurrencyLocalized(monthStats.totalUnpaidAmount),
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f)
                 )
             }
         } else {
-            // حالة لا تزال الـ LiveData لم ترجع قيمة بعد
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,9 +146,6 @@ fun StatisticsScreen(
                 CircularProgressIndicator()
             }
         }
-
-        // يمكن لاحقاً إضافة قسم "العملاء المتأخرين" مبني على جدول payments
-        // بدون استخدام client.isPaid نهائياً، وبمنطق يتوافق مع طريقتك في التحصيل.
     }
 }
 
@@ -168,12 +165,12 @@ fun StatCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                value,
+                text = value,
                 style = MaterialTheme.typography.headlineMedium,
                 color = color
             )
             Text(
-                title,
+                text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -181,7 +178,16 @@ fun StatCard(
     }
 }
 
-// تنسيق مبالغ بشكل بسيط (يمكن تحسينه لاحقاً بإضافة Locale مخصص)
-private fun formatCurrency(amount: Double): String {
-    return String.format("%.2f ر.س", amount)
+// تنسيق مبالغ حسب Locale الحالي + عملة من strings
+@Composable
+private fun formatCurrencyLocalized(amount: Double): String {
+    val numberFormat = remember {
+        NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+    }
+    val formatted = numberFormat.format(amount)
+    val suffix = stringResource(R.string.currency_suffix_sar)
+    return stringResource(R.string.stats_amount_with_suffix, formatted, suffix)
 }

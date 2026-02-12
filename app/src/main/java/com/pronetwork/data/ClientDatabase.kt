@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [Client::class, Payment::class, PaymentTransaction::class],
-    version = 5, // رفعنا من 4 إلى 5 لإضافة جدول payment_transactions
+    entities = [Client::class, Payment::class, PaymentTransaction::class, Building::class],
+    version = 5,
     exportSchema = false
 )
 abstract class ClientDatabase : RoomDatabase() {
@@ -17,6 +17,7 @@ abstract class ClientDatabase : RoomDatabase() {
     abstract fun clientDao(): ClientDao
     abstract fun paymentDao(): PaymentDao
     abstract fun paymentTransactionDao(): PaymentTransactionDao
+    abstract fun buildingDao(): BuildingDao
 
     companion object {
         @Volatile

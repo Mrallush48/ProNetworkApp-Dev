@@ -19,4 +19,451 @@
     <string name="price">السعر (ر.س)</string>
     <string name="save">حفظ</string>
     <string name="month">الشهر: %s</string>
+    <!-- Bottom navigation -->
+    <string name="screen_clients">المشتركين</string>
+    <string name="screen_buildings">المباني</string>
+    <string name="screen_stats">إحصائيات</string>
+
+    <!-- Common actions -->
+    <string name="action_add">إضافة</string>
+    <string name="action_edit">تعديل</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_confirm">تأكيد</string>
+    <string name="action_cancel">إلغاء</string>
+    <!-- Clients screen -->
+    <string name="clients_title_with_month">العملاء (%1$s)</string>
+    <string name="clients_filters_show">خيارات البحث</string>
+    <string name="clients_filters_hide">إخفاء البحث</string>
+    <string name="clients_browse_by_month">تصفح العملاء حسب الشهر</string>
+    <string name="clients_search_placeholder">بحث...</string>
+    <string name="clients_filter_and_sort">الفلترة والفرز</string>
+    <string name="clients_filter_building_label">المبنى</string>
+    <string name="clients_filter_all_buildings">كل المباني</string>
+    <string name="clients_filter_package_label">الباقة</string>
+    <string name="clients_filter_all_packages">كل الباقات</string>
+    <string name="clients_filter_sort_by_start">فرز حسب تاريخ بداية الاشتراك</string>
+    <string name="clients_filter_apply">تطبيق</string>
+    <string name="clients_filter_clear">مسح الفلاتر</string>
+    <string name="clients_add_requires_building">
+        يجب إضافة مبنى أولاً قبل إضافة عميل.
+    </string>
+
+    <!-- Stats & daily collection -->
+    <string name="stats_daily_collection">التحصيل اليومي</string>
+    <string name="stats_back_to_statistics">رجوع إلى الإحصائيات</string>
+
+    <!-- Buildings screen -->
+    <string name="buildings_search_label">بحث عن مبنى</string>
+    <string name="buildings_search_clear">مسح البحث</string>
+    <string name="buildings_add_button">إضافة مبنى</string>
+    <string name="buildings_name_label">اسم المبنى: %1$s</string>
+    <string name="buildings_location_label">الموقع: %1$s</string>
+    <string name="buildings_notes_label">ملاحظات: %1$s</string>
+
+    <!-- Building details -->
+    <string name="building_details_back">رجوع</string>
+    <string name="building_details_add_client">إضافة عميل</string>
+
+    <string name="building_details_info_title">معلومات المبنى</string>
+    <string name="building_details_location_label">الموقع:</string>
+    <string name="building_details_notes_label">ملاحظات:</string>
+    <string name="building_details_floors_label">عدد الطوابق:</string>
+    <string name="building_details_manager_label">اسم المدير:</string>
+    <string name="building_details_edit_building">تعديل المبنى</string>
+    <string name="building_details_delete_building">حذف المبنى</string>
+
+    <string name="building_details_browse_by_month">تصفح العملاء حسب الشهر</string>
+    <string name="building_details_clients_in_month">
+        عملاء المبنى في %1$s:
+    </string>
+
+    <string name="building_details_client_name_label">الاسم:</string>
+    <string name="building_details_client_subscription_label">رقم الاشتراك:</string>
+    <string name="building_details_client_phone_label">رقم الجوال:</string>
+
+    <string name="building_details_status_unpaid">غير مدفوع</string>
+    <string name="building_details_status_partial">مدفوع جزئيًا</string>
+    <string name="building_details_status_full">مدفوع</string>
+    <string name="building_details_status_label">الحالة:</string>
+
+    <string name="building_details_confirm_payment">تأكيد</string>
+    <string name="building_details_revert_payment">تراجع</string>
+    <string name="building_details_edit_client">تعديل العميل</string>
+    <string name="building_details_delete_client">حذف العميل</string>
+    <string name="building_details_no_clients_this_month">
+        لا يوجد عملاء في هذا الشهر.
+    </string>
+
+    <string name="building_details_dialog_confirm_title">تأكيد الدفع</string>
+    <string name="building_details_dialog_revert_title">تراجع عن الدفع</string>
+    <string name="building_details_dialog_confirm_text">
+        هل أنت متأكد من تأكيد دفع شهر %1$s؟
+    </string>
+    <string name="building_details_dialog_revert_text">
+        هل أنت متأكد من التراجع عن دفع شهر %1$s؟
+    </string>
+    <string name="building_details_dialog_client_name">
+        العميل: %1$s
+    </string>
+    <string name="building_details_dialog_month">الشهر: %1$s</string>
+    <string name="building_details_dialog_amount">
+        المبلغ: %1$.2f ريال
+    </string>
+    <string name="building_details_dialog_yes_confirm">
+        نعم، تأكيد
+    </string>
+    <string name="building_details_dialog_yes_revert">
+        نعم، تراجع
+    </string>
+
+    <string name="building_details_delete_building_title">
+        تأكيد حذف المبنى
+    </string>
+    <string name="building_details_delete_building_text">
+        هل أنت متأكد من حذف المبنى "%1$s"؟
+    </string>
+    <string name="building_details_delete_building_warning">
+        تحذير: سيتم حذف جميع العملاء المرتبطين بهذا المبنى.
+    </string>
+    <string name="building_details_delete_building_confirm">
+        نعم، احذف
+    </string>
+
+    <string name="building_details_delete_client_title">
+        تأكيد الحذف
+    </string>
+    <string name="building_details_delete_client_full_text">
+        هل أنت متأكد من حذف العميل "%1$s" نهائيًا من جميع الشهور؟
+    </string>
+    <string name="building_details_delete_client_full_warning">
+        تحذير: سيتم حذف العميل بالكامل.
+    </string>
+    <string name="building_details_delete_client_stop_text">
+        هل تريد إيقاف اشتراك العميل "%1$s" ابتداءً من شهر %2$s؟
+    </string>
+    <string name="building_details_delete_client_stop_info">
+        سيبقى العميل ظاهرًا في الشهور السابقة لـ %1$s.
+    </string>
+    <string name="building_details_delete_client_confirm">حذف</string>
+
+    <!-- Clients list screen -->
+    <string name="clients_count_label">عدد العملاء: %1$d</string>
+    <string name="clients_add_button">إضافة عميل</string>
+    <string name="clients_no_clients_in_month">
+        لا يوجد عملاء في هذا الشهر.
+    </string>
+    <string name="clients_building_none">بدون مبنى</string>
+
+    <string name="clients_item_name_label">الاسم:</string>
+    <string name="clients_item_building_label">المبنى:</string>
+    <string name="clients_item_subscription_label">رقم الاشتراك:</string>
+    <string name="clients_item_package_label">الباقة:</string>
+
+    <string name="clients_status_unpaid">غير مدفوع</string>
+    <string name="clients_status_partial">مدفوع جزئيًا</string>
+    <string name="clients_status_full">مدفوع</string>
+    <string name="clients_status_label">الحالة:</string>
+
+    <string name="clients_dialog_confirm_title">تأكيد الدفع</string>
+    <string name="clients_dialog_revert_title">تراجع عن الدفع</string>
+    <string name="clients_dialog_confirm_text">
+        هل أنت متأكد من تأكيد دفع شهر %1$s؟
+    </string>
+    <string name="clients_dialog_revert_text">
+        هل أنت متأكد من التراجع عن دفع شهر %1$s؟
+    </string>
+    <string name="clients_dialog_client_name">
+        العميل: %1$s
+    </string>
+    <string name="clients_dialog_month">الشهر: %1$s</string>
+    <string name="clients_dialog_amount">
+        المبلغ: %1$.2f ريال
+    </string>
+    <string name="clients_dialog_yes_confirm">
+        نعم، تأكيد
+    </string>
+    <string name="clients_dialog_yes_revert">
+        نعم، تراجع
+    </string>
+
+    <!-- Client details screen -->
+    <string name="client_details_title">تفاصيل العميل</string>
+
+    <!-- Client info card -->
+    <string name="client_details_info_title">معلومات العميل</string>
+    <string name="client_details_name_label">الاسم:</string>
+    <string name="client_details_subscription_label">رقم الاشتراك:</string>
+    <string name="client_details_building_label">المبنى:</string>
+    <string name="client_details_package_label">الباقة:</string>
+    <string name="client_details_monthly_price_label">السعر الشهري:</string>
+    <string name="client_details_monthly_price_value">%1$.2f ريال</string>
+    <string name="client_details_start_month_label">شهر البداية:</string>
+    <string name="client_details_room_label">رقم الغرفة:</string>
+    <string name="client_details_phone_label">رقم الجوال:</string>
+    <string name="client_details_address_label">العنوان:</string>
+    <string name="client_details_notes_label">ملاحظات:</string>
+
+    <!-- Actions -->
+    <string name="client_details_edit_button">تعديل</string>
+    <string name="client_details_delete_button">حذف</string>
+
+    <!-- Monthly payments summary -->
+    <string name="client_details_monthly_history_title">
+        سجل المدفوعات الشهرية
+    </string>
+    <string name="client_details_monthly_history_counter">
+        %1$d/%2$d
+    </string>
+
+    <!-- Month status texts -->
+    <string name="client_details_status_full">
+        مدفوع بالكامل (%1$.2f / %2$.2f)
+    </string>
+    <string name="client_details_status_partial">
+        مدفوع جزئيًا (%1$.2f / %2$.2f)، المتبقي %3$.2f ريال
+    </string>
+    <string name="client_details_status_unpaid">
+        غير مدفوع (%1$.2f ريال)
+    </string>
+    <string name="client_details_month_amount_value">
+        %1$.2f ريال
+    </string>
+
+    <string name="client_details_month_transactions_title">
+        حركات هذا الشهر:
+    </string>
+    <string name="client_details_month_transaction_line">
+        - %1$.2f ريال (%2$s) - %3$s
+    </string>
+    <string name="client_details_month_transaction_delete">حذف</string>
+
+    <!-- Month action buttons -->
+    <string name="client_details_action_cancel_payment">
+        تراجع عن الدفع
+    </string>
+    <string name="client_details_action_confirm_full_payment">
+        تأكيد الدفع الكامل
+    </string>
+    <string name="client_details_action_partial_payment">
+        دفع جزئي
+    </string>
+    <string name="client_details_action_refund">
+        استرجاع مبلغ
+    </string>
+
+    <!-- Partial payment dialog -->
+    <string name="client_details_partial_title">
+        دفع جزئي - %1$s
+    </string>
+    <string name="client_details_partial_text">
+        أدخل المبلغ الذي دفعه العميل لهذا الشهر:
+    </string>
+    <string name="client_details_partial_amount_label">
+        المبلغ بالريال
+    </string>
+    <string name="client_details_partial_month_price">
+        السعر الشهري: %1$.2f ريال
+    </string>
+    <string name="client_details_partial_confirm">
+        تأكيد الدفع الجزئي
+    </string>
+
+    <!-- Full payment confirm dialog -->
+    <string name="client_details_full_confirm_title">
+        تأكيد الدفع الكامل
+    </string>
+    <string name="client_details_full_confirm_text">
+        هل أنت متأكد من تأكيد الدفع الكامل لشهر %1$s بقيمة %2$.2f ريال؟
+    </string>
+    <string name="client_details_full_confirm_yes">
+        نعم، تأكيد
+    </string>
+
+    <!-- Cancel payment dialog -->
+    <string name="client_details_cancel_confirm_title">
+        تراجع عن الدفع
+    </string>
+    <string name="client_details_cancel_confirm_text">
+        هل أنت متأكد من التراجع عن دفع شهر %1$s؟\nسيتم اعتبار الشهر غير مدفوع وحذف جميع حركات الدفع لهذا الشهر.
+    </string>
+    <string name="client_details_cancel_confirm_yes">
+        نعم، تراجع
+    </string>
+
+    <!-- Delete transaction dialog -->
+    <string name="client_details_delete_tx_title">
+        حذف حركة الدفع
+    </string>
+    <string name="client_details_delete_tx_text">
+        هل أنت متأكد من حذف هذه الحركة نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.
+    </string>
+    <string name="client_details_delete_tx_yes">
+        نعم، حذف
+    </string>
+
+    <!-- Refund dialog -->
+    <string name="client_details_refund_title">
+        استرجاع مبلغ - %1$s
+    </string>
+    <string name="client_details_refund_text">
+        أدخل المبلغ الذي تريد استرجاعه من هذا الشهر:
+    </string>
+    <string name="client_details_refund_amount_label">
+        المبلغ بالريال (سيُسجّل بالسالب)
+    </string>
+    <string name="client_details_refund_reason_label">
+        سبب الاسترجاع (إجباري)
+    </string>
+    <string name="client_details_refund_max">
+        الحد الأقصى للاسترداد: %1$.2f ريال
+    </string>
+    <string name="client_details_refund_reason_required">
+        يجب كتابة سبب الاسترجاع.
+    </string>
+    <string name="client_details_refund_confirm">
+        تأكيد الاسترجاع
+    </string>
+
+    <!-- Delete client dialog -->
+    <string name="client_details_delete_client_title">
+        تأكيد الحذف
+    </string>
+    <string name="client_details_delete_client_text">
+        هل أنت متأكد من حذف العميل "%1$s"؟ سيتم حذف جميع سجلات المدفوعات المرتبطة بهذا العميل. لا يمكن التراجع عن هذا الإجراء.
+    </string>
+    <string name="client_details_delete_client_yes">
+        نعم، احذف
+    </string>
+
+    <!-- Client edit dialog -->
+    <string name="client_edit_title_add">إضافة عميل جديد</string>
+    <string name="client_edit_title_edit">تعديل العميل</string>
+
+    <string name="client_edit_name_label">الاسم *</string>
+    <string name="client_edit_name_error">الرجاء إدخال الاسم</string>
+
+    <string name="client_edit_subscription_label">رقم الاشتراك *</string>
+    <string name="client_edit_subscription_error">
+        الرجاء إدخال رقم الاشتراك
+    </string>
+
+    <string name="client_edit_price_label">
+        السعر الشهري الكامل (ريال) *
+    </string>
+    <string name="client_edit_price_error">
+        الرجاء إدخال السعر الشهري
+    </string>
+
+    <string name="client_edit_package_label">الباقة *</string>
+    <string name="client_edit_package_error">الرجاء اختيار الباقة</string>
+
+    <string name="client_edit_start_section_title">
+        تاريخ بداية الاشتراك
+    </string>
+    <string name="client_edit_start_month_label">
+        الشهر (yyyy-MM) *
+    </string>
+    <string name="client_edit_start_month_placeholder">2026-01</string>
+    <string name="client_edit_start_month_icon_cd">
+        اختر التاريخ
+    </string>
+    <string name="client_edit_start_month_error">
+        الرجاء إدخال شهر البداية
+    </string>
+
+    <string name="client_edit_start_day_label">اليوم *</string>
+    <string name="client_edit_start_day_placeholder">1-30</string>
+    <string name="client_edit_start_day_error">
+        الرجاء إدخال اليوم
+    </string>
+
+    <string name="client_edit_first_month_amount_label">
+        المبلغ الفعلي للشهر الأول (ريال) *
+    </string>
+    <string name="client_edit_first_month_amount_error">
+        الرجاء إدخال مبلغ الشهر الأول
+    </string>
+    <string name="client_edit_first_month_hint">
+        💡 الأيام المتبقية: %1$d من %2$d يوم
+    </string>
+
+    <string name="client_edit_building_label">المبنى *</string>
+    <string name="client_edit_building_error">
+        الرجاء اختيار المبنى
+    </string>
+
+    <string name="client_edit_phone_label">رقم الجوال</string>
+    <string name="client_edit_address_label">العنوان</string>
+    <string name="client_edit_notes_label">ملاحظات</string>
+
+    <string name="client_edit_cancel_button">إلغاء</string>
+    <string name="client_edit_save_button">حفظ</string>
+
+    <!-- Date picker dialog -->
+    <string name="month_picker_title">
+        اختر الشهر والسنة
+    </string>
+    <string name="month_picker_cancel">إلغاء</string>
+    <string name="month_picker_confirm">تأكيد</string>
+
+    <!-- ClientEditScreen top bar & save -->
+    <string name="client_edit_screen_title_add">إضافة عميل</string>
+    <string name="client_edit_screen_title_edit">تعديل عميل</string>
+    <string name="client_edit_screen_save_button">حفظ</string>
+
+    <!-- Common content descriptions -->
+    <string name="cd_navigate_back">رجوع</string>
+
+    <!-- ClientEditScreen specific placeholders/labels -->
+    <string name="client_edit_building_placeholder">اختر مبنى</string>
+
+    <!-- Simple fixed dates for ClientEditScreen dropdown -->
+    <string name="client_edit_date_jan_1">1 يناير</string>
+    <string name="client_edit_date_feb_1">1 فبراير</string>
+    <string name="client_edit_date_mar_1">1 مارس</string>
+    <string name="client_edit_date_apr_1">1 أبريل</string>
+    <string name="client_edit_date_may_1">1 مايو</string>
+    <string name="client_edit_date_jun_1">1 يونيو</string>
+    <string name="client_edit_date_jul_1">1 يوليو</string>
+    <string name="client_edit_date_aug_1">1 أغسطس</string>
+    <string name="client_edit_date_sep_1">1 سبتمبر</string>
+    <string name="client_edit_date_oct_1">1 أكتوبر</string>
+    <string name="client_edit_date_nov_1">1 نوفمبر</string>
+    <string name="client_edit_date_dec_1">1 ديسمبر</string>
+
+    <!-- حوار تعديل/إضافة مبنى -->
+    <string name="building_edit_title_add">إضافة مبنى</string>
+    <string name="building_edit_title_edit">تعديل مبنى</string>
+    <string name="building_edit_name_label">اسم المبنى</string>
+    <string name="building_edit_location_label">الموقع (رابط أو وصف)</string>
+    <string name="building_edit_notes_label">ملاحظات</string>
+    <string name="building_edit_save_button">حفظ</string>
+
+    <!-- شاشة التحصيل اليومي -->
+    <string name="daily_collection_prev_day">اليوم السابق</string>
+    <string name="daily_collection_next_day">اليوم التالي</string>
+    <string name="daily_collection_date_label">التاريخ: %1$s</string>
+    <string name="daily_collection_total_title">إجمالي التحصيل في هذا اليوم</string>
+    <string name="daily_collection_total_value">%1$.2f ريال</string>
+    <string name="daily_collection_by_building_title">تفصيل حسب المبنى:</string>
+    <string name="daily_collection_empty_for_day">لا توجد تحصيلات في هذا اليوم.</string>
+    <string name="daily_collection_building_name">المبنى: %1$s</string>
+    <string name="daily_collection_clients_count">عدد العملاء: %1$d</string>
+    <string name="daily_collection_building_total">المبلغ: %1$.2f ريال</string>
+
+    <!-- شاشة الإحصائيات -->
+    <string name="stats_month_label">الشهر</string>
+    <string name="stats_total_clients">إجمالي العملاء</string>
+    <string name="stats_total_buildings">المباني</string>
+    <string name="stats_paid_clients">العملاء المدفوع لهم</string>
+    <string name="stats_partial_clients">العملاء المدفوعين جزئيًا</string>
+    <string name="stats_unpaid_clients">العملاء غير المدفوع لهم</string>
+    <string name="stats_total_paid_amount">إجمالي المبلغ المحصل</string>
+    <string name="stats_total_unpaid_amount">إجمالي المبلغ المتبقي</string>
+    <string name="currency_suffix_sar">ر.س</string>
+    <string name="stats_amount_with_suffix">%1$s %2$s</string>
+
+    <string name="building_details_show_future_clients">عرض العملاء المستقبليين</string>
+
+
 </resources>
