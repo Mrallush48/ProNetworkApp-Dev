@@ -152,6 +152,7 @@ class MainActivity : ComponentActivity() {
             ProNetworkSpotTheme(
                 darkTheme = false // لاحقاً ممكن تربطه بإعداد النظام
             ) {
+                var refreshTrigger by remember { mutableStateOf(0) }
                 var currentScreen by remember { mutableStateOf("clients") }
                 var showClientDialog by remember { mutableStateOf(false) }
                 var showBuildingDialog by remember { mutableStateOf(false) }
@@ -230,14 +231,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 // تحميل نسبة التحصيل الشهرية
-                LaunchedEffect(Unit) {
+                LaunchedEffect(refreshTrigger) {
                     transactionRepository.getMonthlyCollectionRatio()
                         .collect { ratio ->
                             monthlyRatio = ratio
                         }
                 }
-
-
 
                 val monthsList = remember {
                     val calendar = Calendar.getInstance()
@@ -729,6 +728,9 @@ class MainActivity : ComponentActivity() {
                                                         month = month
                                                     )
                                                 }
+
+                                                refreshTrigger++
+
                                             }
                                         },
                                         onPartialPaymentRequest = { month, monthAmount, partialAmount ->
@@ -739,6 +741,9 @@ class MainActivity : ComponentActivity() {
                                                     monthAmount = monthAmount,
                                                     partialAmount = partialAmount
                                                 )
+
+                                                refreshTrigger++
+
                                             }
                                         },
                                         getMonthTransactions = { month ->
@@ -749,6 +754,9 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onDeleteTransaction = { transactionId ->
                                             paymentViewModel.deleteTransaction(transactionId)
+
+                                            refreshTrigger++
+
                                         },
                                         onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->
                                             paymentViewModel.addReverseTransaction(
@@ -758,6 +766,9 @@ class MainActivity : ComponentActivity() {
                                                 refundAmount = refundAmount,
                                                 reason = reason
                                             )
+
+                                            refreshTrigger++
+
                                         },
                                         onBack = { selectedClient = null }
                                     )
@@ -1008,6 +1019,9 @@ class MainActivity : ComponentActivity() {
                                                         month = month
                                                     )
                                                 }
+
+                                                refreshTrigger++
+
                                             }
                                         },
                                         onPartialPaymentRequest = { month, monthAmount, partialAmount ->
@@ -1018,6 +1032,9 @@ class MainActivity : ComponentActivity() {
                                                     monthAmount = monthAmount,
                                                     partialAmount = partialAmount
                                                 )
+
+                                                refreshTrigger++
+
                                             }
                                         },
                                         getMonthTransactions = { month ->
@@ -1028,6 +1045,9 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onDeleteTransaction = { transactionId ->
                                             paymentViewModel.deleteTransaction(transactionId)
+
+                                            refreshTrigger++
+
                                         },
                                         onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->
                                             paymentViewModel.addReverseTransaction(
@@ -1037,6 +1057,9 @@ class MainActivity : ComponentActivity() {
                                                 refundAmount = refundAmount,
                                                 reason = reason
                                             )
+
+                                            refreshTrigger++
+
                                         },
                                         onBack = {
                                             selectedClient = null
@@ -1101,9 +1124,19 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             currentScreen == "stats" -> {
-                                LaunchedEffect(selectedMonth) {
+                                // LaunchedEffect لتحديث إحصائيات الشهر
+                                LaunchedEffect(selectedMonth, refreshTrigger) {
                                     paymentViewModel.setStatsMonth(selectedMonth)
                                 }
+
+                                // LaunchedEffect لتحديث نسبة التحصيل
+                                LaunchedEffect(refreshTrigger) {
+                                    transactionRepository.getMonthlyCollectionRatio()
+                                        .collect { ratio ->
+                                            monthlyRatio = ratio
+                                        }
+                                }
+
                                 val clientsCount by clientViewModel.clientsCount.observeAsState(0)
                                 val monthStats by paymentViewModel.monthStats.observeAsState(null)
                                 if (!showDailyCollection) {
@@ -1112,7 +1145,8 @@ class MainActivity : ComponentActivity() {
                                             .fillMaxSize()
                                             .padding(horizontal = 12.dp, vertical = 8.dp)
                                     ) {
-                                        Button(
+
+                                    Button(
                                             onClick = {
                                                 showDailyCollection = true
                                                 loadDailyCollectionFor(selectedDailyDateMillis)
@@ -1127,6 +1161,7 @@ class MainActivity : ComponentActivity() {
                                             clientsCount = clientsCount,
                                             buildingsCount = buildings.size,
                                             monthStats = monthStats,
+                                            monthlyRatio = monthlyRatio,
                                             monthOptions = monthOptions,
                                             selectedMonth = selectedMonth,
                                             onMonthChange = { newMonth ->
@@ -1145,7 +1180,6 @@ class MainActivity : ComponentActivity() {
                                         DailyCollectionScreen(
                                             dailyCollection = dailyUi,
                                             dailySummary = dailySummary,
-                                            monthlyRatio = monthlyRatio,
                                             selectedDateMillis = selectedDailyDateMillis,
                                             onChangeDate = { newMillis ->
                                                 selectedDailyDateMillis = newMillis

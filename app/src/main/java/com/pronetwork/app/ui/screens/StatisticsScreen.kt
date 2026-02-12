@@ -1,6 +1,8 @@
 package com.pronetwork.app.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -9,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 import com.pronetwork.app.data.Client
+import com.pronetwork.data.MonthlyCollectionRatio
 import com.pronetwork.app.viewmodel.PaymentViewModel
 import java.text.NumberFormat
 import java.util.Locale
@@ -19,6 +22,7 @@ fun StatisticsScreen(
     clientsCount: Int,
     buildingsCount: Int,
     monthStats: PaymentViewModel.MonthStats?,
+    monthlyRatio: MonthlyCollectionRatio,
     monthOptions: List<String>,
     selectedMonth: String,
     onMonthChange: (String) -> Unit,
@@ -34,10 +38,12 @@ fun StatisticsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
+
+    Text(
             text = stringResource(R.string.screen_stats),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.primary
@@ -74,6 +80,45 @@ fun StatisticsScreen(
                         }
                     )
                 }
+            }
+        }
+
+        // Monthly Collection Ratio Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.monthly_collection_ratio),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("${stringResource(R.string.expected_clients)}: ${monthlyRatio.expectedClients}")
+                    Text("${stringResource(R.string.paid_clients)}: ${monthlyRatio.paidClients}")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { monthlyRatio.collectionRatio / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "%.1f%%".format(monthlyRatio.collectionRatio),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
 

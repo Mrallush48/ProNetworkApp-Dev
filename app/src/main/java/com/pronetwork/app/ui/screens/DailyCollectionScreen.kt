@@ -14,7 +14,6 @@ import com.pronetwork.app.R
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.viewmodel.DailyCollectionUi
 import com.pronetwork.data.DailySummary
-import com.pronetwork.data.MonthlyCollectionRatio
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -22,7 +21,6 @@ import java.util.*
 fun DailyCollectionScreen(
     dailyCollection: DailyCollectionUi?,
     dailySummary: DailySummary,
-    monthlyRatio: MonthlyCollectionRatio,
     selectedDateMillis: Long,
     onChangeDate: (Long) -> Unit
 ) {
@@ -213,42 +211,6 @@ fun DailyCollectionScreen(
                         R.string.daily_collection_total_value,
                         total
                     ),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        // Monthly Collection Ratio Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
-        ) {
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    text = stringResource(R.string.monthly_collection_ratio),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text("${stringResource(R.string.expected_clients)}: ${monthlyRatio.expectedClients}")
-                    Text("${stringResource(R.string.paid_clients)}: ${monthlyRatio.paidClients}")
-                }
-
-                Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { monthlyRatio.collectionRatio / 100f },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = "%.1f%%".format(monthlyRatio.collectionRatio),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
