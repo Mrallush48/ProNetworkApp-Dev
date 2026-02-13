@@ -820,13 +820,43 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             currentScreen == "buildings" && selectedBuilding == null -> {
-                                BuildingListScreen(
-                                    buildings = buildings,
-                                    searchQuery = buildingSearchQuery,
-                                    onAddBuilding = { showBuildingDialog = true },
-                                    onBuildingClick = { selectedBuilding = it },
-                                    onSearch = { buildingViewModel.setSearchQuery(it) }
-                                )
+                                Scaffold(
+                                    topBar = {
+                                        ScreenTopBar(
+                                            title = stringResource(R.string.screen_buildings),
+                                            showOptions = true,
+                                            options = listOf(
+                                                ExportOption.CSV,
+                                                ExportOption.PDF,
+                                                ExportOption.IMPORT_CSV
+                                            ),
+                                            onOptionClick = { option ->
+                                                when (option) {
+                                                    ExportOption.CSV -> { /* Export Buildings CSV */ }
+                                                    ExportOption.PDF -> { /* Export Buildings PDF */ }
+                                                    ExportOption.IMPORT_CSV -> { /* Import Buildings */ }
+                                                    else -> {}
+                                                }
+                                            }
+                                        )
+                                    }
+                                ) { paddingValues ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(paddingValues)
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        BuildingListScreen(
+                                            buildings = buildings,
+                                            searchQuery = buildingSearchQuery,
+                                            onAddBuilding = { showBuildingDialog = true },
+                                            onBuildingClick = { selectedBuilding = it },
+                                            onSearch = { buildingViewModel.setSearchQuery(it) }
+                                        )
+                                    }
+                                }
+
                                 if (showBuildingDialog) {
                                     BuildingEditDialog(
                                         onSave = { name, location, notes ->
@@ -843,6 +873,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
                             selectedBuilding != null -> {
                                 if (selectedClient == null) {
                                     BuildingDetailsScreen(
@@ -1173,27 +1204,48 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 } else {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    ) {
-                                        DailyCollectionScreen(
-                                            dailyCollection = dailyUi,
-                                            dailySummary = dailySummary,
-                                            selectedDateMillis = selectedDailyDateMillis,
-                                            onChangeDate = { newMillis ->
-                                                selectedDailyDateMillis = newMillis
-                                                loadDailyCollectionFor(newMillis)
-                                            }
-                                        )
-
-                                        Spacer(Modifier.height(8.dp))
-                                        OutlinedButton(
-                                            onClick = { showDailyCollection = false },
-                                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    Scaffold(
+                                        topBar = {
+                                            ScreenTopBar(
+                                                title = stringResource(R.string.stats_daily_collection),
+                                                showOptions = true,
+                                                options = listOf(
+                                                    ExportOption.CSV,
+                                                    ExportOption.PDF
+                                                ),
+                                                onOptionClick = { option ->
+                                                    when (option) {
+                                                        ExportOption.CSV -> { /* Export Daily CSV */ }
+                                                        ExportOption.PDF -> { /* Export Daily PDF */ }
+                                                        else -> {}
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    ) { paddingValues ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(paddingValues)
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text(stringResource(R.string.stats_back_to_statistics))
+                                            DailyCollectionScreen(
+                                                dailyCollection = dailyUi,
+                                                dailySummary = dailySummary,
+                                                selectedDateMillis = selectedDailyDateMillis,
+                                                onChangeDate = { newMillis ->
+                                                    selectedDailyDateMillis = newMillis
+                                                    loadDailyCollectionFor(newMillis)
+                                                }
+                                            )
+
+                                            Spacer(Modifier.height(8.dp))
+                                            OutlinedButton(
+                                                onClick = { showDailyCollection = false },
+                                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                                            ) {
+                                                Text(stringResource(R.string.stats_back_to_statistics))
+                                            }
                                         }
                                     }
                                 }
