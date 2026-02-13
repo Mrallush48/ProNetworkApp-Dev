@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -42,28 +43,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
+import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
+import com.pronetwork.app.repository.PaymentTransactionRepository
+import com.pronetwork.app.ui.components.ExportOption
+import com.pronetwork.app.ui.components.ScreenTopBar
 import com.pronetwork.app.ui.screens.*
+import com.pronetwork.app.ui.theme.ProNetworkSpotTheme
 import com.pronetwork.app.viewmodel.BuildingViewModel
 import com.pronetwork.app.viewmodel.ClientViewModel
-import com.pronetwork.app.viewmodel.PaymentViewModel
 import com.pronetwork.app.viewmodel.DailyCollectionUi
-import com.pronetwork.app.ui.theme.ProNetworkSpotTheme
+import com.pronetwork.app.viewmodel.PaymentViewModel
+import com.pronetwork.data.DailySummary
+import com.pronetwork.data.MonthlyCollectionRatio
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.material.icons.filled.Add
-import com.pronetwork.app.data.ClientDatabase
-import com.pronetwork.app.repository.PaymentTransactionRepository
-import com.pronetwork.data.DailySummary
-import androidx.lifecycle.lifecycleScope
-import com.pronetwork.data.MonthlyCollectionRatio
-import com.pronetwork.app.ui.components.ScreenTopBar
-import com.pronetwork.app.ui.components.ExportOption
-
-
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -75,7 +73,6 @@ class MainActivity : ComponentActivity() {
         val db = ClientDatabase.getDatabase(application)
         PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
     }
-
 
     // دالة واحدة تجمع كل منطق التصفية/البحث/الفرز
     private fun filterClients(
@@ -133,7 +130,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // ملاحظة: myLightColors لم يعد مستخدمًا فعليًا، لكن أبقيته كما هو حتى لا أكسر أي شيء محتمل في المستقبل.
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
             onPrimary = Color.White,
@@ -150,7 +146,7 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             ProNetworkSpotTheme(
-                darkTheme = false // لاحقاً ممكن تربطه بإعداد النظام
+                darkTheme = false
             ) {
                 var refreshTrigger by remember { mutableStateOf(0) }
                 var currentScreen by remember { mutableStateOf("clients") }
@@ -165,9 +161,7 @@ class MainActivity : ComponentActivity() {
                 var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
                 var sortByStartMonth by remember { mutableStateOf(false) }
                 var showFilterDialog by remember { mutableStateOf(false) }
-                // جديد: التحكم في إظهار/إخفاء شريط الشهر + البحث
                 var showFilters by remember { mutableStateOf(false) }
-                // جديد: حالة شاشة التحصيل اليومي داخل تبويب الإحصائيات
                 var showDailyCollection by remember { mutableStateOf(false) }
                 var selectedDailyDateMillis by remember {
                     mutableStateOf(
@@ -179,13 +173,12 @@ class MainActivity : ComponentActivity() {
                         }.timeInMillis
                     )
                 }
+
                 val clients by clientViewModel.clients.observeAsState(emptyList())
                 val buildings by buildingViewModel.buildings.observeAsState(emptyList())
                 val buildingSearchQuery by buildingViewModel.searchQuery.observeAsState("")
                 var dailyUi by remember { mutableStateOf<DailyCollectionUi?>(null) }
-
                 var dailySummary by remember { mutableStateOf(DailySummary()) }
-
                 var monthlyRatio by remember {
                     mutableStateOf(
                         MonthlyCollectionRatio(
@@ -219,7 +212,7 @@ class MainActivity : ComponentActivity() {
                             buildings = buildingCollections
                         )
                     }
-                    // تحميل ملخص التحصيل اليومي
+
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val dateString = dateFormat.format(Date(dateMillis))
 
@@ -230,7 +223,7 @@ class MainActivity : ComponentActivity() {
                             }
                     }
                 }
-                // تحميل نسبة التحصيل الشهرية
+
                 LaunchedEffect(refreshTrigger) {
                     transactionRepository.getMonthlyCollectionRatio()
                         .collect { ratio ->
@@ -250,7 +243,7 @@ class MainActivity : ComponentActivity() {
                 val monthOptions = monthsList
                 var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
-                // استخدام الدالة الجديدة بدل الكود المتكرر
+
                 val filteredClients = filterClients(
                     clients = clients,
                     selectedMonth = selectedMonth,
@@ -259,11 +252,12 @@ class MainActivity : ComponentActivity() {
                     selectedFilterPackage = selectedFilterPackage,
                     sortByStartMonth = sortByStartMonth
                 )
+
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
 
-                // ✅ استخراج النصوص خارج السياق غير القابل للتكوين (قبل Scaffold)
-                val addRequiresBuildingMessage = stringResource(R.string.clients_add_requires_building)
+                val addRequiresBuildingMessage =
+                    stringResource(R.string.clients_add_requires_building)
                 val addActionLabel = stringResource(R.string.action_add)
 
                 Scaffold(
@@ -301,13 +295,17 @@ class MainActivity : ComponentActivity() {
                                     selectedClient = null
                                     showDailyCollection = false
                                 },
-                                icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                                icon = {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.List,
+                                        contentDescription = null
+                                    )
+                                },
                                 label = { Text(stringResource(R.string.screen_stats)) }
                             )
                         }
                     },
                     floatingActionButton = {
-                        // عرض الزر العائم فقط في شاشة العملاء الرئيسية (ليس في تفاصيل المبنى أو العميل)
                         if (currentScreen == "clients" && selectedBuilding == null && selectedClient == null) {
                             FloatingActionButton(
                                 onClick = {
@@ -316,7 +314,7 @@ class MainActivity : ComponentActivity() {
                                     } else {
                                         scope.launch {
                                             snackbarHostState.showSnackbar(
-                                                message = addRequiresBuildingMessage // ✅ استخدام المتغير المستخرج
+                                                message = addRequiresBuildingMessage
                                             )
                                         }
                                     }
@@ -326,11 +324,11 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Add,
-                                    contentDescription = addActionLabel // ✅ استخدام المتغير المستخرج
+                                    contentDescription = addActionLabel
                                 )
                             }
                         }
-                    },  // ← ✅ الفاصلة الإلزامية هنا (مهم جدًا)
+                    },
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState)
                     }
@@ -344,333 +342,348 @@ class MainActivity : ComponentActivity() {
                         when {
                             currentScreen == "clients" && selectedBuilding == null -> {
                                 if (selectedClient == null) {
-                                    Column(
-                                        Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 4.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = stringResource(
-                                                    R.string.clients_title_with_month,
-                                                    selectedMonth
+                                    Scaffold(
+                                        topBar = {
+                                            ScreenTopBar(
+                                                title = stringResource(R.string.screen_clients),
+                                                showOptions = true,
+                                                options = listOf(
+                                                    ExportOption.CSV,
+                                                    ExportOption.PDF,
+                                                    ExportOption.IMPORT_CSV
                                                 ),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                            TextButton(onClick = { showFilters = !showFilters }) {
-                                                Text(
-                                                    if (showFilters)
-                                                        stringResource(R.string.clients_filters_hide)
-                                                    else
-                                                        stringResource(R.string.clients_filters_show)
-                                                )
-                                            }
-                                        }
-
-                                        if (showFilters) {
-                                            Box(
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(bottom = 12.dp)
-                                            ) {
-                                                OutlinedTextField(
-                                                    value = selectedMonth,
-                                                    onValueChange = {},
-                                                    readOnly = true,
-                                                    label = { Text(stringResource(R.string.clients_browse_by_month)) },
-                                                    trailingIcon = {
-                                                        IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
-                                                            Icon(
-                                                                Icons.Filled.ArrowDropDown,
-                                                                contentDescription = null
-                                                            )
-                                                        }
-                                                    },
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable { monthDropdownExpanded = true },
-                                                    colors = OutlinedTextFieldDefaults.colors(
-                                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                                        unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                                                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                )
-                                                DropdownMenu(
-                                                    expanded = monthDropdownExpanded,
-                                                    onDismissRequest = { monthDropdownExpanded = false }
-                                                ) {
-                                                    monthOptions.forEach { month ->
-                                                        DropdownMenuItem(
-                                                            text = { Text(month) },
-                                                            onClick = {
-                                                                selectedMonth = month
-                                                                monthDropdownExpanded = false
-                                                            }
-                                                        )
+                                                onOptionClick = { option ->
+                                                    when (option) {
+                                                        ExportOption.CSV -> { /* Export CSV */ }
+                                                        ExportOption.PDF -> { /* Export PDF */ }
+                                                        ExportOption.IMPORT_CSV -> { /* Import CSV */ }
+                                                        else -> {}
                                                     }
                                                 }
-                                            }
-
+                                            )
+                                        }
+                                    ) { paddingValues ->
+                                        Column(
+                                            Modifier
+                                                .fillMaxSize()
+                                                .padding(paddingValues)
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        ) {
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .padding(bottom = 8.dp),
+                                                    .padding(bottom = 4.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                OutlinedTextField(
-                                                    value = searchQuery,
-                                                    onValueChange = { searchQuery = it },
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .heightIn(min = 36.dp),
-                                                    placeholder = {
-                                                        Text(
-                                                            stringResource(R.string.clients_search_placeholder),
-                                                            style = MaterialTheme.typography.bodySmall
-                                                        )
-                                                    },
-                                                    singleLine = true,
-                                                    textStyle = MaterialTheme.typography.bodySmall,
-                                                    colors = OutlinedTextFieldDefaults.colors(
-                                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                                        unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                                                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
+                                                Text(
+                                                    text = stringResource(
+                                                        R.string.clients_title_with_month,
+                                                        selectedMonth
+                                                    ),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.primary
                                                 )
-
-                                                Spacer(Modifier.width(8.dp))
-
-                                                IconButton(
-                                                    onClick = { showFilterDialog = true }
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Filled.FilterList,
-                                                        contentDescription = stringResource(R.string.clients_filter_and_sort)
+                                                TextButton(onClick = { showFilters = !showFilters }) {
+                                                    Text(
+                                                        if (showFilters)
+                                                            stringResource(R.string.clients_filters_hide)
+                                                        else
+                                                            stringResource(R.string.clients_filters_show)
                                                     )
                                                 }
                                             }
-                                        }
 
-                                        val addClientRequiresBuildingMessage =
-                                            stringResource(R.string.clients_add_requires_building)
-                                        ClientListScreen(
-                                            clients = filteredClients,
-                                            buildings = buildings,
-                                            selectedMonth = selectedMonth,
-                                            paymentViewModel = paymentViewModel,
-                                            onAddClient = {
-                                                if (buildings.isNotEmpty()) {
-                                                    showClientDialog = true
-                                                } else {
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            message = addClientRequiresBuildingMessage
+                                            if (showFilters) {
+                                                Box(
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(bottom = 12.dp)
+                                                ) {
+                                                    OutlinedTextField(
+                                                        value = selectedMonth,
+                                                        onValueChange = {},
+                                                        readOnly = true,
+                                                        label = {
+                                                            Text(
+                                                                stringResource(
+                                                                    R.string.clients_browse_by_month
+                                                                )
+                                                            )
+                                                        },
+                                                        trailingIcon = {
+                                                            IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
+                                                                Icon(
+                                                                    Icons.Filled.ArrowDropDown,
+                                                                    contentDescription = null
+                                                                )
+                                                            }
+                                                        },
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable { monthDropdownExpanded = true },
+                                                        colors = OutlinedTextFieldDefaults.colors(
+                                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                            unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                                                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    )
+                                                    DropdownMenu(
+                                                        expanded = monthDropdownExpanded,
+                                                        onDismissRequest = { monthDropdownExpanded = false }
+                                                    ) {
+                                                        monthOptions.forEach { month ->
+                                                            DropdownMenuItem(
+                                                                text = { Text(month) },
+                                                                onClick = {
+                                                                    selectedMonth = month
+                                                                    monthDropdownExpanded = false
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(bottom = 8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    OutlinedTextField(
+                                                        value = searchQuery,
+                                                        onValueChange = { searchQuery = it },
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .heightIn(min = 36.dp),
+                                                        placeholder = {
+                                                            Text(
+                                                                stringResource(R.string.clients_search_placeholder),
+                                                                style = MaterialTheme.typography.bodySmall
+                                                            )
+                                                        },
+                                                        singleLine = true,
+                                                        textStyle = MaterialTheme.typography.bodySmall,
+                                                        colors = OutlinedTextFieldDefaults.colors(
+                                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                            unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                                                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    )
+
+                                                    Spacer(Modifier.width(8.dp))
+
+                                                    IconButton(
+                                                        onClick = { showFilterDialog = true }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Filled.FilterList,
+                                                            contentDescription = stringResource(R.string.clients_filter_and_sort)
                                                         )
                                                     }
                                                 }
-                                            },
-                                            onClientClick = { selectedClient = it }
-                                        )
+                                            }
 
-                                        if (showFilterDialog) {
-                                            AlertDialog(
-                                                onDismissRequest = { showFilterDialog = false },
-                                                title = { Text(stringResource(R.string.clients_filter_and_sort)) },
-                                                text = {
-                                                    Column(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                                    ) {
-                                                        Text(
-                                                            stringResource(R.string.clients_filter_building_label),
-                                                            style = MaterialTheme.typography.labelMedium
-                                                        )
-                                                        var buildingFilterExpanded by remember { mutableStateOf(false) }
-                                                        ExposedDropdownMenuBox(
-                                                            expanded = buildingFilterExpanded,
-                                                            onExpandedChange = {
-                                                                buildingFilterExpanded = !buildingFilterExpanded
-                                                            }
-                                                        ) {
-                                                            OutlinedTextField(
-                                                                readOnly = true,
-                                                                value = selectedFilterBuildingId?.let { bid ->
-                                                                    buildings.firstOrNull { it.id == bid }?.name
-                                                                        ?: stringResource(R.string.clients_filter_all_buildings)
-                                                                } ?: stringResource(R.string.clients_filter_all_buildings),
-                                                                onValueChange = {},
-                                                                trailingIcon = {
-                                                                    ExposedDropdownMenuDefaults.TrailingIcon(
-                                                                        expanded = buildingFilterExpanded
-                                                                    )
-                                                                },
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .menuAnchor()
+                                            val addClientRequiresBuildingMessage =
+                                                stringResource(R.string.clients_add_requires_building)
+                                            ClientListScreen(
+                                                clients = filteredClients,
+                                                buildings = buildings,
+                                                selectedMonth = selectedMonth,
+                                                paymentViewModel = paymentViewModel,
+                                                onAddClient = {
+                                                    if (buildings.isNotEmpty()) {
+                                                        showClientDialog = true
+                                                    } else {
+                                                        scope.launch {
+                                                            snackbarHostState.showSnackbar(
+                                                                message = addClientRequiresBuildingMessage
                                                             )
-                                                            ExposedDropdownMenu(
+                                                        }
+                                                    }
+                                                },
+                                                onClientClick = { selectedClient = it }
+                                            )
+
+                                            if (showFilterDialog) {
+                                                AlertDialog(
+                                                    onDismissRequest = { showFilterDialog = false },
+                                                    title = {
+                                                        Text(
+                                                            stringResource(
+                                                                R.string.clients_filter_and_sort
+                                                            )
+                                                        )
+                                                    },
+                                                    text = {
+                                                        Column(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            Text(
+                                                                stringResource(R.string.clients_filter_building_label),
+                                                                style = MaterialTheme.typography.labelMedium
+                                                            )
+                                                            var buildingFilterExpanded by remember {
+                                                                mutableStateOf(
+                                                                    false
+                                                                )
+                                                            }
+                                                            ExposedDropdownMenuBox(
                                                                 expanded = buildingFilterExpanded,
-                                                                onDismissRequest = {
-                                                                    buildingFilterExpanded = false
+                                                                onExpandedChange = {
+                                                                    buildingFilterExpanded =
+                                                                        !buildingFilterExpanded
                                                                 }
                                                             ) {
-                                                                DropdownMenuItem(
-                                                                    text = { Text(stringResource(R.string.clients_filter_all_buildings)) },
-                                                                    onClick = {
-                                                                        selectedFilterBuildingId = null
+                                                                OutlinedTextField(
+                                                                    readOnly = true,
+                                                                    value = selectedFilterBuildingId?.let { bid ->
+                                                                        buildings.firstOrNull { it.id == bid }?.name
+                                                                            ?: stringResource(R.string.clients_filter_all_buildings)
+                                                                    }
+                                                                        ?: stringResource(R.string.clients_filter_all_buildings),
+                                                                    onValueChange = {},
+                                                                    trailingIcon = {
+                                                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                                                            expanded = buildingFilterExpanded
+                                                                        )
+                                                                    },
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .menuAnchor()
+                                                                )
+                                                                ExposedDropdownMenu(
+                                                                    expanded = buildingFilterExpanded,
+                                                                    onDismissRequest = {
                                                                         buildingFilterExpanded = false
                                                                     }
-                                                                )
-                                                                buildings.forEach { b ->
+                                                                ) {
                                                                     DropdownMenuItem(
-                                                                        text = { Text(b.name) },
+                                                                        text = {
+                                                                            Text(
+                                                                                stringResource(R.string.clients_filter_all_buildings)
+                                                                            )
+                                                                        },
                                                                         onClick = {
-                                                                            selectedFilterBuildingId = b.id
-                                                                            buildingFilterExpanded = false
+                                                                            selectedFilterBuildingId =
+                                                                                null
+                                                                            buildingFilterExpanded =
+                                                                                false
                                                                         }
                                                                     )
+                                                                    buildings.forEach { b ->
+                                                                        DropdownMenuItem(
+                                                                            text = { Text(b.name) },
+                                                                            onClick = {
+                                                                                selectedFilterBuildingId =
+                                                                                    b.id
+                                                                                buildingFilterExpanded =
+                                                                                    false
+                                                                            }
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
-                                                        }
-                                                        Text(
-                                                            stringResource(R.string.clients_filter_package_label),
-                                                            style = MaterialTheme.typography.labelMedium
-                                                        )
-                                                        val packageTypes =
-                                                            clients.map { it.packageType }.distinct().sorted()
-                                                        var packageFilterExpanded by remember { mutableStateOf(false) }
-                                                        ExposedDropdownMenuBox(
-                                                            expanded = packageFilterExpanded,
-                                                            onExpandedChange = {
-                                                                packageFilterExpanded = !packageFilterExpanded
-                                                            }
-                                                        ) {
-                                                            OutlinedTextField(
-                                                                readOnly = true,
-                                                                value = selectedFilterPackage
-                                                                    ?: stringResource(R.string.clients_filter_all_packages),
-                                                                onValueChange = {},
-                                                                trailingIcon = {
-                                                                    ExposedDropdownMenuDefaults.TrailingIcon(
-                                                                        expanded = packageFilterExpanded
-                                                                    )
-                                                                },
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .menuAnchor()
+                                                            Text(
+                                                                stringResource(R.string.clients_filter_package_label),
+                                                                style = MaterialTheme.typography.labelMedium
                                                             )
-                                                            ExposedDropdownMenu(
+                                                            val packageTypes =
+                                                                clients.map { it.packageType }
+                                                                    .distinct()
+                                                                    .sorted()
+                                                            var packageFilterExpanded by remember {
+                                                                mutableStateOf(
+                                                                    false
+                                                                )
+                                                            }
+                                                            ExposedDropdownMenuBox(
                                                                 expanded = packageFilterExpanded,
-                                                                onDismissRequest = {
-                                                                    packageFilterExpanded = false
+                                                                onExpandedChange = {
+                                                                    packageFilterExpanded =
+                                                                        !packageFilterExpanded
                                                                 }
                                                             ) {
-                                                                DropdownMenuItem(
-                                                                    text = { Text(stringResource(R.string.clients_filter_all_packages)) },
-                                                                    onClick = {
-                                                                        selectedFilterPackage = null
-                                                                        packageFilterExpanded = false
-                                                                    }
+                                                                OutlinedTextField(
+                                                                    readOnly = true,
+                                                                    value = selectedFilterPackage
+                                                                        ?: stringResource(R.string.clients_filter_all_packages),
+                                                                    onValueChange = {},
+                                                                    trailingIcon = {
+                                                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                                                            expanded = packageFilterExpanded
+                                                                        )
+                                                                    },
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .menuAnchor()
                                                                 )
-                                                                packageTypes.forEach { pkg ->
+                                                                ExposedDropdownMenu(
+                                                                    expanded = packageFilterExpanded,
+                                                                    onDismissRequest = {
+                                                                        packageFilterExpanded =
+                                                                            false
+                                                                    }
+                                                                ) {
                                                                     DropdownMenuItem(
-                                                                        text = { Text(pkg) },
+                                                                        text = {
+                                                                            Text(
+                                                                                stringResource(R.string.clients_filter_all_packages)
+                                                                            )
+                                                                        },
                                                                         onClick = {
-                                                                            selectedFilterPackage = pkg
-                                                                            packageFilterExpanded = false
+                                                                            selectedFilterPackage =
+                                                                                null
+                                                                            packageFilterExpanded =
+                                                                                false
                                                                         }
                                                                     )
+                                                                    packageTypes.forEach { pkg ->
+                                                                        DropdownMenuItem(
+                                                                            text = { Text(pkg) },
+                                                                            onClick = {
+                                                                                selectedFilterPackage =
+                                                                                    pkg
+                                                                                packageFilterExpanded =
+                                                                                    false
+                                                                            }
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Checkbox(
+                                                                    checked = sortByStartMonth,
+                                                                    onCheckedChange = {
+                                                                        sortByStartMonth = it
+                                                                    }
+                                                                )
+                                                                Text(stringResource(R.string.clients_filter_sort_by_start))
+                                                            }
                                                         }
-                                                        Row(
-                                                            verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                            Checkbox(
-                                                                checked = sortByStartMonth,
-                                                                onCheckedChange = { sortByStartMonth = it }
-                                                            )
-                                                            Text(stringResource(R.string.clients_filter_sort_by_start))
+                                                    },
+                                                    confirmButton = {
+                                                        Button(onClick = { showFilterDialog = false }) {
+                                                            Text(stringResource(R.string.clients_filter_apply))
+                                                        }
+                                                    },
+                                                    dismissButton = {
+                                                        OutlinedButton(onClick = {
+                                                            selectedFilterBuildingId = null
+                                                            selectedFilterPackage = null
+                                                            sortByStartMonth = false
+                                                            showFilterDialog = false
+                                                        }) {
+                                                            Text(stringResource(R.string.clients_filter_clear))
                                                         }
                                                     }
-                                                },
-                                                confirmButton = {
-                                                    Button(onClick = { showFilterDialog = false }) {
-                                                        Text(stringResource(R.string.clients_filter_apply))
-                                                    }
-                                                },
-                                                dismissButton = {
-                                                    OutlinedButton(onClick = {
-                                                        selectedFilterBuildingId = null
-                                                        selectedFilterPackage = null
-                                                        sortByStartMonth = false
-                                                        showFilterDialog = false
-                                                    }) {
-                                                        Text(stringResource(R.string.clients_filter_clear))
-                                                    }
-                                                }
-                                            )
-                                        }
-
-                                        if (showClientDialog) {
-                                            ClientEditDialog(
-                                                buildingList = buildings,
-                                                initialStartMonth = selectedMonth,
-                                                buildingSelectionEnabled = true,
-                                                onSave = { name,
-                                                           subscriptionNumber,
-                                                           price: Double,
-                                                           buildingId,
-                                                           startMonth,
-                                                           startDay,
-                                                           firstMonthAmount: Double?,
-                                                           phone,
-                                                           address,
-                                                           packageType,
-                                                           notes ->
-                                                    scope.launch {
-                                                        val newClient = Client(
-                                                            name = name,
-                                                            subscriptionNumber = subscriptionNumber,
-                                                            price = price,
-                                                            firstMonthAmount = firstMonthAmount,
-                                                            buildingId = buildingId,
-                                                            startMonth = startMonth,
-                                                            startDay = startDay,
-                                                            phone = phone,
-                                                            address = address,
-                                                            packageType = packageType,
-                                                            notes = notes
-                                                        )
-                                                        clientViewModel.insert(newClient)
-                                                        kotlinx.coroutines.delay(300)
-                                                        val allClients = clients
-                                                        val insertedClient =
-                                                            allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
-                                                        insertedClient?.let { client ->
-                                                            paymentViewModel.createPaymentsForClient(
-                                                                clientId = client.id,
-                                                                startMonth = startMonth,
-                                                                endMonth = null,
-                                                                amount = price,
-                                                                monthOptions = monthOptions,
-                                                                firstMonthAmount = firstMonthAmount
-                                                            )
-                                                        }
-                                                        showClientDialog = false
-                                                    }
-                                                },
-                                                onDismiss = { showClientDialog = false }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
                                 } else {
@@ -715,9 +728,7 @@ class MainActivity : ComponentActivity() {
                                                         month = month
                                                     )
                                                 }
-
                                                 refreshTrigger++
-
                                             }
                                         },
                                         onPartialPaymentRequest = { month, monthAmount, partialAmount ->
@@ -728,9 +739,7 @@ class MainActivity : ComponentActivity() {
                                                     monthAmount = monthAmount,
                                                     partialAmount = partialAmount
                                                 )
-
                                                 refreshTrigger++
-
                                             }
                                         },
                                         getMonthTransactions = { month ->
@@ -741,9 +750,7 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onDeleteTransaction = { transactionId ->
                                             paymentViewModel.deleteTransaction(transactionId)
-
                                             refreshTrigger++
-
                                         },
                                         onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->
                                             paymentViewModel.addReverseTransaction(
@@ -753,68 +760,63 @@ class MainActivity : ComponentActivity() {
                                                 refundAmount = refundAmount,
                                                 reason = reason
                                             )
-
                                             refreshTrigger++
-
                                         },
                                         onBack = { selectedClient = null }
                                     )
-                                    if (showEditClientDialog) {
-                                        ClientEditDialog(
-                                            buildingList = buildings,
-                                            initialName = client.name,
-                                            initialSubscriptionNumber = client.subscriptionNumber,
-                                            initialPrice = client.price.toString(),
-                                            initialBuildingId = client.buildingId,
-                                            initialStartMonth = client.startMonth,
-                                            initialStartDay = client.startDay,
-                                            initialFirstMonthAmount = client.firstMonthAmount?.toString()
-                                                ?: "",
-                                            initialPhone = client.phone,
-                                            initialAddress = client.address,
-                                            initialPackageType = client.packageType,
-                                            initialNotes = client.notes,
-                                            buildingSelectionEnabled = true,
-                                            onSave = { name,
-                                                       subscriptionNumber,
-                                                       price: Double,
-                                                       buildingId,
-                                                       startMonth,
-                                                       startDay,
-                                                       firstMonthAmount: Double?,
-                                                       phone,
-                                                       address,
-                                                       packageType,
-                                                       notes ->
-                                                val oldPrice = client.price
-                                                val newPrice = price
-                                                clientViewModel.update(
-                                                    client.copy(
-                                                        name = name,
-                                                        subscriptionNumber = subscriptionNumber,
-                                                        price = newPrice,
-                                                        firstMonthAmount = firstMonthAmount,
-                                                        buildingId = buildingId,
-                                                        startMonth = startMonth,
-                                                        startDay = startDay,
-                                                        phone = phone,
-                                                        address = address,
-                                                        packageType = packageType,
-                                                        notes = notes
-                                                    )
+                                }
+
+                                // ✅ Dialog إضافة العملاء بعد قسم العملاء بالكامل
+                                if (showClientDialog) {
+                                    ClientEditDialog(
+                                        buildingList = buildings,
+                                        initialStartMonth = selectedMonth,
+                                        buildingSelectionEnabled = true,
+                                        onSave = { name,
+                                                   subscriptionNumber,
+                                                   price: Double,
+                                                   buildingId,
+                                                   startMonth,
+                                                   startDay,
+                                                   firstMonthAmount: Double?,
+                                                   phone,
+                                                   address,
+                                                   packageType,
+                                                   notes ->
+                                            scope.launch {
+                                                val newClient = Client(
+                                                    name = name,
+                                                    subscriptionNumber = subscriptionNumber,
+                                                    price = price,
+                                                    firstMonthAmount = firstMonthAmount,
+                                                    buildingId = buildingId,
+                                                    startMonth = startMonth,
+                                                    startDay = startDay,
+                                                    phone = phone,
+                                                    address = address,
+                                                    packageType = packageType,
+                                                    notes = notes
                                                 )
-                                                if (newPrice != oldPrice) {
-                                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                                clientViewModel.insert(newClient)
+                                                kotlinx.coroutines.delay(300)
+                                                val allClients = clients
+                                                val insertedClient =
+                                                    allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
+                                                insertedClient?.let { client ->
+                                                    paymentViewModel.createPaymentsForClient(
                                                         clientId = client.id,
-                                                        newAmount = newPrice
+                                                        startMonth = startMonth,
+                                                        endMonth = null,
+                                                        amount = price,
+                                                        monthOptions = monthOptions,
+                                                        firstMonthAmount = firstMonthAmount
                                                     )
                                                 }
-                                                showEditClientDialog = false
-                                                selectedClient = null
-                                            },
-                                            onDismiss = { showEditClientDialog = false }
-                                        )
-                                    }
+                                                showClientDialog = false
+                                            }
+                                        },
+                                        onDismiss = { showClientDialog = false }
+                                    )
                                 }
                             }
                             currentScreen == "buildings" && selectedBuilding == null -> {
@@ -1006,9 +1008,7 @@ class MainActivity : ComponentActivity() {
                                                         month = month
                                                     )
                                                 }
-
                                                 refreshTrigger++
-
                                             }
                                         },
                                         onPartialPaymentRequest = { month, monthAmount, partialAmount ->
@@ -1019,9 +1019,7 @@ class MainActivity : ComponentActivity() {
                                                     monthAmount = monthAmount,
                                                     partialAmount = partialAmount
                                                 )
-
                                                 refreshTrigger++
-
                                             }
                                         },
                                         getMonthTransactions = { month ->
@@ -1032,9 +1030,7 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onDeleteTransaction = { transactionId ->
                                             paymentViewModel.deleteTransaction(transactionId)
-
                                             refreshTrigger++
-
                                         },
                                         onAddReverseTransaction = { month, monthAmount, refundAmount, reason ->
                                             paymentViewModel.addReverseTransaction(
@@ -1044,9 +1040,7 @@ class MainActivity : ComponentActivity() {
                                                 refundAmount = refundAmount,
                                                 reason = reason
                                             )
-
                                             refreshTrigger++
-
                                         },
                                         onBack = {
                                             selectedClient = null
@@ -1111,12 +1105,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             currentScreen == "stats" -> {
-                                // LaunchedEffect لتحديث إحصائيات الشهر
                                 LaunchedEffect(selectedMonth, refreshTrigger) {
                                     paymentViewModel.setStatsMonth(selectedMonth)
                                 }
 
-                                // LaunchedEffect لتحديث نسبة التحصيل
                                 LaunchedEffect(refreshTrigger) {
                                     transactionRepository.getMonthlyCollectionRatio()
                                         .collect { ratio ->
@@ -1180,9 +1172,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     }
-                                }
-
-                             else {
+                                } else {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1198,7 +1188,6 @@ class MainActivity : ComponentActivity() {
                                             }
                                         )
 
-
                                         Spacer(Modifier.height(8.dp))
                                         OutlinedButton(
                                             onClick = { showDailyCollection = false },
@@ -1210,84 +1199,83 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    } // ← إغلاق Surface
-                } // ← إغلاق Scaffold content lambda
+                    }
 
-                // ✅ حوارات الجذر (خارج Scaffold تمامًا - كما كان في الإصدار القديم)
-                if (showEditBuildingDialog && selectedBuilding != null) {
-                    BuildingEditDialog(
-                        initialName = selectedBuilding!!.name,
-                        initialLocation = selectedBuilding!!.location,
-                        initialNotes = selectedBuilding!!.notes,
-                        onSave = { name, location, notes ->
-                            buildingViewModel.update(
-                                selectedBuilding!!.copy(
-                                    name = name,
-                                    location = location,
-                                    notes = notes
+                    if (showEditBuildingDialog && selectedBuilding != null) {
+                        BuildingEditDialog(
+                            initialName = selectedBuilding!!.name,
+                            initialLocation = selectedBuilding!!.location,
+                            initialNotes = selectedBuilding!!.notes,
+                            onSave = { name, location, notes ->
+                                buildingViewModel.update(
+                                    selectedBuilding!!.copy(
+                                        name = name,
+                                        location = location,
+                                        notes = notes
+                                    )
                                 )
-                            )
-                            showEditBuildingDialog = false
-                        },
-                        onDismiss = { showEditBuildingDialog = false }
-                    )
-                }
+                                showEditBuildingDialog = false
+                            },
+                            onDismiss = { showEditBuildingDialog = false }
+                        )
+                    }
 
-                if (showEditClientDialog && selectedClient != null) {
-                    ClientEditDialog(
-                        buildingList = buildings,
-                        initialName = selectedClient!!.name,
-                        initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
-                        initialPrice = selectedClient!!.price.toString(),
-                        initialBuildingId = selectedClient!!.buildingId,
-                        initialStartMonth = selectedClient!!.startMonth,
-                        initialStartDay = selectedClient!!.startDay,
-                        initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
-                            ?: "",
-                        initialPhone = selectedClient!!.phone,
-                        initialAddress = selectedClient!!.address,
-                        initialPackageType = selectedClient!!.packageType,
-                        initialNotes = selectedClient!!.notes,
-                        buildingSelectionEnabled = true,
-                        onSave = { name,
-                                   subscriptionNumber,
-                                   price: Double,
-                                   buildingId,
-                                   startMonth,
-                                   startDay,
-                                   firstMonthAmount: Double?,
-                                   phone,
-                                   address,
-                                   packageType,
-                                   notes ->
-                            val oldPrice = selectedClient!!.price
-                            val newPrice = price
-                            clientViewModel.update(
-                                selectedClient!!.copy(
-                                    name = name,
-                                    subscriptionNumber = subscriptionNumber,
-                                    price = newPrice,
-                                    firstMonthAmount = firstMonthAmount,
-                                    buildingId = buildingId,
-                                    startMonth = startMonth,
-                                    startDay = startDay,
-                                    phone = phone,
-                                    address = address,
-                                    packageType = packageType,
-                                    notes = notes
+                    if (showEditClientDialog && selectedClient != null) {
+                        ClientEditDialog(
+                            buildingList = buildings,
+                            initialName = selectedClient!!.name,
+                            initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
+                            initialPrice = selectedClient!!.price.toString(),
+                            initialBuildingId = selectedClient!!.buildingId,
+                            initialStartMonth = selectedClient!!.startMonth,
+                            initialStartDay = selectedClient!!.startDay,
+                            initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
+                                ?: "",
+                            initialPhone = selectedClient!!.phone,
+                            initialAddress = selectedClient!!.address,
+                            initialPackageType = selectedClient!!.packageType,
+                            initialNotes = selectedClient!!.notes,
+                            buildingSelectionEnabled = true,
+                            onSave = { name,
+                                       subscriptionNumber,
+                                       price: Double,
+                                       buildingId,
+                                       startMonth,
+                                       startDay,
+                                       firstMonthAmount: Double?,
+                                       phone,
+                                       address,
+                                       packageType,
+                                       notes ->
+                                val oldPrice = selectedClient!!.price
+                                val newPrice = price
+                                clientViewModel.update(
+                                    selectedClient!!.copy(
+                                        name = name,
+                                        subscriptionNumber = subscriptionNumber,
+                                        price = newPrice,
+                                        firstMonthAmount = firstMonthAmount,
+                                        buildingId = buildingId,
+                                        startMonth = startMonth,
+                                        startDay = startDay,
+                                        phone = phone,
+                                        address = address,
+                                        packageType = packageType,
+                                        notes = notes
+                                    )
                                 )
-                            )
-                            if (newPrice != oldPrice) {
-                                paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
-                                    clientId = selectedClient!!.id,
-                                    newAmount = newPrice
-                                )
-                            }
-                            showEditClientDialog = false
-                            selectedClient = null
-                        },
-                        onDismiss = { showEditClientDialog = false }
-                    )
+                                if (newPrice != oldPrice) {
+                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                        clientId = selectedClient!!.id,
+                                        newAmount = newPrice
+                                    )
+                                }
+                                showEditClientDialog = false
+                                selectedClient = null
+                            },
+                            onDismiss = { showEditClientDialog = false }
+                        )
+                    }
                 }
             }
         }
