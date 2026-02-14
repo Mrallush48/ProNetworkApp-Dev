@@ -1,26 +1,44 @@
 package com.pronetwork.app
 
+import android.content.ContentValues
+import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -32,12 +50,14 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,9 +69,18 @@ import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.repository.PaymentTransactionRepository
+import com.pronetwork.app.ui.components.ExportDialog
+import com.pronetwork.app.ui.components.ExportFormat
 import com.pronetwork.app.ui.components.ExportOption
 import com.pronetwork.app.ui.components.ScreenTopBar
-import com.pronetwork.app.ui.screens.*
+import com.pronetwork.app.ui.screens.BuildingDetailsScreen
+import com.pronetwork.app.ui.screens.BuildingEditDialog
+import com.pronetwork.app.ui.screens.BuildingListScreen
+import com.pronetwork.app.ui.screens.ClientDetailsScreen
+import com.pronetwork.app.ui.screens.ClientEditDialog
+import com.pronetwork.app.ui.screens.ClientListScreen
+import com.pronetwork.app.ui.screens.DailyCollectionScreen
+import com.pronetwork.app.ui.screens.StatisticsScreen
 import com.pronetwork.app.ui.theme.ProNetworkSpotTheme
 import com.pronetwork.app.viewmodel.BuildingViewModel
 import com.pronetwork.app.viewmodel.ClientViewModel
@@ -60,8 +89,12 @@ import com.pronetwork.app.viewmodel.PaymentViewModel
 import com.pronetwork.data.DailySummary
 import com.pronetwork.data.MonthlyCollectionRatio
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -72,6 +105,64 @@ class MainActivity : ComponentActivity() {
     private val transactionRepository by lazy {
         val db = ClientDatabase.getDatabase(application)
         PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
+    }
+
+    private fun shareTextFile(content: String, fileName: String) {
+        val sendIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, content)
+            putExtra(Intent.EXTRA_TITLE, fileName)
+            type = "text/plain"
+        }
+        startActivity(Intent.createChooser(sendIntent, "Share $fileName"))
+    }
+
+    private fun saveFileToDownloads(content: String, fileName: String, mimeType: String) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                // Android 10+
+                val resolver = contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        outputStream.write(content.toByteArray())
+                    }
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+                    resolver.update(it, contentValues, null, null)
+
+                    Toast.makeText(
+                        this,
+                        getString(R.string.export_saved_to_downloads, fileName),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else {
+                // قبل Android 10
+                val downloadsDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, fileName)
+                file.writeText(content)
+                Toast.makeText(
+                    this,
+                    getString(R.string.export_saved_to_downloads, file.name),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                getString(R.string.export_error, e.message ?: "Unknown"),
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
+        }
     }
 
     // دالة واحدة تجمع كل منطق التصفية/البحث/الفرز
@@ -149,6 +240,10 @@ class MainActivity : ComponentActivity() {
                 darkTheme = false
             ) {
                 var refreshTrigger by remember { mutableStateOf(0) }
+                var showExportDialogClients by remember { mutableStateOf(false) }
+                var showExportDialogBuildings by remember { mutableStateOf(false) }
+                var showExportDialogStats by remember { mutableStateOf(false) }
+                var showExportDialogDaily by remember { mutableStateOf(false) }
                 var currentScreen by remember { mutableStateOf("clients") }
                 var showClientDialog by remember { mutableStateOf(false) }
                 var showBuildingDialog by remember { mutableStateOf(false) }
@@ -348,16 +443,16 @@ class MainActivity : ComponentActivity() {
                                                 title = stringResource(R.string.screen_clients),
                                                 showOptions = true,
                                                 options = listOf(
-                                                    ExportOption.CSV,
-                                                    ExportOption.PDF,
+                                                    ExportOption.EXPORT,
                                                     ExportOption.IMPORT_CSV
                                                 ),
                                                 onOptionClick = { option ->
                                                     when (option) {
-                                                        ExportOption.CSV -> { /* Export CSV */ }
-                                                        ExportOption.PDF -> { /* Export PDF */ }
-                                                        ExportOption.IMPORT_CSV -> { /* Import CSV */ }
-                                                        else -> {}
+                                                        ExportOption.EXPORT -> showExportDialogClients =
+                                                            true
+
+                                                        ExportOption.IMPORT_CSV -> { /* Import */
+                                                        }
                                                     }
                                                 }
                                             )
@@ -384,7 +479,9 @@ class MainActivity : ComponentActivity() {
                                                     style = MaterialTheme.typography.titleMedium,
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
-                                                TextButton(onClick = { showFilters = !showFilters }) {
+                                                TextButton(onClick = {
+                                                    showFilters = !showFilters
+                                                }) {
                                                     Text(
                                                         if (showFilters)
                                                             stringResource(R.string.clients_filters_hide)
@@ -412,7 +509,10 @@ class MainActivity : ComponentActivity() {
                                                             )
                                                         },
                                                         trailingIcon = {
-                                                            IconButton(onClick = { monthDropdownExpanded = !monthDropdownExpanded }) {
+                                                            IconButton(onClick = {
+                                                                monthDropdownExpanded =
+                                                                    !monthDropdownExpanded
+                                                            }) {
                                                                 Icon(
                                                                     Icons.Filled.ArrowDropDown,
                                                                     contentDescription = null
@@ -421,7 +521,9 @@ class MainActivity : ComponentActivity() {
                                                         },
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .clickable { monthDropdownExpanded = true },
+                                                            .clickable {
+                                                                monthDropdownExpanded = true
+                                                            },
                                                         colors = OutlinedTextFieldDefaults.colors(
                                                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                                                             unfocusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
@@ -431,7 +533,9 @@ class MainActivity : ComponentActivity() {
                                                     )
                                                     DropdownMenu(
                                                         expanded = monthDropdownExpanded,
-                                                        onDismissRequest = { monthDropdownExpanded = false }
+                                                        onDismissRequest = {
+                                                            monthDropdownExpanded = false
+                                                        }
                                                     ) {
                                                         monthOptions.forEach { month ->
                                                             DropdownMenuItem(
@@ -520,7 +624,9 @@ class MainActivity : ComponentActivity() {
                                                     text = {
                                                         Column(
                                                             modifier = Modifier.fillMaxWidth(),
-                                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                            verticalArrangement = Arrangement.spacedBy(
+                                                                8.dp
+                                                            )
                                                         ) {
                                                             Text(
                                                                 stringResource(R.string.clients_filter_building_label),
@@ -558,7 +664,8 @@ class MainActivity : ComponentActivity() {
                                                                 ExposedDropdownMenu(
                                                                     expanded = buildingFilterExpanded,
                                                                     onDismissRequest = {
-                                                                        buildingFilterExpanded = false
+                                                                        buildingFilterExpanded =
+                                                                            false
                                                                     }
                                                                 ) {
                                                                     DropdownMenuItem(
@@ -668,7 +775,9 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     },
                                                     confirmButton = {
-                                                        Button(onClick = { showFilterDialog = false }) {
+                                                        Button(onClick = {
+                                                            showFilterDialog = false
+                                                        }) {
                                                             Text(stringResource(R.string.clients_filter_apply))
                                                         }
                                                     },
@@ -686,6 +795,57 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     }
+
+                                    if (showExportDialogClients) {
+                                        ExportDialog(
+                                            onDismiss = { showExportDialogClients = false },
+                                            onExport = { type, period, format, buildingFilter, packageFilter ->
+                                                // تطبيق الفلاتر
+                                                val filteredClients = clients.filter { client ->
+                                                    (buildingFilter == null || client.buildingId == buildingFilter) &&
+                                                            (packageFilter == null || client.packageType == packageFilter)
+                                                }
+
+                                                // توليد CSV
+                                                val csvContent = clientViewModel.exportClientsToCSV(
+                                                    filteredClients,
+                                                    buildings
+                                                )
+
+                                                // التصدير حسب الصيغة
+                                                when (format) {
+                                                    ExportFormat.SHARE -> {
+                                                        shareTextFile(
+                                                            csvContent,
+                                                            "clients_export.csv"
+                                                        )
+                                                    }
+
+                                                    ExportFormat.EXCEL -> {
+                                                        saveFileToDownloads(
+                                                            csvContent,
+                                                            "clients_export.csv",
+                                                            "text/csv"
+                                                        )
+                                                    }
+
+                                                    ExportFormat.PDF -> {
+                                                        Toast.makeText(
+                                                            this@MainActivity,
+                                                            getString(R.string.export_pdf_coming_soon),
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
+
+                                            },
+
+                                            buildings = buildings.map { it.id to it.name },
+                                            packages = clients.map { it.packageType }.distinct()
+                                                .sorted()
+                                        )
+                                    }
+
                                 } else {
                                     val client = selectedClient!!
                                     val clientPayments by paymentViewModel
@@ -819,6 +979,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
                             currentScreen == "buildings" && selectedBuilding == null -> {
                                 Scaffold(
                                     topBar = {
@@ -826,16 +987,16 @@ class MainActivity : ComponentActivity() {
                                             title = stringResource(R.string.screen_buildings),
                                             showOptions = true,
                                             options = listOf(
-                                                ExportOption.CSV,
-                                                ExportOption.PDF,
+                                                ExportOption.EXPORT,
                                                 ExportOption.IMPORT_CSV
                                             ),
                                             onOptionClick = { option ->
                                                 when (option) {
-                                                    ExportOption.CSV -> { /* Export Buildings CSV */ }
-                                                    ExportOption.PDF -> { /* Export Buildings PDF */ }
-                                                    ExportOption.IMPORT_CSV -> { /* Import Buildings */ }
-                                                    else -> {}
+                                                    ExportOption.EXPORT -> showExportDialogBuildings =
+                                                        true
+
+                                                    ExportOption.IMPORT_CSV -> { /* Import */
+                                                    }
                                                 }
                                             }
                                         )
@@ -1135,6 +1296,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+
                             currentScreen == "stats" -> {
                                 LaunchedEffect(selectedMonth, refreshTrigger) {
                                     paymentViewModel.setStatsMonth(selectedMonth)
@@ -1155,16 +1317,12 @@ class MainActivity : ComponentActivity() {
                                             ScreenTopBar(
                                                 title = stringResource(R.string.screen_stats),
                                                 showOptions = true,
-                                                options = listOf(
-                                                    ExportOption.CSV,
-                                                    ExportOption.PDF,
-                                                    ExportOption.ALL_PAYMENTS
-                                                ),
+                                                options = listOf(ExportOption.EXPORT),
                                                 onOptionClick = { option ->
                                                     when (option) {
-                                                        ExportOption.CSV -> { /* Export CSV */ }
-                                                        ExportOption.PDF -> { /* Export PDF */ }
-                                                        ExportOption.ALL_PAYMENTS -> { /* Export All */ }
+                                                        ExportOption.EXPORT -> showExportDialogStats =
+                                                            true
+
                                                         else -> {}
                                                     }
                                                 }
@@ -1209,14 +1367,12 @@ class MainActivity : ComponentActivity() {
                                             ScreenTopBar(
                                                 title = stringResource(R.string.stats_daily_collection),
                                                 showOptions = true,
-                                                options = listOf(
-                                                    ExportOption.CSV,
-                                                    ExportOption.PDF
-                                                ),
+                                                options = listOf(ExportOption.EXPORT),
                                                 onOptionClick = { option ->
                                                     when (option) {
-                                                        ExportOption.CSV -> { /* Export Daily CSV */ }
-                                                        ExportOption.PDF -> { /* Export Daily PDF */ }
+                                                        ExportOption.EXPORT -> showExportDialogDaily =
+                                                            true
+
                                                         else -> {}
                                                     }
                                                 }

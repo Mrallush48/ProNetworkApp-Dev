@@ -2,6 +2,7 @@ package com.pronetwork.app.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.*
+import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.repository.ClientRepository
@@ -31,4 +32,27 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     fun insert(client: Client) = viewModelScope.launch { repository.insert(client) }
     fun update(client: Client) = viewModelScope.launch { repository.update(client) }
     fun delete(client: Client) = viewModelScope.launch { repository.delete(client) }
+
+    fun exportClientsToCSV(
+        clients: List<Client>,
+        buildings: List<Building>
+    ): String {
+        val csvBuilder = StringBuilder()
+
+        // العناوين (Headers)
+        csvBuilder.appendLine("Name,Subscription Number,Phone,Package,Price,Building,Start Month,Start Day,Address,Notes")
+
+        // البيانات
+        clients.forEach { client ->
+            val buildingName = buildings.find { it.id == client.buildingId }?.name ?: "Unknown"
+            csvBuilder.appendLine(
+                "${client.name},${client.subscriptionNumber},${client.phone},${client.packageType}," +
+                        "${client.price},${buildingName},${client.startMonth},${client.startDay}," +
+                        "\"${client.address}\",\"${client.notes}\""
+            )
+        }
+
+        return csvBuilder.toString()
+    }
+
 }

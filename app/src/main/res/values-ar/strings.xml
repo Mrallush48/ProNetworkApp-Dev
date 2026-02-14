@@ -478,6 +478,33 @@
     <string name="performance_good">أداء جيد</string>
     <string name="performance_poor">أداء ضعيف</string>
 
+    <!-- Export Dialog -->
+    <string name="export_dialog_title">خيارات التصدير</string>
+    <string name="export_report_type">نوع التقرير</string>
+    <string name="export_type_summary">إجمالي</string>
+    <string name="export_type_detailed">تفصيلي</string>
+    <string name="export_time_period">الفترة الزمنية</string>
+    <string name="export_period_monthly">شهري</string>
+    <string name="export_period_quarterly">ربع سنوي</string>
+    <string name="export_period_yearly">سنوي</string>
+    <string name="export_period_custom">مخصص</string>
+    <string name="export_filter_building">تصنيف حسب المبنى</string>
+    <string name="export_filter_package">تصنيف حسب الباقة</string>
+    <string name="export_all_buildings">كل المباني</string>
+    <string name="export_all_packages">كل الباقات</string>
+    <string name="export_as">التصدير كـ:</string>
+    <string name="export_share">مشاركة</string>
+    <string name="export_pdf">PDF</string>
+    <string name="export_excel">إكسل</string>
+    <string name="export_cancel">إلغاء</string>
+    <string name="export_option_export">تصدير</string>
+    <string name="export_option_import">استيراد من CSV</string>
+
+    <!-- Toast Messages -->
+    <string name="export_saved_to_downloads">تم الحفظ في التنزيلات: %1$s</string>
+    <string name="export_error">خطأ: %1$s</string>
+    <string name="export_pdf_coming_soon">تصدير PDF قريباً!</string>
+
 
 
 
