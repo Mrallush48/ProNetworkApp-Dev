@@ -94,6 +94,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import android.graphics.pdf.PdfDocument
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -164,6 +165,157 @@ class MainActivity : ComponentActivity() {
             e.printStackTrace()
         }
     }
+
+    private fun savePDFToDownloads(pdfBytes: ByteArray, fileName: String) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val resolver = contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        outputStream.write(pdfBytes)
+                    }
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+                    resolver.update(it, contentValues, null, null)
+
+                    Toast.makeText(this, getString(R.string.export_saved_to_downloads, fileName), Toast.LENGTH_LONG).show()
+                }
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = java.io.File(downloadsDir, fileName)
+                file.writeBytes(pdfBytes)
+                Toast.makeText(this, getString(R.string.export_saved_to_downloads, file.name), Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.export_error, e.message ?: "Unknown"), Toast.LENGTH_LONG).show()
+            e.printStackTrace()
+        }
+    }
+
+
+    private fun generateClientsPDF(
+        clients: List<Client>,
+        buildings: List<Building>
+    ): ByteArray {
+        val pdfDocument = android.graphics.pdf.PdfDocument()
+        val paint = android.graphics.Paint()
+        val titlePaint = android.graphics.Paint().apply {
+            textSize = 24f
+            color = android.graphics.Color.parseColor("#673AB7")
+            isFakeBoldText = true
+        }
+        val headerPaint = android.graphics.Paint().apply {
+            textSize = 10f
+            color = android.graphics.Color.WHITE
+            isFakeBoldText = true
+        }
+        val cellPaint = android.graphics.Paint().apply {
+            textSize = 9f
+            color = android.graphics.Color.BLACK
+        }
+
+        val pageWidth = 842f  // A4 landscape width
+        val pageHeight = 595f  // A4 landscape height
+        val margin = 20f
+        var yPosition = 50f
+
+        val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
+            pageWidth.toInt(),
+            pageHeight.toInt(),
+            1
+        ).create()
+        val page = pdfDocument.startPage(pageInfo)
+        val canvas = page.canvas
+
+        // Title
+        canvas.drawText("\uD83D\uDCCA Pro Network Spot - Clients Report", margin, yPosition, titlePaint)
+        yPosition += 30f
+
+        // Date
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+        cellPaint.textSize = 10f
+        canvas.drawText("Generated: ${dateFormat.format(java.util.Date())}", margin, yPosition, cellPaint)
+        yPosition += 25f
+
+        // Header background
+        paint.color = android.graphics.Color.parseColor("#673AB7")
+        canvas.drawRect(margin, yPosition - 18f, pageWidth - margin, yPosition + 7f, paint)
+
+        // Headers - الآن 10 أعمدة مثل Excel
+        val headers = listOf("Name", "Sub#", "Phone", "Package", "Price", "Building", "Month", "Day", "Address", "Notes")
+        val colWidths = listOf(70f, 50f, 65f, 55f, 45f, 70f, 45f, 35f, 80f, 100f) // Total: 615f
+        var xPos = margin
+        headers.forEachIndexed { i, header ->
+            canvas.drawText(header, xPos + 3f, yPosition, headerPaint)
+            xPos += colWidths[i]
+        }
+        yPosition += 15f
+
+        // Data rows
+        cellPaint.textSize = 8f
+        clients.forEachIndexed { index, client ->
+            if (yPosition > pageHeight - 50f) {
+                // Page overflow - truncate for simplicity (or add multi-page logic)
+                canvas.drawText("... (${clients.size - index} more)", margin, yPosition, cellPaint)
+                return@forEachIndexed
+            }
+
+            val buildingName = buildings.find { it.id == client.buildingId }?.name ?: "N/A"
+
+            // Alternating row colors
+            if (index % 2 == 0) {
+                paint.color = android.graphics.Color.parseColor("#F5F5F5")
+                canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
+            }
+
+            xPos = margin
+            val rowData = listOf(
+                client.name,
+                client.subscriptionNumber,
+                client.phone,
+                client.packageType,
+                "${client.price}",
+                buildingName,
+                client.startMonth,
+                "${client.startDay}",
+                client.address,
+                client.notes
+            )
+
+            rowData.forEachIndexed { i, data ->
+                // Truncate long text to fit column
+                val truncated = if (data.length > 15) data.take(12) + "..." else data
+                canvas.drawText(truncated, xPos + 3f, yPosition, cellPaint)
+                xPos += colWidths[i]
+            }
+            yPosition += 15f
+        }
+
+        yPosition += 10f
+
+        // Total row
+        paint.color = android.graphics.Color.parseColor("#9575CD")
+        canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
+        headerPaint.textSize = 10f
+        canvas.drawText("Total: ${clients.sumOf { it.price }} SAR", margin + 5f, yPosition, headerPaint)
+
+        pdfDocument.finishPage(page)
+
+        val outputStream = java.io.ByteArrayOutputStream()
+        pdfDocument.writeTo(outputStream)
+        pdfDocument.close()
+
+        return outputStream.toByteArray()
+    }
+
+
 
     // دالة واحدة تجمع كل منطق التصفية/البحث/الفرز
     private fun filterClients(
@@ -822,22 +974,15 @@ class MainActivity : ComponentActivity() {
                                                     }
 
                                                     ExportFormat.EXCEL -> {
-                                                        saveFileToDownloads(
-                                                            csvContent,
-                                                            "clients_export.csv",
-                                                            "text/csv"
-                                                        )
+                                                        val htmlContent = clientViewModel.exportClientsToExcelHTML(filteredClients, buildings)
+                                                        saveFileToDownloads(htmlContent, "clients_export.xls", "application/vnd.ms-excel")
                                                     }
 
                                                     ExportFormat.PDF -> {
-                                                        Toast.makeText(
-                                                            this@MainActivity,
-                                                            getString(R.string.export_pdf_coming_soon),
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
+                                                        val pdfBytes = generateClientsPDF(filteredClients, buildings)
+                                                        savePDFToDownloads(pdfBytes, "clients_report.pdf")
                                                     }
                                                 }
-
                                             },
 
                                             buildings = buildings.map { it.id to it.name },
