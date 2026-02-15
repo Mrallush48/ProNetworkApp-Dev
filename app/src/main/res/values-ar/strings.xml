@@ -506,9 +506,7 @@
     <string name="export_pdf_coming_soon">تصدير PDF قريباً!</string>
     <string name="share_clients">مشاركة تقرير العملاء</string>
 
-
-
-
+    <string name="client_edit_room_number_label">رقم الغرفة</string>
 
 
 </resources>

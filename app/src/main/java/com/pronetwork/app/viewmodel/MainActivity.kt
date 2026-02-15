@@ -743,23 +743,14 @@ class MainActivity : ComponentActivity() {
                                             ClientEditDialog(
                                                 buildingList = buildings,
                                                 buildingSelectionEnabled = true,
-                                                onSave = { name,
-                                                           subscriptionNumber,
-                                                           price: Double,
-                                                           buildingId,
-                                                           startMonth,
-                                                           startDay,
-                                                           firstMonthAmount: Double?,
-                                                           phone,
-                                                           address,
-                                                           packageType,
-                                                           notes ->
+                                                onSave = { name, subscriptionNumber, price, buildingId, roomNumber, startMonth, startDay, firstMonthAmount, phone, address, packageType, notes ->
                                                     val newClient = Client(
                                                         name = name,
                                                         subscriptionNumber = subscriptionNumber,
                                                         price = price,
                                                         firstMonthAmount = firstMonthAmount,
                                                         buildingId = buildingId,
+                                                        roomNumber = roomNumber,
                                                         startMonth = startMonth,
                                                         startDay = startDay,
                                                         phone = phone,
@@ -1048,6 +1039,7 @@ class MainActivity : ComponentActivity() {
                                             initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
                                             initialPrice = selectedClient!!.price.toString(),
                                             initialBuildingId = selectedClient!!.buildingId,
+                                            initialRoomNumber = selectedClient!!.roomNumber ?: "",
                                             initialStartMonth = selectedClient!!.startMonth,
                                             initialStartDay = selectedClient!!.startDay,
                                             initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
@@ -1061,6 +1053,7 @@ class MainActivity : ComponentActivity() {
                                                        subscriptionNumber,
                                                        price: Double,
                                                        buildingId,
+                                                       roomNumber,
                                                        startMonth,
                                                        startDay,
                                                        firstMonthAmount: Double?,
@@ -1077,6 +1070,7 @@ class MainActivity : ComponentActivity() {
                                                         price = newPrice,
                                                         firstMonthAmount = firstMonthAmount,
                                                         buildingId = buildingId,
+                                                        roomNumber = roomNumber,
                                                         startMonth = startMonth,
                                                         startDay = startDay,
                                                         phone = phone,
@@ -1097,6 +1091,7 @@ class MainActivity : ComponentActivity() {
                                             onDismiss = { showEditClientDialog = false }
                                         )
                                     }
+
                                 } else {
                                     val client = selectedClient!!
                                     val clientPayments by paymentViewModel
@@ -1314,6 +1309,7 @@ class MainActivity : ComponentActivity() {
                                 initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
                                 initialPrice = selectedClient!!.price.toString(),
                                 initialBuildingId = selectedClient!!.buildingId,
+                                initialRoomNumber = selectedClient!!.roomNumber ?: "",
                                 initialStartMonth = selectedClient!!.startMonth,
                                 initialStartDay = selectedClient!!.startDay,
                                 initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
@@ -1327,6 +1323,7 @@ class MainActivity : ComponentActivity() {
                                            subscriptionNumber,
                                            price: Double,
                                            buildingId,
+                                           roomNumber,
                                            startMonth,
                                            startDay,
                                            firstMonthAmount: Double?,
@@ -1343,6 +1340,7 @@ class MainActivity : ComponentActivity() {
                                             price = newPrice,
                                             firstMonthAmount = firstMonthAmount,
                                             buildingId = buildingId,
+                                            roomNumber = roomNumber,
                                             startMonth = startMonth,
                                             startDay = startDay,
                                             phone = phone,

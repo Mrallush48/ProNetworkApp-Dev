@@ -39,6 +39,7 @@ fun ClientEditDialog(
     initialSubscriptionNumber: String = "",
     initialPrice: String = "",
     initialBuildingId: Int = 0,
+    initialRoomNumber: String = "",
     initialStartMonth: String = "",
     initialStartDay: Int = 1,
     initialFirstMonthAmount: String = "",
@@ -52,6 +53,7 @@ fun ClientEditDialog(
         subscriptionNumber: String,
         price: Double,
         buildingId: Int,
+        roomNumber: String,
         startMonth: String,
         startDay: Int,
         firstMonthAmount: Double,
@@ -76,7 +78,7 @@ fun ClientEditDialog(
             }
         )
     }
-
+    var roomNumber by remember { mutableStateOf(initialRoomNumber) }
     var startMonth by remember { mutableStateOf(initialStartMonth) }
     var startDay by remember { mutableStateOf(initialStartDay.toString()) }
     var firstMonthAmountText by remember { mutableStateOf(initialFirstMonthAmount) }
@@ -231,6 +233,8 @@ fun ClientEditDialog(
                         buildingError = null
                         buildingDropdownExpanded = false
                     },
+                    roomNumber = roomNumber,
+                    onRoomNumberChange = { roomNumber = it },
                     phone = phone,
                     onPhoneChange = { phone = it },
                     address = address,
@@ -238,6 +242,7 @@ fun ClientEditDialog(
                     notes = notes,
                     onNotesChange = { notes = it }
                 )
+
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -326,6 +331,7 @@ fun ClientEditDialog(
                                     subscriptionNumber.trim(),
                                     priceValue,
                                     selectedBuildingId!!,
+                                    roomNumber.trim(),
                                     startMonth,
                                     dayValue,
                                     firstMonthAmountValue,
@@ -646,6 +652,8 @@ private fun BuildingAndContactSection(
     buildingDropdownExpanded: Boolean,
     onBuildingDropdownExpandedChange: (Boolean) -> Unit,
     onBuildingSelected: (Int) -> Unit,
+    roomNumber: String,
+    onRoomNumberChange: (String) -> Unit,
     phone: String,
     onPhoneChange: (String) -> Unit,
     address: String,
@@ -705,6 +713,16 @@ private fun BuildingAndContactSection(
         }
         Spacer(modifier = Modifier.height(12.dp))
     }
+
+    OutlinedTextField(
+        value = roomNumber,
+        onValueChange = onRoomNumberChange,
+        label = { FixedLabel(stringResource(R.string.client_edit_room_number_label)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
 
     OutlinedTextField(
         value = phone,

@@ -505,8 +505,7 @@
     <string name="export_pdf_coming_soon">PDF export coming soon!</string>
     <string name="share_clients">Share clients report</string>
 
-
-
+    <string name="client_edit_room_number_label">Room No.</string>
 
 
 </resources>
