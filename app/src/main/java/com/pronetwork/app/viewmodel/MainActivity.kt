@@ -1,11 +1,6 @@
 package com.pronetwork.app
 
-import android.content.ContentValues
-import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -68,6 +63,7 @@ import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
+import com.pronetwork.app.export.ClientsExportManager
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import com.pronetwork.app.ui.components.ExportDialog
 import com.pronetwork.app.ui.components.ExportFormat
@@ -89,7 +85,6 @@ import com.pronetwork.app.viewmodel.PaymentViewModel
 import com.pronetwork.data.DailySummary
 import com.pronetwork.data.MonthlyCollectionRatio
 import kotlinx.coroutines.launch
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -98,9 +93,12 @@ import android.graphics.pdf.PdfDocument
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
+
     private val clientViewModel: ClientViewModel by viewModels()
     private val buildingViewModel: BuildingViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
+
+    private lateinit var exportManager: ClientsExportManager
 
     private val transactionRepository by lazy {
         val db = ClientDatabase.getDatabase(application)
@@ -300,6 +298,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        exportManager = ClientsExportManager(this)
+
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
             onPrimary = Color.White,
@@ -314,10 +315,9 @@ class MainActivity : ComponentActivity() {
             secondaryContainer = Color(0xFFD1C4E9),
             onSecondaryContainer = Color(0xFF512DA8)
         )
+
         setContent {
-            ProNetworkSpotTheme(
-                darkTheme = false
-            ) {
+            ProNetworkSpotTheme(darkTheme = false) {
                 var refreshTrigger by remember { mutableStateOf(0) }
                 var showExportDialogClients by remember { mutableStateOf(false) }
                 var showExportDialogBuildings by remember { mutableStateOf(false) }
@@ -414,6 +414,7 @@ class MainActivity : ComponentActivity() {
                         monthString
                     }
                 }
+
                 val monthOptions = monthsList
                 var selectedMonth by remember { mutableStateOf(monthOptions.first()) }
                 var monthDropdownExpanded by remember { mutableStateOf(false) }
@@ -503,9 +504,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
-                    snackbarHost = {
-                        SnackbarHost(hostState = snackbarHostState)
-                    }
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
                 ) { padding ->
                     Surface(
                         modifier = Modifier
@@ -514,6 +513,7 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         when {
+                            // ===== clients =====
                             currentScreen == "clients" && selectedBuilding == null -> {
                                 if (selectedClient == null) {
                                     Scaffold(
@@ -670,7 +670,7 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
 
-                                            val addClientRequiresBuildingMessage =
+                                            val addClientRequiresBuildingMessage2 =
                                                 stringResource(R.string.clients_add_requires_building)
                                             ClientListScreen(
                                                 clients = filteredClients,
@@ -683,7 +683,7 @@ class MainActivity : ComponentActivity() {
                                                     } else {
                                                         scope.launch {
                                                             snackbarHostState.showSnackbar(
-                                                                message = addClientRequiresBuildingMessage
+                                                                message = addClientRequiresBuildingMessage2
                                                             )
                                                         }
                                                     }
@@ -842,6 +842,7 @@ class MainActivity : ComponentActivity() {
                                                                     }
                                                                 }
                                                             }
+
                                                             Row(
                                                                 verticalAlignment = Alignment.CenterVertically
                                                             ) {
@@ -931,43 +932,31 @@ class MainActivity : ComponentActivity() {
                                             ExportDialog(
                                                 onDismiss = { showExportDialogClients = false },
                                                 onExport = { type, period, format, buildingFilter, packageFilter ->
-                                                    val filteredClients = clients.filter { client ->
-                                                        (buildingFilter == null || client.buildingId == buildingFilter) &&
-                                                                (packageFilter == null || client.packageType == packageFilter)
-                                                    }
-
-                                                    val htmlContent =
-                                                        clientViewModel.exportClientsToExcelHTML(
-                                                            filteredClients,
-                                                            buildings
-                                                        )
-                                                    val pdfBytes =
-                                                        generateClientsPDF(
-                                                            filteredClients,
-                                                            buildings
-                                                        )
+                                                    val filteredClientsForExport =
+                                                        clients.filter { client ->
+                                                            (buildingFilter == null || client.buildingId == buildingFilter) &&
+                                                                    (packageFilter == null || client.packageType == packageFilter)
+                                                        }
 
                                                     when (format) {
                                                         ExportFormat.SHARE -> {
-                                                            shareFile(
-                                                                htmlContent,
-                                                                "clients_export.xls",
-                                                                "application/vnd.ms-excel"
+                                                            exportManager.shareExcel(
+                                                                clients = filteredClientsForExport,
+                                                                buildings = buildings
                                                             )
                                                         }
 
                                                         ExportFormat.PDF -> {
-                                                            savePDFToDownloads(
-                                                                pdfBytes,
-                                                                "clients_report.pdf"
+                                                            exportManager.exportPdfToDownloads(
+                                                                clients = filteredClientsForExport,
+                                                                buildings = buildings
                                                             )
                                                         }
 
                                                         ExportFormat.EXCEL -> {
-                                                            saveFileToDownloads(
-                                                                htmlContent,
-                                                                "clients_export.xls",
-                                                                "application/vnd.ms-excel"
+                                                            exportManager.exportExcelToDownloads(
+                                                                clients = filteredClientsForExport,
+                                                                buildings = buildings
                                                             )
                                                         }
                                                     }
@@ -986,6 +975,7 @@ class MainActivity : ComponentActivity() {
                                     val clientMonthUi by paymentViewModel
                                         .getClientMonthPaymentsUi(client.id)
                                         .observeAsState(emptyList())
+
                                     ClientDetailsScreen(
                                         client = client,
                                         buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
@@ -1059,6 +1049,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            // ===== buildings list =====
                             currentScreen == "buildings" && selectedBuilding == null -> {
                                 Scaffold(
                                     topBar = {
@@ -1113,6 +1104,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            // ===== building details / client in building =====
                             selectedBuilding != null -> {
                                 if (selectedClient == null) {
                                     BuildingDetailsScreen(
@@ -1250,6 +1242,7 @@ class MainActivity : ComponentActivity() {
                                     val clientMonthUi by paymentViewModel
                                         .getClientMonthPaymentsUi(client.id)
                                         .observeAsState(emptyList())
+
                                     ClientDetailsScreen(
                                         client = client,
                                         buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
@@ -1319,6 +1312,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            // ===== stats =====
                             currentScreen == "stats" -> {
                                 LaunchedEffect(selectedMonth, refreshTrigger) {
                                     paymentViewModel.setStatsMonth(selectedMonth)
@@ -1429,225 +1423,86 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
 
-                    if (showEditBuildingDialog && selectedBuilding != null) {
-                        BuildingEditDialog(
-                            initialName = selectedBuilding!!.name,
-                            initialLocation = selectedBuilding!!.location,
-                            initialNotes = selectedBuilding!!.notes,
-                            onSave = { name, location, notes ->
-                                buildingViewModel.update(
-                                    selectedBuilding!!.copy(
-                                        name = name,
-                                        location = location,
-                                        notes = notes
+                        // حوارات edit العامة
+                        if (showEditBuildingDialog && selectedBuilding != null) {
+                            BuildingEditDialog(
+                                initialName = selectedBuilding!!.name,
+                                initialLocation = selectedBuilding!!.location,
+                                initialNotes = selectedBuilding!!.notes,
+                                onSave = { name, location, notes ->
+                                    buildingViewModel.update(
+                                        selectedBuilding!!.copy(
+                                            name = name,
+                                            location = location,
+                                            notes = notes
+                                        )
                                     )
-                                )
-                                showEditBuildingDialog = false
-                            },
-                            onDismiss = { showEditBuildingDialog = false }
-                        )
-                    }
+                                    showEditBuildingDialog = false
+                                },
+                                onDismiss = { showEditBuildingDialog = false }
+                            )
+                        }
 
-                    if (showEditClientDialog && selectedClient != null) {
-                        ClientEditDialog(
-                            buildingList = buildings,
-                            initialName = selectedClient!!.name,
-                            initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
-                            initialPrice = selectedClient!!.price.toString(),
-                            initialBuildingId = selectedClient!!.buildingId,
-                            initialStartMonth = selectedClient!!.startMonth,
-                            initialStartDay = selectedClient!!.startDay,
-                            initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
-                                ?: "",
-                            initialPhone = selectedClient!!.phone,
-                            initialAddress = selectedClient!!.address,
-                            initialPackageType = selectedClient!!.packageType,
-                            initialNotes = selectedClient!!.notes,
-                            buildingSelectionEnabled = true,
-                            onSave = { name,
-                                       subscriptionNumber,
-                                       price: Double,
-                                       buildingId,
-                                       startMonth,
-                                       startDay,
-                                       firstMonthAmount: Double?,
-                                       phone,
-                                       address,
-                                       packageType,
-                                       notes ->
-                                val oldPrice = selectedClient!!.price
-                                val newPrice = price
-                                clientViewModel.update(
-                                    selectedClient!!.copy(
-                                        name = name,
-                                        subscriptionNumber = subscriptionNumber,
-                                        price = newPrice,
-                                        firstMonthAmount = firstMonthAmount,
-                                        buildingId = buildingId,
-                                        startMonth = startMonth,
-                                        startDay = startDay,
-                                        phone = phone,
-                                        address = address,
-                                        packageType = packageType,
-                                        notes = notes
+                        if (showEditClientDialog && selectedClient != null) {
+                            ClientEditDialog(
+                                buildingList = buildings,
+                                initialName = selectedClient!!.name,
+                                initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
+                                initialPrice = selectedClient!!.price.toString(),
+                                initialBuildingId = selectedClient!!.buildingId,
+                                initialStartMonth = selectedClient!!.startMonth,
+                                initialStartDay = selectedClient!!.startDay,
+                                initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
+                                    ?: "",
+                                initialPhone = selectedClient!!.phone,
+                                initialAddress = selectedClient!!.address,
+                                initialPackageType = selectedClient!!.packageType,
+                                initialNotes = selectedClient!!.notes,
+                                buildingSelectionEnabled = true,
+                                onSave = { name,
+                                           subscriptionNumber,
+                                           price: Double,
+                                           buildingId,
+                                           startMonth,
+                                           startDay,
+                                           firstMonthAmount: Double?,
+                                           phone,
+                                           address,
+                                           packageType,
+                                           notes ->
+                                    val oldPrice = selectedClient!!.price
+                                    val newPrice = price
+                                    clientViewModel.update(
+                                        selectedClient!!.copy(
+                                            name = name,
+                                            subscriptionNumber = subscriptionNumber,
+                                            price = newPrice,
+                                            firstMonthAmount = firstMonthAmount,
+                                            buildingId = buildingId,
+                                            startMonth = startMonth,
+                                            startDay = startDay,
+                                            phone = phone,
+                                            address = address,
+                                            packageType = packageType,
+                                            notes = notes
+                                        )
                                     )
-                                )
-                                if (newPrice != oldPrice) {
-                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
-                                        clientId = selectedClient!!.id,
-                                        newAmount = newPrice
-                                    )
-                                }
-                                showEditClientDialog = false
-                                selectedClient = null
-                            },
-                            onDismiss = { showEditClientDialog = false }
-                        )
+                                    if (newPrice != oldPrice) {
+                                        paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
+                                            clientId = selectedClient!!.id,
+                                            newAmount = newPrice
+                                        )
+                                    }
+                                    showEditClientDialog = false
+                                    selectedClient = null
+                                },
+                                onDismiss = { showEditClientDialog = false }
+                            )
+                        }
                     }
                 }
             }
-        }
-    }
-
-    // ================== Export helpers (Excel / PDF / Share) ==================
-
-    private fun shareFile(content: String, fileName: String, mimeType: String) {
-        try {
-            val file = File(cacheDir, fileName)
-            file.writeText(content)
-            shareUri(file, mimeType)
-        } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                getString(R.string.export_error, e.message ?: "Unknown"),
-                Toast.LENGTH_LONG
-            ).show()
-            e.printStackTrace()
-        }
-    }
-
-    private fun sharePDFFile(pdfBytes: ByteArray, fileName: String) {
-        try {
-            val file = File(cacheDir, fileName)
-            file.writeBytes(pdfBytes)
-            shareUri(file, "application/pdf")
-        } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                getString(R.string.export_error, e.message ?: "Unknown"),
-                Toast.LENGTH_LONG
-            ).show()
-            e.printStackTrace()
-        }
-    }
-
-    private fun shareUri(file: File, mimeType: String) {
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            this,
-            "${packageName}.fileprovider",
-            file
-        )
-
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = mimeType
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-
-        startActivity(Intent.createChooser(shareIntent, getString(R.string.share_clients)))
-    }
-
-    private fun saveFileToDownloads(content: String, fileName: String, mimeType: String) {
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                val resolver = contentResolver
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { outputStream ->
-                        outputStream.write(content.toByteArray())
-                    }
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    resolver.update(it, contentValues, null, null)
-
-                    Toast.makeText(
-                        this,
-                        getString(R.string.export_saved_to_downloads, fileName),
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            } else {
-                val downloadsDir =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, fileName)
-                file.writeText(content)
-                Toast.makeText(
-                    this,
-                    getString(R.string.export_saved_to_downloads, file.name),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                getString(R.string.export_error, e.message ?: "Unknown"),
-                Toast.LENGTH_LONG
-            ).show()
-            e.printStackTrace()
-        }
-    }
-
-    private fun savePDFToDownloads(pdfBytes: ByteArray, fileName: String) {
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                val resolver = contentResolver
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { outputStream ->
-                        outputStream.write(pdfBytes)
-                    }
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    resolver.update(it, contentValues, null, null)
-
-                    Toast.makeText(
-                        this,
-                        getString(R.string.export_saved_to_downloads, fileName),
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            } else {
-                val downloadsDir =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, fileName)
-                file.writeBytes(pdfBytes)
-                Toast.makeText(
-                    this,
-                    getString(R.string.export_saved_to_downloads, file.name),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                getString(R.string.export_error, e.message ?: "Unknown"),
-                Toast.LENGTH_LONG
-            ).show()
-            e.printStackTrace()
         }
     }
 }
