@@ -504,6 +504,8 @@
     <string name="export_saved_to_downloads">تم الحفظ في التنزيلات: %1$s</string>
     <string name="export_error">خطأ: %1$s</string>
     <string name="export_pdf_coming_soon">تصدير PDF قريباً!</string>
+    <string name="share_clients">مشاركة تقرير العملاء</string>
+
 
 
 

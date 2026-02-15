@@ -96,7 +96,6 @@ import java.util.Date
 import java.util.Locale
 import android.graphics.pdf.PdfDocument
 
-
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val clientViewModel: ClientViewModel by viewModels()
@@ -108,103 +107,11 @@ class MainActivity : ComponentActivity() {
         PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
     }
 
-    private fun shareTextFile(content: String, fileName: String) {
-        val sendIntent = Intent().apply {
-            action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_TEXT, content)
-            putExtra(Intent.EXTRA_TITLE, fileName)
-            type = "text/plain"
-        }
-        startActivity(Intent.createChooser(sendIntent, "Share $fileName"))
-    }
-
-    private fun saveFileToDownloads(content: String, fileName: String, mimeType: String) {
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                // Android 10+
-                val resolver = contentResolver
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { outputStream ->
-                        outputStream.write(content.toByteArray())
-                    }
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    resolver.update(it, contentValues, null, null)
-
-                    Toast.makeText(
-                        this,
-                        getString(R.string.export_saved_to_downloads, fileName),
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            } else {
-                // قبل Android 10
-                val downloadsDir =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, fileName)
-                file.writeText(content)
-                Toast.makeText(
-                    this,
-                    getString(R.string.export_saved_to_downloads, file.name),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                getString(R.string.export_error, e.message ?: "Unknown"),
-                Toast.LENGTH_LONG
-            ).show()
-            e.printStackTrace()
-        }
-    }
-
-    private fun savePDFToDownloads(pdfBytes: ByteArray, fileName: String) {
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                val resolver = contentResolver
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { outputStream ->
-                        outputStream.write(pdfBytes)
-                    }
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    resolver.update(it, contentValues, null, null)
-
-                    Toast.makeText(this, getString(R.string.export_saved_to_downloads, fileName), Toast.LENGTH_LONG).show()
-                }
-            } else {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = java.io.File(downloadsDir, fileName)
-                file.writeBytes(pdfBytes)
-                Toast.makeText(this, getString(R.string.export_saved_to_downloads, file.name), Toast.LENGTH_LONG).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, getString(R.string.export_error, e.message ?: "Unknown"), Toast.LENGTH_LONG).show()
-            e.printStackTrace()
-        }
-    }
-
-
     private fun generateClientsPDF(
         clients: List<Client>,
         buildings: List<Building>
     ): ByteArray {
-        val pdfDocument = android.graphics.pdf.PdfDocument()
+        val pdfDocument = PdfDocument()
         val paint = android.graphics.Paint()
         val titlePaint = android.graphics.Paint().apply {
             textSize = 24f
@@ -221,12 +128,12 @@ class MainActivity : ComponentActivity() {
             color = android.graphics.Color.BLACK
         }
 
-        val pageWidth = 842f  // A4 landscape width
-        val pageHeight = 595f  // A4 landscape height
+        val pageWidth = 842f
+        val pageHeight = 595f
         val margin = 20f
         var yPosition = 50f
 
-        val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
+        val pageInfo = PdfDocument.PageInfo.Builder(
             pageWidth.toInt(),
             pageHeight.toInt(),
             1
@@ -234,23 +141,35 @@ class MainActivity : ComponentActivity() {
         val page = pdfDocument.startPage(pageInfo)
         val canvas = page.canvas
 
-        // Title
-        canvas.drawText("\uD83D\uDCCA Pro Network Spot - Clients Report", margin, yPosition, titlePaint)
+        canvas.drawText(
+            "\uD83D\uDCCA Pro Network Spot - Clients Report",
+            margin,
+            yPosition,
+            titlePaint
+        )
         yPosition += 30f
 
-        // Date
-        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         cellPaint.textSize = 10f
-        canvas.drawText("Generated: ${dateFormat.format(java.util.Date())}", margin, yPosition, cellPaint)
+        canvas.drawText("Generated: ${dateFormat.format(Date())}", margin, yPosition, cellPaint)
         yPosition += 25f
 
-        // Header background
         paint.color = android.graphics.Color.parseColor("#673AB7")
         canvas.drawRect(margin, yPosition - 18f, pageWidth - margin, yPosition + 7f, paint)
 
-        // Headers - الآن 10 أعمدة مثل Excel
-        val headers = listOf("Name", "Sub#", "Phone", "Package", "Price", "Building", "Month", "Day", "Address", "Notes")
-        val colWidths = listOf(70f, 50f, 65f, 55f, 45f, 70f, 45f, 35f, 80f, 100f) // Total: 615f
+        val headers = listOf(
+            "Name",
+            "Sub#",
+            "Phone",
+            "Package",
+            "Price",
+            "Building",
+            "Month",
+            "Day",
+            "Address",
+            "Notes"
+        )
+        val colWidths = listOf(70f, 50f, 65f, 55f, 45f, 70f, 45f, 35f, 80f, 100f)
         var xPos = margin
         headers.forEachIndexed { i, header ->
             canvas.drawText(header, xPos + 3f, yPosition, headerPaint)
@@ -258,21 +177,29 @@ class MainActivity : ComponentActivity() {
         }
         yPosition += 15f
 
-        // Data rows
         cellPaint.textSize = 8f
         clients.forEachIndexed { index, client ->
             if (yPosition > pageHeight - 50f) {
-                // Page overflow - truncate for simplicity (or add multi-page logic)
-                canvas.drawText("... (${clients.size - index} more)", margin, yPosition, cellPaint)
+                canvas.drawText(
+                    "... (${clients.size - index} more)",
+                    margin,
+                    yPosition,
+                    cellPaint
+                )
                 return@forEachIndexed
             }
 
             val buildingName = buildings.find { it.id == client.buildingId }?.name ?: "N/A"
 
-            // Alternating row colors
             if (index % 2 == 0) {
                 paint.color = android.graphics.Color.parseColor("#F5F5F5")
-                canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
+                canvas.drawRect(
+                    margin,
+                    yPosition - 12f,
+                    pageWidth - margin,
+                    yPosition + 5f,
+                    paint
+                )
             }
 
             xPos = margin
@@ -290,7 +217,6 @@ class MainActivity : ComponentActivity() {
             )
 
             rowData.forEachIndexed { i, data ->
-                // Truncate long text to fit column
                 val truncated = if (data.length > 15) data.take(12) + "..." else data
                 canvas.drawText(truncated, xPos + 3f, yPosition, cellPaint)
                 xPos += colWidths[i]
@@ -300,11 +226,15 @@ class MainActivity : ComponentActivity() {
 
         yPosition += 10f
 
-        // Total row
         paint.color = android.graphics.Color.parseColor("#9575CD")
         canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
         headerPaint.textSize = 10f
-        canvas.drawText("Total: ${clients.sumOf { it.price }} SAR", margin + 5f, yPosition, headerPaint)
+        canvas.drawText(
+            "Total: ${clients.sumOf { it.price }} SAR",
+            margin + 5f,
+            yPosition,
+            headerPaint
+        )
 
         pdfDocument.finishPage(page)
 
@@ -315,9 +245,6 @@ class MainActivity : ComponentActivity() {
         return outputStream.toByteArray()
     }
 
-
-
-    // دالة واحدة تجمع كل منطق التصفية/البحث/الفرز
     private fun filterClients(
         clients: List<Client>,
         selectedMonth: String,
@@ -603,8 +530,7 @@ class MainActivity : ComponentActivity() {
                                                         ExportOption.EXPORT -> showExportDialogClients =
                                                             true
 
-                                                        ExportOption.IMPORT_CSV -> { /* Import */
-                                                        }
+                                                        ExportOption.IMPORT_CSV -> { /* Import */ }
                                                     }
                                                 }
                                             )
@@ -736,7 +662,9 @@ class MainActivity : ComponentActivity() {
                                                     ) {
                                                         Icon(
                                                             imageVector = Icons.Filled.FilterList,
-                                                            contentDescription = stringResource(R.string.clients_filter_and_sort)
+                                                            contentDescription = stringResource(
+                                                                R.string.clients_filter_and_sort
+                                                            )
                                                         )
                                                     }
                                                 }
@@ -846,6 +774,7 @@ class MainActivity : ComponentActivity() {
                                                                     }
                                                                 }
                                                             }
+
                                                             Text(
                                                                 stringResource(R.string.clients_filter_package_label),
                                                                 style = MaterialTheme.typography.labelMedium
@@ -946,51 +875,109 @@ class MainActivity : ComponentActivity() {
                                                 )
                                             }
                                         }
-                                    }
 
-                                    if (showExportDialogClients) {
-                                        ExportDialog(
-                                            onDismiss = { showExportDialogClients = false },
-                                            onExport = { type, period, format, buildingFilter, packageFilter ->
-                                                // تطبيق الفلاتر
-                                                val filteredClients = clients.filter { client ->
-                                                    (buildingFilter == null || client.buildingId == buildingFilter) &&
-                                                            (packageFilter == null || client.packageType == packageFilter)
-                                                }
+                                        if (showClientDialog) {
+                                            ClientEditDialog(
+                                                buildingList = buildings,
+                                                buildingSelectionEnabled = true,
+                                                onSave = { name,
+                                                           subscriptionNumber,
+                                                           price: Double,
+                                                           buildingId,
+                                                           startMonth,
+                                                           startDay,
+                                                           firstMonthAmount: Double?,
+                                                           phone,
+                                                           address,
+                                                           packageType,
+                                                           notes ->
+                                                    val newClient = Client(
+                                                        name = name,
+                                                        subscriptionNumber = subscriptionNumber,
+                                                        price = price,
+                                                        firstMonthAmount = firstMonthAmount,
+                                                        buildingId = buildingId,
+                                                        startMonth = startMonth,
+                                                        startDay = startDay,
+                                                        phone = phone,
+                                                        address = address,
+                                                        packageType = packageType,
+                                                        notes = notes
+                                                    )
+                                                    scope.launch {
+                                                        clientViewModel.insert(newClient)
+                                                        kotlinx.coroutines.delay(300)
+                                                        val allClients = clients
+                                                        val insertedClient =
+                                                            allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
+                                                        insertedClient?.let { client ->
+                                                            paymentViewModel.createPaymentsForClient(
+                                                                clientId = client.id,
+                                                                startMonth = startMonth,
+                                                                endMonth = null,
+                                                                amount = price,
+                                                                monthOptions = monthOptions,
+                                                                firstMonthAmount = firstMonthAmount
+                                                            )
+                                                        }
+                                                    }
+                                                    showClientDialog = false
+                                                },
+                                                onDismiss = { showClientDialog = false }
+                                            )
+                                        }
 
-                                                // توليد CSV
-                                                val csvContent = clientViewModel.exportClientsToCSV(
-                                                    filteredClients,
-                                                    buildings
-                                                )
+                                        if (showExportDialogClients) {
+                                            ExportDialog(
+                                                onDismiss = { showExportDialogClients = false },
+                                                onExport = { type, period, format, buildingFilter, packageFilter ->
+                                                    val filteredClients = clients.filter { client ->
+                                                        (buildingFilter == null || client.buildingId == buildingFilter) &&
+                                                                (packageFilter == null || client.packageType == packageFilter)
+                                                    }
 
-                                                // التصدير حسب الصيغة
-                                                when (format) {
-                                                    ExportFormat.SHARE -> {
-                                                        shareTextFile(
-                                                            csvContent,
-                                                            "clients_export.csv"
+                                                    val htmlContent =
+                                                        clientViewModel.exportClientsToExcelHTML(
+                                                            filteredClients,
+                                                            buildings
                                                         )
-                                                    }
+                                                    val pdfBytes =
+                                                        generateClientsPDF(
+                                                            filteredClients,
+                                                            buildings
+                                                        )
 
-                                                    ExportFormat.EXCEL -> {
-                                                        val htmlContent = clientViewModel.exportClientsToExcelHTML(filteredClients, buildings)
-                                                        saveFileToDownloads(htmlContent, "clients_export.xls", "application/vnd.ms-excel")
-                                                    }
+                                                    when (format) {
+                                                        ExportFormat.SHARE -> {
+                                                            shareFile(
+                                                                htmlContent,
+                                                                "clients_export.xls",
+                                                                "application/vnd.ms-excel"
+                                                            )
+                                                        }
 
-                                                    ExportFormat.PDF -> {
-                                                        val pdfBytes = generateClientsPDF(filteredClients, buildings)
-                                                        savePDFToDownloads(pdfBytes, "clients_report.pdf")
-                                                    }
-                                                }
-                                            },
+                                                        ExportFormat.PDF -> {
+                                                            savePDFToDownloads(
+                                                                pdfBytes,
+                                                                "clients_report.pdf"
+                                                            )
+                                                        }
 
-                                            buildings = buildings.map { it.id to it.name },
-                                            packages = clients.map { it.packageType }.distinct()
-                                                .sorted()
-                                        )
+                                                        ExportFormat.EXCEL -> {
+                                                            saveFileToDownloads(
+                                                                htmlContent,
+                                                                "clients_export.xls",
+                                                                "application/vnd.ms-excel"
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                buildings = buildings.map { it.id to it.name },
+                                                packages = clients.map { it.packageType }.distinct()
+                                                    .sorted()
+                                            )
+                                        }
                                     }
-
                                 } else {
                                     val client = selectedClient!!
                                     val clientPayments by paymentViewModel
@@ -1070,59 +1057,6 @@ class MainActivity : ComponentActivity() {
                                         onBack = { selectedClient = null }
                                     )
                                 }
-
-                                // ✅ Dialog إضافة العملاء بعد قسم العملاء بالكامل
-                                if (showClientDialog) {
-                                    ClientEditDialog(
-                                        buildingList = buildings,
-                                        initialStartMonth = selectedMonth,
-                                        buildingSelectionEnabled = true,
-                                        onSave = { name,
-                                                   subscriptionNumber,
-                                                   price: Double,
-                                                   buildingId,
-                                                   startMonth,
-                                                   startDay,
-                                                   firstMonthAmount: Double?,
-                                                   phone,
-                                                   address,
-                                                   packageType,
-                                                   notes ->
-                                            scope.launch {
-                                                val newClient = Client(
-                                                    name = name,
-                                                    subscriptionNumber = subscriptionNumber,
-                                                    price = price,
-                                                    firstMonthAmount = firstMonthAmount,
-                                                    buildingId = buildingId,
-                                                    startMonth = startMonth,
-                                                    startDay = startDay,
-                                                    phone = phone,
-                                                    address = address,
-                                                    packageType = packageType,
-                                                    notes = notes
-                                                )
-                                                clientViewModel.insert(newClient)
-                                                kotlinx.coroutines.delay(300)
-                                                val allClients = clients
-                                                val insertedClient =
-                                                    allClients.lastOrNull { it.subscriptionNumber == subscriptionNumber }
-                                                insertedClient?.let { client ->
-                                                    paymentViewModel.createPaymentsForClient(
-                                                        clientId = client.id,
-                                                        startMonth = startMonth,
-                                                        endMonth = null,
-                                                        amount = price,
-                                                        monthOptions = monthOptions,
-                                                        firstMonthAmount = firstMonthAmount
-                                                    )
-                                                }
-                                                showClientDialog = false
-                                            }
-                                        },
-                                        onDismiss = { showClientDialog = false }
-                                    )
-                                }
                             }
 
                             currentScreen == "buildings" && selectedBuilding == null -> {
@@ -1140,8 +1074,7 @@ class MainActivity : ComponentActivity() {
                                                     ExportOption.EXPORT -> showExportDialogBuildings =
                                                         true
 
-                                                    ExportOption.IMPORT_CSV -> { /* Import */
-                                                    }
+                                                    ExportOption.IMPORT_CSV -> { /* Import */ }
                                                 }
                                             }
                                         )
@@ -1383,62 +1316,6 @@ class MainActivity : ComponentActivity() {
                                             selectedClient = null
                                         }
                                     )
-                                    if (showEditClientDialog) {
-                                        ClientEditDialog(
-                                            buildingList = buildings,
-                                            initialName = client.name,
-                                            initialSubscriptionNumber = client.subscriptionNumber,
-                                            initialPrice = client.price.toString(),
-                                            initialBuildingId = client.buildingId,
-                                            initialStartMonth = client.startMonth,
-                                            initialStartDay = client.startDay,
-                                            initialFirstMonthAmount = client.firstMonthAmount?.toString()
-                                                ?: "",
-                                            initialPhone = client.phone,
-                                            initialAddress = client.address,
-                                            initialPackageType = client.packageType,
-                                            initialNotes = client.notes,
-                                            buildingSelectionEnabled = true,
-                                            onSave = { name,
-                                                       subscriptionNumber,
-                                                       price: Double,
-                                                       buildingId,
-                                                       startMonth,
-                                                       startDay,
-                                                       firstMonthAmount: Double?,
-                                                       phone,
-                                                       address,
-                                                       packageType,
-                                                       notes ->
-                                                val oldPrice = client.price
-                                                val newPrice = price
-                                                clientViewModel.update(
-                                                    client.copy(
-                                                        name = name,
-                                                        subscriptionNumber = subscriptionNumber,
-                                                        price = newPrice,
-                                                        firstMonthAmount = firstMonthAmount,
-                                                        buildingId = buildingId,
-                                                        startMonth = startMonth,
-                                                        startDay = startDay,
-                                                        phone = phone,
-                                                        address = address,
-                                                        packageType = packageType,
-                                                        notes = notes
-                                                    )
-                                                )
-                                                if (newPrice != oldPrice) {
-                                                    paymentViewModel.applyNewMonthlyPriceFromNextUnpaidMonth(
-                                                        clientId = client.id,
-                                                        newAmount = newPrice
-                                                    )
-                                                }
-                                                showEditClientDialog = false
-                                                selectedClient = null
-                                            },
-                                            onDismiss = { showEditClientDialog = false }
-                                        )
-                                    }
                                 }
                             }
 
@@ -1631,6 +1508,146 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    // ================== Export helpers (Excel / PDF / Share) ==================
+
+    private fun shareFile(content: String, fileName: String, mimeType: String) {
+        try {
+            val file = File(cacheDir, fileName)
+            file.writeText(content)
+            shareUri(file, mimeType)
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                getString(R.string.export_error, e.message ?: "Unknown"),
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
+        }
+    }
+
+    private fun sharePDFFile(pdfBytes: ByteArray, fileName: String) {
+        try {
+            val file = File(cacheDir, fileName)
+            file.writeBytes(pdfBytes)
+            shareUri(file, "application/pdf")
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                getString(R.string.export_error, e.message ?: "Unknown"),
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
+        }
+    }
+
+    private fun shareUri(file: File, mimeType: String) {
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",
+            file
+        )
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.share_clients)))
+    }
+
+    private fun saveFileToDownloads(content: String, fileName: String, mimeType: String) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val resolver = contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        outputStream.write(content.toByteArray())
+                    }
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+                    resolver.update(it, contentValues, null, null)
+
+                    Toast.makeText(
+                        this,
+                        getString(R.string.export_saved_to_downloads, fileName),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else {
+                val downloadsDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, fileName)
+                file.writeText(content)
+                Toast.makeText(
+                    this,
+                    getString(R.string.export_saved_to_downloads, file.name),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                getString(R.string.export_error, e.message ?: "Unknown"),
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
+        }
+    }
+
+    private fun savePDFToDownloads(pdfBytes: ByteArray, fileName: String) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val resolver = contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        outputStream.write(pdfBytes)
+                    }
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+                    resolver.update(it, contentValues, null, null)
+
+                    Toast.makeText(
+                        this,
+                        getString(R.string.export_saved_to_downloads, fileName),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else {
+                val downloadsDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, fileName)
+                file.writeBytes(pdfBytes)
+                Toast.makeText(
+                    this,
+                    getString(R.string.export_saved_to_downloads, file.name),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                getString(R.string.export_error, e.message ?: "Unknown"),
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
         }
     }
 }
