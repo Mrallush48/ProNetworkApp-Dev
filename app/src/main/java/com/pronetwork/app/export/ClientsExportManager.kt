@@ -290,9 +290,9 @@ class ClientsExportManager(
 
         val headers = listOf(
             "Name", "Sub#", "Phone", "Package", "Price",
-            "Building", "Month", "Day", "Address", "Notes"
+            "Building", "Room", "Month", "Day", "Address", "Notes"
         )
-        val colWidths = listOf(70f, 50f, 65f, 55f, 45f, 70f, 45f, 35f, 80f, 100f)
+        val colWidths = listOf(65f, 48f, 60f, 50f, 42f, 60f, 40f, 45f, 30f, 75f, 90f)
         var xPos = margin
         headers.forEachIndexed { i, header ->
             canvas.drawText(header, xPos + 3f, yPosition, headerPaint)
@@ -321,7 +321,8 @@ class ClientsExportManager(
             val rowData = listOf(
                 client.name, client.subscriptionNumber, client.phone,
                 client.packageType, "${client.price}", buildingName,
-                client.startMonth, "${client.startDay}", client.address, client.notes
+                client.roomNumber ?: "-", client.startMonth, "${client.startDay}",
+                client.address, client.notes
             )
 
             rowData.forEachIndexed { i, data ->
@@ -400,26 +401,28 @@ class ClientsExportManager(
             appendLine("""<Worksheet ss:Name="Clients">""")
             appendLine("""<Table ss:DefaultColumnWidth="100">""")
 
-            appendLine("""<Column ss:Width="150"/>""")
-            appendLine("""<Column ss:Width="120"/>""")
-            appendLine("""<Column ss:Width="100"/>""")
-            appendLine("""<Column ss:Width="80"/>""")
-            appendLine("""<Column ss:Width="80"/>""")
-            appendLine("""<Column ss:Width="120"/>""")
-            appendLine("""<Column ss:Width="90"/>""")
-            appendLine("""<Column ss:Width="70"/>""")
-            appendLine("""<Column ss:Width="150"/>""")
-            appendLine("""<Column ss:Width="200"/>""")
+            appendLine("""<Column ss:Width="150"/>""")  // Name
+            appendLine("""<Column ss:Width="120"/>""")  // Subscription
+            appendLine("""<Column ss:Width="100"/>""")  // Phone
+            appendLine("""<Column ss:Width="80"/>""")   // Package
+            appendLine("""<Column ss:Width="80"/>""")   // Price
+            appendLine("""<Column ss:Width="120"/>""")  // Building
+            appendLine("""<Column ss:Width="80"/>""")   // Room
+            appendLine("""<Column ss:Width="90"/>""")   // Start Month
+            appendLine("""<Column ss:Width="70"/>""")   // Day
+            appendLine("""<Column ss:Width="150"/>""")  // Address
+            appendLine("""<Column ss:Width="200"/>""")  // Notes
+
 
             appendLine("""<Row ss:Height="30">""")
             appendLine(
-                """<Cell ss:StyleID="Title" ss:MergeAcross="9"><Data ss:Type="String">📊 Pro Network Spot - Clients Report</Data></Cell>"""
+                """<Cell ss:StyleID="Title" ss:MergeAcross="10"><Data ss:Type="String">📊 Pro Network Spot - Clients Report</Data></Cell>"""
             )
             appendLine("""</Row>""")
 
             appendLine("""<Row ss:Height="18">""")
             appendLine(
-                """<Cell ss:StyleID="Subtitle" ss:MergeAcross="9"><Data ss:Type="String">Generated: $currentDate | Total: ${clients.size} clients</Data></Cell>"""
+                """<Cell ss:StyleID="Subtitle" ss:MergeAcross="10"><Data ss:Type="String">Generated: $currentDate | Total: ${clients.size} clients</Data></Cell>"""
             )
             appendLine("""</Row>""")
 
@@ -428,7 +431,7 @@ class ClientsExportManager(
             appendLine("""<Row ss:Height="25">""")
             listOf(
                 "Name", "Subscription #", "Phone", "Package", "Price (SAR)",
-                "Building", "Start Month", "Day", "Address", "Notes"
+                "Building", "Room", "Start Month", "Day", "Address", "Notes"
             ).forEach {
                 appendLine(
                     """<Cell ss:StyleID="Header"><Data ss:Type="String">$it</Data></Cell>"""
@@ -461,6 +464,9 @@ class ClientsExportManager(
                     """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">$buildingName</Data></Cell>"""
                 )
                 appendLine(
+                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${client.roomNumber ?: "-"}</Data></Cell>"""
+                )
+                appendLine(
                     """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${client.startMonth}</Data></Cell>"""
                 )
                 appendLine(
@@ -485,8 +491,9 @@ class ClientsExportManager(
                 """<Cell ss:StyleID="Total"><Data ss:Type="Number">$total</Data></Cell>"""
             )
             appendLine(
-                """<Cell ss:StyleID="TotalLabel" ss:MergeAcross="4"><Data ss:Type="String">SAR</Data></Cell>"""
+                """<Cell ss:StyleID="TotalLabel" ss:MergeAcross="5"><Data ss:Type="String">SAR</Data></Cell>"""
             )
+
             appendLine("""</Row>""")
 
             appendLine("""</Table>""")
