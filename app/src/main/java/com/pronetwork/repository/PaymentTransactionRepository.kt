@@ -6,10 +6,7 @@ import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.data.PaymentTransactionDao
 import com.pronetwork.data.DailySummary
-import com.pronetwork.data.MonthlyCollectionRatio
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import java.util.Calendar
 
 
 class PaymentTransactionRepository(
@@ -75,34 +72,6 @@ class PaymentTransactionRepository(
      */
     fun getDailySummary(date: String): Flow<DailySummary> {
         return transactionDao.getDailySummary(date)
-    }
-
-    fun getMonthlyCollectionRatio(): Flow<MonthlyCollectionRatio> {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startOfMonth = calendar.timeInMillis
-
-        val endOfMonth = Calendar.getInstance().timeInMillis
-
-        return combine(
-            clientDao.getActiveClientsCount(),
-            clientDao.getPaidClientsCount(startOfMonth, endOfMonth)
-        ) { totalClients, paidClients ->
-            val ratio = if (totalClients > 0) {
-                (paidClients.toFloat() / totalClients.toFloat()) * 100
-            } else {
-                0f
-            }
-            MonthlyCollectionRatio(
-                expectedClients = totalClients,
-                paidClients = paidClients,
-                collectionRatio = ratio
-            )
-        }
     }
 
     suspend fun getDetailedTransactionsForMonth(month: String): List<PaymentTransactionDao.DetailedTransaction> {

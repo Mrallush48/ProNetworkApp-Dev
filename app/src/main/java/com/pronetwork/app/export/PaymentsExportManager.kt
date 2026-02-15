@@ -279,10 +279,12 @@ class PaymentsExportManager(private val context: Context) {
                 val idx = allMonths.indexOf(startMonth)
                 if (idx >= 0) allMonths.drop(idx).take(3) else listOf(startMonth)
             }
+
             PaymentReportPeriod.YEARLY -> {
                 val idx = allMonths.indexOf(startMonth)
                 if (idx >= 0) allMonths.drop(idx).take(12) else listOf(startMonth)
             }
+
             PaymentReportPeriod.CUSTOM -> {
                 if (endMonth == null) return listOf(startMonth)
                 val startIdx = allMonths.indexOf(startMonth)
@@ -563,7 +565,13 @@ class PaymentsExportManager(private val context: Context) {
             val unpaidCount = data.months.sumOf { it.unpaidCount }
 
             appendLine("""<Row><Cell ss:StyleID="SectionHeader" ss:MergeAcross="3"><Data ss:Type="String">Key Performance Indicators</Data></Cell></Row>""")
-            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Clients</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">${data.grandTotalClients}</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">Collection Rate</Data></Cell><Cell ss:StyleID="$rateStyle"><Data ss:Type="String">${"%.1f".format(data.grandCollectionRate)}%</Data></Cell></Row>""")
+            appendLine(
+                """<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Clients</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">${data.grandTotalClients}</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">Collection Rate</Data></Cell><Cell ss:StyleID="$rateStyle"><Data ss:Type="String">${
+                    "%.1f".format(
+                        data.grandCollectionRate
+                    )
+                }%</Data></Cell></Row>"""
+            )
             appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">✅ Fully Paid</Data></Cell><Cell ss:StyleID="Paid"><Data ss:Type="Number">$paidCount</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">⚠️ Partial</Data></Cell><Cell ss:StyleID="Partial"><Data ss:Type="Number">$partialCount</Data></Cell></Row>""")
             appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">❌ Unpaid</Data></Cell><Cell ss:StyleID="Unpaid"><Data ss:Type="Number">$unpaidCount</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">Avg/Month</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.avgMonthlyCollection}</Data></Cell></Row>""")
             appendLine("""<Row></Row>""")
@@ -572,10 +580,23 @@ class PaymentsExportManager(private val context: Context) {
             appendLine("""<Row><Cell ss:StyleID="SectionHeader" ss:MergeAcross="3"><Data ss:Type="String">Financial Summary</Data></Cell></Row>""")
             appendLine("""<Row><Cell ss:StyleID="Header"><Data ss:Type="String">Description</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Amount (SAR)</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Percentage</Data></Cell><Cell/></Row>""")
             appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Expected</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.grandTotalExpected}</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">100%</Data></Cell><Cell/></Row>""")
-            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Collected</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.grandTotalCollected}</Data></Cell><Cell ss:StyleID="KpiGood"><Data ss:Type="String">${"%.1f".format(data.grandCollectionRate)}%</Data></Cell><Cell/></Row>""")
+            appendLine(
+                """<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Collected</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.grandTotalCollected}</Data></Cell><Cell ss:StyleID="KpiGood"><Data ss:Type="String">${
+                    "%.1f".format(
+                        data.grandCollectionRate
+                    )
+                }%</Data></Cell><Cell/></Row>"""
+            )
 
-            val remainingPct = if (data.grandTotalExpected > 0) ((data.grandTotalRemaining / data.grandTotalExpected) * 100) else 0.0
-            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Remaining</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.grandTotalRemaining}</Data></Cell><Cell ss:StyleID="KpiBad"><Data ss:Type="String">${"%.1f".format(remainingPct)}%</Data></Cell><Cell/></Row>""")
+            val remainingPct =
+                if (data.grandTotalExpected > 0) ((data.grandTotalRemaining / data.grandTotalExpected) * 100) else 0.0
+            appendLine(
+                """<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Total Remaining</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.grandTotalRemaining}</Data></Cell><Cell ss:StyleID="KpiBad"><Data ss:Type="String">${
+                    "%.1f".format(
+                        remainingPct
+                    )
+                }%</Data></Cell><Cell/></Row>"""
+            )
             appendLine("""<Row></Row>""")
 
             // --- Trend (multi-month only) ---
@@ -599,9 +620,21 @@ class PaymentsExportManager(private val context: Context) {
                         m.collectionRate >= 50 -> "Partial"
                         else -> "Unpaid"
                     }
-                    appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">${m.month}</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${m.totalExpected}</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${m.totalCollected}</Data></Cell><Cell ss:StyleID="$mStyle"><Data ss:Type="String">${"%.1f".format(m.collectionRate)}%</Data></Cell></Row>""")
+                    appendLine(
+                        """<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">${m.month}</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${m.totalExpected}</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${m.totalCollected}</Data></Cell><Cell ss:StyleID="$mStyle"><Data ss:Type="String">${
+                            "%.1f".format(
+                                m.collectionRate
+                            )
+                        }%</Data></Cell></Row>"""
+                    )
                 }
-                appendLine("""<Row><Cell ss:StyleID="TotalRow"><Data ss:Type="String">TOTAL</Data></Cell><Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${data.grandTotalExpected}</Data></Cell><Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${data.grandTotalCollected}</Data></Cell><Cell ss:StyleID="TotalRow"><Data ss:Type="String">${"%.1f".format(data.grandCollectionRate)}%</Data></Cell></Row>""")
+                appendLine(
+                    """<Row><Cell ss:StyleID="TotalRow"><Data ss:Type="String">TOTAL</Data></Cell><Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${data.grandTotalExpected}</Data></Cell><Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${data.grandTotalCollected}</Data></Cell><Cell ss:StyleID="TotalRow"><Data ss:Type="String">${
+                        "%.1f".format(
+                            data.grandCollectionRate
+                        )
+                    }%</Data></Cell></Row>"""
+                )
                 appendLine("""<Row></Row>""")
             }
 
@@ -631,7 +664,13 @@ class PaymentsExportManager(private val context: Context) {
                     b.collectionRate >= 50 -> "Partial"
                     else -> "Unpaid"
                 }
-                appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">${b.buildingName}</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">${b.clientCount}</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${b.totalCollected}</Data></Cell><Cell ss:StyleID="$bStyle"><Data ss:Type="String">${"%.1f".format(b.collectionRate)}%</Data></Cell></Row>""")
+                appendLine(
+                    """<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">${b.buildingName}</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">${b.clientCount}</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${b.totalCollected}</Data></Cell><Cell ss:StyleID="$bStyle"><Data ss:Type="String">${
+                        "%.1f".format(
+                            b.collectionRate
+                        )
+                    }%</Data></Cell></Row>"""
+                )
             }
 
             // --- Smart Insights ---
@@ -703,7 +742,11 @@ class PaymentsExportManager(private val context: Context) {
                                 """<Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${monthData.totalExpected}</Data></Cell>""" +
                                 """<Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${monthData.totalCollected}</Data></Cell>""" +
                                 """<Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${monthData.totalRemaining}</Data></Cell>""" +
-                                """<Cell ss:StyleID="TotalRow"><Data ss:Type="String">${"%.1f".format(monthData.collectionRate)}%</Data></Cell>""" +
+                                """<Cell ss:StyleID="TotalRow"><Data ss:Type="String">${
+                                    "%.1f".format(
+                                        monthData.collectionRate
+                                    )
+                                }%</Data></Cell>""" +
                                 """<Cell ss:StyleID="TotalRow"/><Cell ss:StyleID="TotalRow"/></Row>"""
                     )
 
@@ -787,7 +830,9 @@ class PaymentsExportManager(private val context: Context) {
         var yPos = 45f
         var pageNum = 1
 
-        var pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum).create()
+        var pageInfo =
+            android.graphics.pdf.PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum)
+                .create()
         var page = pdfDocument.startPage(pageInfo)
         var canvas = page.canvas
 
@@ -795,7 +840,11 @@ class PaymentsExportManager(private val context: Context) {
             if (yPos > pageHeight - 40) {
                 pdfDocument.finishPage(page)
                 pageNum++
-                pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum).create()
+                pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
+                    pageWidth,
+                    pageHeight,
+                    pageNum
+                ).create()
                 page = pdfDocument.startPage(pageInfo)
                 canvas = page.canvas
                 yPos = 30f
@@ -807,7 +856,12 @@ class PaymentsExportManager(private val context: Context) {
         canvas.drawText("Pro Network - ${data.reportTitle}", margin, yPos, titlePaint)
         yPos += 18f
         cellPaint.textSize = 8f
-        canvas.drawText("Generated: ${data.generatedDate} | Type: ${data.reportType.name} | Trend: ${data.trend}", margin, yPos, cellPaint)
+        canvas.drawText(
+            "Generated: ${data.generatedDate} | Type: ${data.reportType.name} | Trend: ${data.trend}",
+            margin,
+            yPos,
+            cellPaint
+        )
         yPos += 20f
 
         // KPIs
@@ -819,13 +873,34 @@ class PaymentsExportManager(private val context: Context) {
         val unpaidCount = data.months.sumOf { it.unpaidCount }
 
         cellPaint.textSize = 7f
-        canvas.drawText("Total Clients: ${data.grandTotalClients} | ✅ Fully Paid: $paidCount | ⚠  Partial: $partialCount | ✘ Unpaid: $unpaidCount", margin, yPos, cellPaint)
+        canvas.drawText(
+            "Total Clients: ${data.grandTotalClients} | ✅ Fully Paid: $paidCount | ⚠  Partial: $partialCount | ✘ Unpaid: $unpaidCount",
+            margin,
+            yPos,
+            cellPaint
+        )
         yPos += 11f
-        canvas.drawText("Expected: ${"%.2f".format(data.grandTotalExpected)} SAR | Collected: ${"%.2f".format(data.grandTotalCollected)} SAR | Remaining: ${"%.2f".format(data.grandTotalRemaining)} SAR | Rate: ${"%.1f".format(data.grandCollectionRate)}%", margin, yPos, cellPaint)
+        canvas.drawText(
+            "Expected: ${"%.2f".format(data.grandTotalExpected)} SAR | Collected: ${
+                "%.2f".format(
+                    data.grandTotalCollected
+                )
+            } SAR | Remaining: ${"%.2f".format(data.grandTotalRemaining)} SAR | Rate: ${
+                "%.1f".format(
+                    data.grandCollectionRate
+                )
+            }%", margin, yPos, cellPaint
+        )
         yPos += 11f
 
         if (data.months.size > 1) {
-            canvas.drawText("Best: ${data.bestMonth ?: "-"} | Worst: ${data.worstMonth ?: "-"} | Avg/Month: ${"%.2f".format(data.avgMonthlyCollection)} SAR", margin, yPos, cellPaint)
+            canvas.drawText(
+                "Best: ${data.bestMonth ?: "-"} | Worst: ${data.worstMonth ?: "-"} | Avg/Month: ${
+                    "%.2f".format(
+                        data.avgMonthlyCollection
+                    )
+                } SAR", margin, yPos, cellPaint
+            )
             yPos += 18f
 
             // Monthly Comparison
@@ -930,7 +1005,12 @@ class PaymentsExportManager(private val context: Context) {
                     else -> android.graphics.Color.parseColor("#1565C0")
                 }
                 kpiPaint.color = insightColor
-                canvas.drawText("${insight.icon} ${insight.title}: ${insight.detail}", margin, yPos, kpiPaint)
+                canvas.drawText(
+                    "${insight.icon} ${insight.title}: ${insight.detail}",
+                    margin,
+                    yPos,
+                    kpiPaint
+                )
                 yPos += 12f
             }
             yPos += 8f
@@ -947,7 +1027,18 @@ class PaymentsExportManager(private val context: Context) {
                 fillPaint.color = android.graphics.Color.parseColor("#7E57C2")
                 canvas.drawRect(margin, yPos - 10f, pageWidth - margin, yPos + 4f, fillPaint)
 
-                val cols = listOf("Name", "Sub#", "Package", "Building", "Room", "Amount", "Paid", "Rem.", "Status", "Notes")
+                val cols = listOf(
+                    "Name",
+                    "Sub#",
+                    "Package",
+                    "Building",
+                    "Room",
+                    "Amount",
+                    "Paid",
+                    "Rem.",
+                    "Status",
+                    "Notes"
+                )
                 val colW = listOf(85f, 65f, 65f, 85f, 45f, 65f, 65f, 65f, 65f, 150f)
 
                 var xPos = margin
@@ -1008,11 +1099,26 @@ class PaymentsExportManager(private val context: Context) {
                 xPos += colW[0] + colW[1] + colW[2] + colW[3] + colW[4] // Skip first 5 cols
                 canvas.drawText("%.2f".format(monthData.totalExpected), xPos + 2f, yPos, totalPaint)
                 xPos += colW[5]
-                canvas.drawText("%.2f".format(monthData.totalCollected), xPos + 2f, yPos, totalPaint)
+                canvas.drawText(
+                    "%.2f".format(monthData.totalCollected),
+                    xPos + 2f,
+                    yPos,
+                    totalPaint
+                )
                 xPos += colW[6]
-                canvas.drawText("%.2f".format(monthData.totalRemaining), xPos + 2f, yPos, totalPaint)
+                canvas.drawText(
+                    "%.2f".format(monthData.totalRemaining),
+                    xPos + 2f,
+                    yPos,
+                    totalPaint
+                )
                 xPos += colW[7]
-                canvas.drawText("%.1f".format(monthData.collectionRate) + "%", xPos + 2f, yPos, totalPaint)
+                canvas.drawText(
+                    "%.1f".format(monthData.collectionRate) + "%",
+                    xPos + 2f,
+                    yPos,
+                    totalPaint
+                )
 
                 yPos += 18f
             }
@@ -1044,7 +1150,13 @@ class PaymentsExportManager(private val context: Context) {
 
                         if (txRow % 2 == 1) {
                             fillPaint.color = android.graphics.Color.parseColor("#F5F5F5")
-                            canvas.drawRect(margin, yPos - 9f, pageWidth - margin, yPos + 3f, fillPaint)
+                            canvas.drawRect(
+                                margin,
+                                yPos - 9f,
+                                pageWidth - margin,
+                                yPos + 3f,
+                                fillPaint
+                            )
                         }
 
                         txX = margin

@@ -12,8 +12,4 @@ data class DailySummary(
     val totalClients: Int = 0,
     val totalTransactions: Int = 0
 )
-data class MonthlyCollectionRatio(
-    val expectedClients: Int,
-    val paidClients: Int,
-    val collectionRatio: Float
-)
+

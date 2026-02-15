@@ -1,7 +1,12 @@
 package com.pronetwork.app.data
 
 import androidx.lifecycle.LiveData
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 
 @Dao
 interface PaymentDao {
@@ -102,12 +107,14 @@ interface PaymentDao {
     suspend fun getPaymentById(id: Int): Payment?
 
     // دالة جديدة: تحديث مبالغ الشهور المستقبلية (القديمة)
-    @Query("""
+    @Query(
+        """
         UPDATE payments
         SET amount = :newAmount
         WHERE clientId = :clientId
           AND month >= :fromMonth
-    """)
+    """
+    )
     suspend fun updateFuturePaymentsAmount(
         clientId: Int,
         fromMonth: String,
@@ -115,7 +122,8 @@ interface PaymentDao {
     )
 
     // دالة جديدة: تحديث مبالغ الشهور المستقبلية (الجديدة)
-    @Query("""
+    @Query(
+        """
         UPDATE payments
         SET amount = :newAmount
         WHERE clientId = :clientId
@@ -125,7 +133,8 @@ interface PaymentDao {
               FROM payment_transactions
               WHERE clientId = :clientId
           )
-    """)
+    """
+    )
     suspend fun updateFutureUnpaidPaymentsAmount(
         clientId: Int,
         fromMonth: String,
@@ -133,7 +142,8 @@ interface PaymentDao {
     )
 
     // دالة جديدة: جلب أول شهر غير مسجّل عليه أي حركات لعميل معيّن
-    @Query("""
+    @Query(
+        """
         SELECT month
         FROM payments
         WHERE clientId = :clientId
@@ -144,6 +154,7 @@ interface PaymentDao {
           )
         ORDER BY month
         LIMIT 1
-    """)
+    """
+    )
     suspend fun getFirstUnpaidMonthForClient(clientId: Int): String?
 }

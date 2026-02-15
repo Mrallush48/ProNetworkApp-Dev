@@ -85,14 +85,11 @@ import com.pronetwork.app.viewmodel.ClientViewModel
 import com.pronetwork.app.viewmodel.DailyCollectionUi
 import com.pronetwork.app.viewmodel.PaymentViewModel
 import com.pronetwork.data.DailySummary
-import com.pronetwork.data.MonthlyCollectionRatio
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import com.pronetwork.app.ui.components.PaymentReportType
-import com.pronetwork.app.ui.components.PaymentReportPeriod
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -224,15 +221,6 @@ class MainActivity : ComponentActivity() {
                 val buildingSearchQuery by buildingViewModel.searchQuery.observeAsState("")
                 var dailyUi by remember { mutableStateOf<DailyCollectionUi?>(null) }
                 var dailySummary by remember { mutableStateOf(DailySummary()) }
-                var monthlyRatio by remember {
-                    mutableStateOf(
-                        MonthlyCollectionRatio(
-                            expectedClients = 0,
-                            paidClients = 0,
-                            collectionRatio = 0f
-                        )
-                    )
-                }
 
                 fun loadDailyCollectionFor(dateMillis: Long) {
                     val calendar = Calendar.getInstance().apply {
@@ -267,13 +255,6 @@ class MainActivity : ComponentActivity() {
                                 dailySummary = summary
                             }
                     }
-                }
-
-                LaunchedEffect(refreshTrigger) {
-                    transactionRepository.getMonthlyCollectionRatio()
-                        .collect { ratio ->
-                            monthlyRatio = ratio
-                        }
                 }
 
                 val monthsList = remember {
@@ -1186,13 +1167,6 @@ class MainActivity : ComponentActivity() {
                                     paymentViewModel.setStatsMonth(selectedMonth)
                                 }
 
-                                LaunchedEffect(refreshTrigger) {
-                                    transactionRepository.getMonthlyCollectionRatio()
-                                        .collect { ratio ->
-                                            monthlyRatio = ratio
-                                        }
-                                }
-
                                 val clientsCount by clientViewModel.clientsCount.observeAsState(0)
                                 val monthStats by paymentViewModel.monthStats.observeAsState(null)
                                 if (!showDailyCollection) {
@@ -1234,7 +1208,6 @@ class MainActivity : ComponentActivity() {
                                                 clientsCount = clientsCount,
                                                 buildingsCount = buildings.size,
                                                 monthStats = monthStats,
-                                                monthlyRatio = monthlyRatio,
                                                 monthOptions = monthOptions,
                                                 selectedMonth = selectedMonth,
                                                 onMonthChange = { newMonth ->
@@ -1243,6 +1216,7 @@ class MainActivity : ComponentActivity() {
                                                 },
                                                 allClients = clients
                                             )
+
                                         }
                                     }
                                 } else {
@@ -1294,7 +1268,8 @@ class MainActivity : ComponentActivity() {
                                         monthOptions = monthOptions,
                                         selectedMonth = selectedMonth,
                                         buildings = buildings.map { it.id to it.name },
-                                        packages = clients.map { it.packageType }.distinct().sorted(),
+                                        packages = clients.map { it.packageType }.distinct()
+                                            .sorted(),
                                         onDismiss = { showExportDialogStats = false },
                                         onExport = { reportType, period, month, endMonth, format, buildingFilter, packageFilter, statusFilter ->
                                             lifecycleScope.launch {
@@ -1308,6 +1283,7 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
+
                                                     ExportFormat.SHARE -> paymentsExportManager.shareExcel(
                                                         reportType = reportType,
                                                         period = period,
@@ -1317,6 +1293,7 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
+
                                                     ExportFormat.PDF -> paymentsExportManager.exportPdfToDownloads(
                                                         reportType = reportType,
                                                         period = period,
