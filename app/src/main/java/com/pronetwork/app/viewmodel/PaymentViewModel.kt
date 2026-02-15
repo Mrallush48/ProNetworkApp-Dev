@@ -1,15 +1,18 @@
 package com.pronetwork.app.viewmodel
 
 import android.app.Application
-import androidx.lifecycle.*
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.data.ClientDatabase
+import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.repository.PaymentRepository
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import kotlinx.coroutines.launch
-import com.pronetwork.app.data.DailyBuildingCollection
-import android.util.Log
 
 // enum جديد لحالة الدفع
 enum class PaymentStatus {
@@ -99,7 +102,10 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         val result = MutableLiveData<List<DailyBuildingCollection>>()
 
         viewModelScope.launch {
-            val list = transactionRepository.getDailyBuildingCollectionsForDay(dayStartMillis, dayEndMillis)
+            val list = transactionRepository.getDailyBuildingCollectionsForDay(
+                dayStartMillis,
+                dayEndMillis
+            )
             result.postValue(list)
         }
 
@@ -155,11 +161,13 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                                 unpaidCount += 1
                                 totalRemaining += p.amount
                             }
+
                             paidForThis < p.amount -> {
                                 // دفع جزئي
                                 partialPaidCount += 1
                                 totalRemaining += remainingForThis
                             }
+
                             else -> {
                                 // مدفوع بالكامل
                                 fullPaidCount += 1
@@ -187,7 +195,6 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
-
 
 
     fun setStatsMonth(month: String) {
@@ -341,6 +348,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         )
                     )
                 }
+
                 newTotalPaid < payment.amount -> {
                     // لا يزال مدفوع جزئيًا → isPaid = false مع إبقاء المبلغ
                     paymentRepository.update(
@@ -350,6 +358,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         )
                     )
                 }
+
                 else -> {
                     // ما زال مدفوع بالكامل → نحافظ على isPaid = true
                     paymentRepository.update(
@@ -400,7 +409,12 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
      * دفع جزئي: يسجل Transaction بقيمة جزئية، ثم يحسب مجموع المدفوع
      * ويقرر هل يصبح مدفوع بالكامل أم يبقى جزئياً (isPaid = false لكن amount > 0).
      */
-    fun addPartialPayment(clientId: Int, month: String, monthAmount: Double, partialAmount: Double) =
+    fun addPartialPayment(
+        clientId: Int,
+        month: String,
+        monthAmount: Double,
+        partialAmount: Double
+    ) =
         viewModelScope.launch {
             val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
 
@@ -479,6 +493,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         )
                     )
                 }
+
                 newTotalPaid < payment.amount -> {
                     // أصبح مدفوع جزئيًا بعد الاسترجاع
                     paymentRepository.update(
@@ -488,6 +503,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         )
                     )
                 }
+
                 else -> {
                     // ما زال مدفوع بالكامل (نادر لكن ممكن إذا كان الاسترجاع صغير)
                     paymentRepository.update(

@@ -28,6 +28,15 @@ interface PaymentDao {
     @Query("SELECT * FROM payments WHERE month = :month")
     fun getPaymentsByMonth(month: String): LiveData<List<Payment>>
 
+    // جلب كل الدفعات في شهر معيّن (suspend - للتقارير)
+    @Query("SELECT * FROM payments WHERE month = :month")
+    suspend fun getPaymentsByMonthDirect(month: String): List<Payment>
+
+    // جلب كل الدفعات (suspend - للتقارير)
+    @Query("SELECT * FROM payments ORDER BY month DESC")
+    suspend fun getAllPaymentsDirect(): List<Payment>
+
+
     // جلب الدفعات المدفوعة في شهر معيّن
     @Query("SELECT * FROM payments WHERE month = :month AND isPaid = 1")
     fun getPaidPaymentsByMonth(month: String): LiveData<List<Payment>>

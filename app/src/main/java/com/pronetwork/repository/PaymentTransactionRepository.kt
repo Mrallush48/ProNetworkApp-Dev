@@ -2,13 +2,13 @@ package com.pronetwork.app.repository
 
 import androidx.lifecycle.LiveData
 import com.pronetwork.app.data.ClientDao
+import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.data.PaymentTransactionDao
-import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.data.DailySummary
+import com.pronetwork.data.MonthlyCollectionRatio
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import com.pronetwork.data.MonthlyCollectionRatio
 import java.util.Calendar
 
 
@@ -103,6 +103,10 @@ class PaymentTransactionRepository(
                 collectionRatio = ratio
             )
         }
+    }
+
+    suspend fun getDetailedTransactionsForMonth(month: String): List<PaymentTransactionDao.DetailedTransaction> {
+        return transactionDao.getDetailedTransactionsForMonth(month)
     }
 
 

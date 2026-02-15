@@ -64,10 +64,12 @@ import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.export.ClientsExportManager
+import com.pronetwork.app.export.PaymentsExportManager
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import com.pronetwork.app.ui.components.ExportDialog
 import com.pronetwork.app.ui.components.ExportFormat
 import com.pronetwork.app.ui.components.ExportOption
+import com.pronetwork.app.ui.components.PaymentExportDialog
 import com.pronetwork.app.ui.components.ScreenTopBar
 import com.pronetwork.app.ui.screens.BuildingDetailsScreen
 import com.pronetwork.app.ui.screens.BuildingEditDialog
@@ -89,6 +91,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import com.pronetwork.app.ui.components.PaymentReportType
+import com.pronetwork.app.ui.components.PaymentReportPeriod
+
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -98,6 +103,9 @@ class MainActivity : ComponentActivity() {
     private val paymentViewModel: PaymentViewModel by viewModels()
 
     private lateinit var exportManager: ClientsExportManager
+
+    private lateinit var paymentsExportManager: PaymentsExportManager
+
 
     private val transactionRepository by lazy {
         val db = ClientDatabase.getDatabase(application)
@@ -161,6 +169,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         exportManager = ClientsExportManager(this)
+
+        paymentsExportManager = PaymentsExportManager(this)
 
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
@@ -1278,6 +1288,49 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     }
+                                }
+                                if (showExportDialogStats) {
+                                    PaymentExportDialog(
+                                        monthOptions = monthOptions,
+                                        selectedMonth = selectedMonth,
+                                        buildings = buildings.map { it.id to it.name },
+                                        packages = clients.map { it.packageType }.distinct().sorted(),
+                                        onDismiss = { showExportDialogStats = false },
+                                        onExport = { reportType, period, month, endMonth, format, buildingFilter, packageFilter, statusFilter ->
+                                            lifecycleScope.launch {
+                                                when (format) {
+                                                    ExportFormat.EXCEL -> paymentsExportManager.exportExcelToDownloads(
+                                                        reportType = reportType,
+                                                        period = period,
+                                                        startMonth = month,
+                                                        endMonth = endMonth,
+                                                        buildingFilter = buildingFilter,
+                                                        packageFilter = packageFilter,
+                                                        statusFilter = statusFilter
+                                                    )
+                                                    ExportFormat.SHARE -> paymentsExportManager.shareExcel(
+                                                        reportType = reportType,
+                                                        period = period,
+                                                        startMonth = month,
+                                                        endMonth = endMonth,
+                                                        buildingFilter = buildingFilter,
+                                                        packageFilter = packageFilter,
+                                                        statusFilter = statusFilter
+                                                    )
+                                                    ExportFormat.PDF -> paymentsExportManager.exportPdfToDownloads(
+                                                        reportType = reportType,
+                                                        period = period,
+                                                        startMonth = month,
+                                                        endMonth = endMonth,
+                                                        buildingFilter = buildingFilter,
+                                                        packageFilter = packageFilter,
+                                                        statusFilter = statusFilter
+                                                    )
+                                                }
+                                            }
+                                            showExportDialogStats = false
+                                        }
+                                    )
                                 }
                             }
                         }
