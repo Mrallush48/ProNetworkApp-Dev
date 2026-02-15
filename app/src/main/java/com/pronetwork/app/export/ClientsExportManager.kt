@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -13,13 +14,10 @@ import androidx.core.content.FileProvider
 import com.pronetwork.app.R
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
-import java.io.ByteArrayOutputStream
 import java.io.File
-import android.graphics.pdf.PdfDocument
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 
 class ClientsExportManager(
     private val context: Context
@@ -240,7 +238,6 @@ class ClientsExportManager(
         }
     }
 
-    //نسخة منطق PDF
     private fun generateClientsPDF(
         clients: List<Client>,
         buildings: List<Building>
@@ -292,16 +289,8 @@ class ClientsExportManager(
         canvas.drawRect(margin, yPosition - 18f, pageWidth - margin, yPosition + 7f, paint)
 
         val headers = listOf(
-            "Name",
-            "Sub#",
-            "Phone",
-            "Package",
-            "Price",
-            "Building",
-            "Month",
-            "Day",
-            "Address",
-            "Notes"
+            "Name", "Sub#", "Phone", "Package", "Price",
+            "Building", "Month", "Day", "Address", "Notes"
         )
         val colWidths = listOf(70f, 50f, 65f, 55f, 45f, 70f, 45f, 35f, 80f, 100f)
         var xPos = margin
@@ -316,9 +305,7 @@ class ClientsExportManager(
             if (yPosition > pageHeight - 50f) {
                 canvas.drawText(
                     "... (${clients.size - index} more)",
-                    margin,
-                    yPosition,
-                    cellPaint
+                    margin, yPosition, cellPaint
                 )
                 return@forEachIndexed
             }
@@ -327,27 +314,14 @@ class ClientsExportManager(
 
             if (index % 2 == 0) {
                 paint.color = android.graphics.Color.parseColor("#F5F5F5")
-                canvas.drawRect(
-                    margin,
-                    yPosition - 12f,
-                    pageWidth - margin,
-                    yPosition + 5f,
-                    paint
-                )
+                canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
             }
 
             xPos = margin
             val rowData = listOf(
-                client.name,
-                client.subscriptionNumber,
-                client.phone,
-                client.packageType,
-                "${client.price}",
-                buildingName,
-                client.startMonth,
-                "${client.startDay}",
-                client.address,
-                client.notes
+                client.name, client.subscriptionNumber, client.phone,
+                client.packageType, "${client.price}", buildingName,
+                client.startMonth, "${client.startDay}", client.address, client.notes
             )
 
             rowData.forEachIndexed { i, data ->
@@ -359,15 +333,12 @@ class ClientsExportManager(
         }
 
         yPosition += 10f
-
         paint.color = android.graphics.Color.parseColor("#9575CD")
         canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
         headerPaint.textSize = 10f
         canvas.drawText(
             "Total: ${clients.sumOf { it.price }} SAR",
-            margin + 5f,
-            yPosition,
-            headerPaint
+            margin + 5f, yPosition, headerPaint
         )
 
         pdfDocument.finishPage(page)
@@ -379,15 +350,14 @@ class ClientsExportManager(
         return outputStream.toByteArray()
     }
 
-
-    fun exportClientsToExcelHTML(
+    private fun exportClientsToExcelHTML(
         clients: List<Client>,
         buildings: List<Building>
     ): String {
-        val currentDate = java.text.SimpleDateFormat(
+        val currentDate = SimpleDateFormat(
             "yyyy-MM-dd HH:mm",
-            java.util.Locale.getDefault()
-        ).format(java.util.Date())
+            Locale.getDefault()
+        ).format(Date())
         val total = clients.sumOf { it.price }
 
         return buildString {
@@ -397,7 +367,6 @@ class ClientsExportManager(
                 """<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">"""
             )
 
-            // Styles
             appendLine("""<Styles>""")
             appendLine(
                 """<Style ss:ID="Title"><Font ss:Bold="1" ss:Size="18" ss:Color="#673AB7"/><Alignment ss:Horizontal="Center"/></Style>"""
@@ -431,26 +400,23 @@ class ClientsExportManager(
             appendLine("""<Worksheet ss:Name="Clients">""")
             appendLine("""<Table ss:DefaultColumnWidth="100">""")
 
-            // Column widths
-            appendLine("""<Column ss:Width="150"/>""") // Name
-            appendLine("""<Column ss:Width="120"/>""") // Subscription
-            appendLine("""<Column ss:Width="100"/>""") // Phone
-            appendLine("""<Column ss:Width="80"/>""")  // Package
-            appendLine("""<Column ss:Width="80"/>""")  // Price
-            appendLine("""<Column ss:Width="120"/>""") // Building
-            appendLine("""<Column ss:Width="90"/>""")  // Start Month
-            appendLine("""<Column ss:Width="70"/>""")  // Start Day
-            appendLine("""<Column ss:Width="150"/>""") // Address
-            appendLine("""<Column ss:Width="200"/>""") // Notes
+            appendLine("""<Column ss:Width="150"/>""")
+            appendLine("""<Column ss:Width="120"/>""")
+            appendLine("""<Column ss:Width="100"/>""")
+            appendLine("""<Column ss:Width="80"/>""")
+            appendLine("""<Column ss:Width="80"/>""")
+            appendLine("""<Column ss:Width="120"/>""")
+            appendLine("""<Column ss:Width="90"/>""")
+            appendLine("""<Column ss:Width="70"/>""")
+            appendLine("""<Column ss:Width="150"/>""")
+            appendLine("""<Column ss:Width="200"/>""")
 
-            // Title row
             appendLine("""<Row ss:Height="30">""")
             appendLine(
                 """<Cell ss:StyleID="Title" ss:MergeAcross="9"><Data ss:Type="String">📊 Pro Network Spot - Clients Report</Data></Cell>"""
             )
             appendLine("""</Row>""")
 
-            // Subtitle
             appendLine("""<Row ss:Height="18">""")
             appendLine(
                 """<Cell ss:StyleID="Subtitle" ss:MergeAcross="9"><Data ss:Type="String">Generated: $currentDate | Total: ${clients.size} clients</Data></Cell>"""
@@ -459,19 +425,10 @@ class ClientsExportManager(
 
             appendLine("""<Row ss:Height="10"/>""")
 
-            // Header row
             appendLine("""<Row ss:Height="25">""")
             listOf(
-                "Name",
-                "Subscription #",
-                "Phone",
-                "Package",
-                "Price (SAR)",
-                "Building",
-                "Start Month",
-                "Day",
-                "Address",
-                "Notes"
+                "Name", "Subscription #", "Phone", "Package", "Price (SAR)",
+                "Building", "Start Month", "Day", "Address", "Notes"
             ).forEach {
                 appendLine(
                     """<Cell ss:StyleID="Header"><Data ss:Type="String">$it</Data></Cell>"""
@@ -479,13 +436,10 @@ class ClientsExportManager(
             }
             appendLine("""</Row>""")
 
-            // Data rows
             clients.forEachIndexed { index, client ->
-                val buildingName =
-                    buildings.find { it.id == client.buildingId }?.name ?: "N/A"
+                val buildingName = buildings.find { it.id == client.buildingId }?.name ?: "N/A"
                 val rowStyle = if (index % 2 == 0) "EvenRow" else "OddRow"
-                val currencyStyle =
-                    if (index % 2 == 0) "CurrencyEven" else "CurrencyOdd"
+                val currencyStyle = if (index % 2 == 0) "CurrencyEven" else "CurrencyOdd"
 
                 appendLine("""<Row ss:Height="20">""")
                 appendLine(
@@ -523,7 +477,6 @@ class ClientsExportManager(
 
             appendLine("""<Row ss:Height="5"/>""")
 
-            // Total row
             appendLine("""<Row ss:Height="25">""")
             appendLine(
                 """<Cell ss:StyleID="TotalLabel" ss:MergeAcross="3"><Data ss:Type="String">Total Amount:</Data></Cell>"""
@@ -541,5 +494,4 @@ class ClientsExportManager(
             appendLine("""</Workbook>""")
         }
     }
-
 }

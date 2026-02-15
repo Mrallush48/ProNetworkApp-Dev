@@ -89,7 +89,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import android.graphics.pdf.PdfDocument
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -103,144 +102,6 @@ class MainActivity : ComponentActivity() {
     private val transactionRepository by lazy {
         val db = ClientDatabase.getDatabase(application)
         PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
-    }
-
-    private fun generateClientsPDF(
-        clients: List<Client>,
-        buildings: List<Building>
-    ): ByteArray {
-        val pdfDocument = PdfDocument()
-        val paint = android.graphics.Paint()
-        val titlePaint = android.graphics.Paint().apply {
-            textSize = 24f
-            color = android.graphics.Color.parseColor("#673AB7")
-            isFakeBoldText = true
-        }
-        val headerPaint = android.graphics.Paint().apply {
-            textSize = 10f
-            color = android.graphics.Color.WHITE
-            isFakeBoldText = true
-        }
-        val cellPaint = android.graphics.Paint().apply {
-            textSize = 9f
-            color = android.graphics.Color.BLACK
-        }
-
-        val pageWidth = 842f
-        val pageHeight = 595f
-        val margin = 20f
-        var yPosition = 50f
-
-        val pageInfo = PdfDocument.PageInfo.Builder(
-            pageWidth.toInt(),
-            pageHeight.toInt(),
-            1
-        ).create()
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas = page.canvas
-
-        canvas.drawText(
-            "\uD83D\uDCCA Pro Network Spot - Clients Report",
-            margin,
-            yPosition,
-            titlePaint
-        )
-        yPosition += 30f
-
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        cellPaint.textSize = 10f
-        canvas.drawText("Generated: ${dateFormat.format(Date())}", margin, yPosition, cellPaint)
-        yPosition += 25f
-
-        paint.color = android.graphics.Color.parseColor("#673AB7")
-        canvas.drawRect(margin, yPosition - 18f, pageWidth - margin, yPosition + 7f, paint)
-
-        val headers = listOf(
-            "Name",
-            "Sub#",
-            "Phone",
-            "Package",
-            "Price",
-            "Building",
-            "Month",
-            "Day",
-            "Address",
-            "Notes"
-        )
-        val colWidths = listOf(70f, 50f, 65f, 55f, 45f, 70f, 45f, 35f, 80f, 100f)
-        var xPos = margin
-        headers.forEachIndexed { i, header ->
-            canvas.drawText(header, xPos + 3f, yPosition, headerPaint)
-            xPos += colWidths[i]
-        }
-        yPosition += 15f
-
-        cellPaint.textSize = 8f
-        clients.forEachIndexed { index, client ->
-            if (yPosition > pageHeight - 50f) {
-                canvas.drawText(
-                    "... (${clients.size - index} more)",
-                    margin,
-                    yPosition,
-                    cellPaint
-                )
-                return@forEachIndexed
-            }
-
-            val buildingName = buildings.find { it.id == client.buildingId }?.name ?: "N/A"
-
-            if (index % 2 == 0) {
-                paint.color = android.graphics.Color.parseColor("#F5F5F5")
-                canvas.drawRect(
-                    margin,
-                    yPosition - 12f,
-                    pageWidth - margin,
-                    yPosition + 5f,
-                    paint
-                )
-            }
-
-            xPos = margin
-            val rowData = listOf(
-                client.name,
-                client.subscriptionNumber,
-                client.phone,
-                client.packageType,
-                "${client.price}",
-                buildingName,
-                client.startMonth,
-                "${client.startDay}",
-                client.address,
-                client.notes
-            )
-
-            rowData.forEachIndexed { i, data ->
-                val truncated = if (data.length > 15) data.take(12) + "..." else data
-                canvas.drawText(truncated, xPos + 3f, yPosition, cellPaint)
-                xPos += colWidths[i]
-            }
-            yPosition += 15f
-        }
-
-        yPosition += 10f
-
-        paint.color = android.graphics.Color.parseColor("#9575CD")
-        canvas.drawRect(margin, yPosition - 12f, pageWidth - margin, yPosition + 5f, paint)
-        headerPaint.textSize = 10f
-        canvas.drawText(
-            "Total: ${clients.sumOf { it.price }} SAR",
-            margin + 5f,
-            yPosition,
-            headerPaint
-        )
-
-        pdfDocument.finishPage(page)
-
-        val outputStream = java.io.ByteArrayOutputStream()
-        pdfDocument.writeTo(outputStream)
-        pdfDocument.close()
-
-        return outputStream.toByteArray()
     }
 
     private fun filterClients(
@@ -530,7 +391,8 @@ class MainActivity : ComponentActivity() {
                                                         ExportOption.EXPORT -> showExportDialogClients =
                                                             true
 
-                                                        ExportOption.IMPORT_CSV -> { /* Import */ }
+                                                        ExportOption.IMPORT_CSV -> { /* Import */
+                                                        }
                                                     }
                                                 }
                                             )
@@ -1065,7 +927,8 @@ class MainActivity : ComponentActivity() {
                                                     ExportOption.EXPORT -> showExportDialogBuildings =
                                                         true
 
-                                                    ExportOption.IMPORT_CSV -> { /* Import */ }
+                                                    ExportOption.IMPORT_CSV -> { /* Import */
+                                                    }
                                                 }
                                             }
                                         )
