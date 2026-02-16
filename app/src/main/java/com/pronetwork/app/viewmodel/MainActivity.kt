@@ -1586,27 +1586,25 @@ class MainActivity : ComponentActivity() {
                                 onDismiss = { showEditClientDialog = false }
                             )
                         }
+
+                        // مربع حوار تأكيد الخروج
+                        if (showExitDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showExitDialog = false },
+                                title = { Text("Exit App") },
+                                text = { Text("Are you sure you want to exit?") },
+                                confirmButton = {
+                                    Button(onClick = { finish() }) {
+                                        Text("Exit")
+                                    }
+                                },
+                                dismissButton = {
+                                    OutlinedButton(onClick = { showExitDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
-            // مربع حوار تأكيد الخروج
-            if (showExitDialog) {
-                AlertDialog(
-                    onDismissRequest = { showExitDialog = false },
-                    title = { Text("Exit App") },
-                    text = { Text("Are you sure you want to exit?") },
-                    confirmButton = {
-                        Button(onClick = { finish() }) {
-                            Text("Exit")
-                        }
-                    },
-                    dismissButton = {
-                        OutlinedButton(onClick = { showExitDialog = false }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
