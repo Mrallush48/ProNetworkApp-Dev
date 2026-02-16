@@ -71,73 +71,68 @@ fun DailyCollectionScreen(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // ===== شريط العنوان + أزرار التنقل =====
+        // ===== أزرار التنقل =====
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(R.string.stats_daily_collection),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            val cal = Calendar.getInstance().apply {
-                                timeInMillis = selectedDateMillis
-                                add(Calendar.DAY_OF_YEAR, -1)
-                                set(Calendar.HOUR_OF_DAY, 0)
-                                set(Calendar.MINUTE, 0)
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
-                            }
-                            onChangeDate(cal.timeInMillis)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            stringResource(R.string.daily_collection_prev_day),
-                            maxLines = 1
-                        )
-                    }
+                OutlinedButton(
+                    onClick = {
+                        val cal = Calendar.getInstance().apply {
+                            timeInMillis = selectedDateMillis
+                            add(Calendar.DAY_OF_YEAR, -1)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        onChangeDate(cal.timeInMillis)
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        stringResource(R.string.daily_collection_prev_day),
+                        maxLines = 1
+                    )
+                }
 
-                    Button(
-                        onClick = {
-                            val todayCal = Calendar.getInstance().apply {
-                                set(Calendar.HOUR_OF_DAY, 0)
-                                set(Calendar.MINUTE, 0)
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
-                            }
-                            val cal = Calendar.getInstance().apply {
-                                timeInMillis = selectedDateMillis
-                                add(Calendar.DAY_OF_YEAR, 1)
-                                set(Calendar.HOUR_OF_DAY, 0)
-                                set(Calendar.MINUTE, 0)
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
-                            }
-                            val newTime = if (cal.timeInMillis > todayCal.timeInMillis) {
-                                todayCal.timeInMillis
-                            } else {
-                                cal.timeInMillis
-                            }
-                            onChangeDate(newTime)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            stringResource(R.string.daily_collection_next_day),
-                            maxLines = 1
-                        )
-                    }
+                Button(
+                    onClick = {
+                        val todayCal = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val cal = Calendar.getInstance().apply {
+                            timeInMillis = selectedDateMillis
+                            add(Calendar.DAY_OF_YEAR, 1)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val newTime = if (cal.timeInMillis > todayCal.timeInMillis) {
+                            todayCal.timeInMillis
+                        } else {
+                            cal.timeInMillis
+                        }
+                        onChangeDate(newTime)
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        stringResource(R.string.daily_collection_next_day),
+                        maxLines = 1
+                    )
                 }
             }
         }
+
 
         // ===== التاريخ =====
         item {
