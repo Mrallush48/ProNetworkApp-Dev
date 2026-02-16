@@ -512,6 +512,17 @@ class PaymentsExportManager(private val context: Context) {
         )
     }
 
+    // ===================== BUILDING COLOR HELPER =====================
+    private fun getBuildingColorIndex(buildingName: String, buildingColorMap: MutableMap<String, Int>): Int {
+        return buildingColorMap.getOrPut(buildingName) { (buildingColorMap.size % 6) + 1 }
+    }
+
+    private fun getBldStyle(colorIdx: Int, rowInBuilding: Int, isCurrency: Boolean): String {
+        val shade = if (rowInBuilding % 2 == 0) "D" else "L"
+        val suffix = if (isCurrency) "C" else ""
+        return "Bld${colorIdx}${shade}${suffix}"
+    }
+
     // ===================== EXCEL BUILDER =====================
 
     private fun buildExcelXml(data: PaymentReportData): String {
@@ -541,7 +552,39 @@ class PaymentsExportManager(private val context: Context) {
             appendLine("""<Style ss:ID="TrendUp"><Font ss:Size="10" ss:Bold="1" ss:Color="#2E7D32"/><Interior ss:Color="#E8F5E9" ss:Pattern="Solid"/></Style>""")
             appendLine("""<Style ss:ID="TrendDown"><Font ss:Size="10" ss:Bold="1" ss:Color="#C62828"/><Interior ss:Color="#FFEBEE" ss:Pattern="Solid"/></Style>""")
             appendLine("""<Style ss:ID="TrendStable"><Font ss:Size="10" ss:Bold="1" ss:Color="#1565C0"/><Interior ss:Color="#E3F2FD" ss:Pattern="Solid"/></Style>""")
+
+            // ألوان المباني (6 ألوان × درجتين: D=قاتم L=باهت)
+            appendLine("""<Style ss:ID="Bld1D"><Font ss:Size="9"/><Interior ss:Color="#E3F2FD" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld1L"><Font ss:Size="9"/><Interior ss:Color="#BBDEFB" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld2D"><Font ss:Size="9"/><Interior ss:Color="#E8F5E9" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld2L"><Font ss:Size="9"/><Interior ss:Color="#C8E6C9" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld3D"><Font ss:Size="9"/><Interior ss:Color="#FFF3E0" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld3L"><Font ss:Size="9"/><Interior ss:Color="#FFE0B2" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld4D"><Font ss:Size="9"/><Interior ss:Color="#FCE4EC" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld4L"><Font ss:Size="9"/><Interior ss:Color="#F8BBD0" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld5D"><Font ss:Size="9"/><Interior ss:Color="#F3E5F5" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld5L"><Font ss:Size="9"/><Interior ss:Color="#E1BEE7" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld6D"><Font ss:Size="9"/><Interior ss:Color="#E0F7FA" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld6L"><Font ss:Size="9"/><Interior ss:Color="#B2EBF2" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+// نفس ألوان المباني مع NumberFormat للعملات
+            appendLine("""<Style ss:ID="Bld1DC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#E3F2FD" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld1LC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#BBDEFB" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld2DC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#E8F5E9" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld2LC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#C8E6C9" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld3DC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#FFF3E0" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld3LC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#FFE0B2" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld4DC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#FCE4EC" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld4LC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#F8BBD0" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld5DC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#F3E5F5" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld5LC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#E1BEE7" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld6DC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#E0F7FA" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+            appendLine("""<Style ss:ID="Bld6LC"><NumberFormat ss:Format="#,##0.00"/><Font ss:Size="9"/><Interior ss:Color="#B2EBF2" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/></Borders></Style>""")
+// Type styles (ملون + Bold) لشيت Transactions
+            appendLine("""<Style ss:ID="TypeFull"><Font ss:Size="9" ss:Bold="1" ss:Color="#2E7D32"/></Style>""")
+            appendLine("""<Style ss:ID="TypePartial"><Font ss:Size="9" ss:Bold="1" ss:Color="#F57F17"/></Style>""")
+            appendLine("""<Style ss:ID="TypeRefund"><Font ss:Size="9" ss:Bold="1" ss:Color="#C62828"/></Style>""")
             appendLine("""</Styles>""")
+
 
             // SHEET 1: Dashboard
             appendLine("""<Worksheet ss:Name="Dashboard">""")
@@ -694,24 +737,30 @@ class PaymentsExportManager(private val context: Context) {
             // DETAILED only: Client Details + Transactions
             if (data.reportType == PaymentReportType.DETAILED) {
 
-                // SHEET 2: Client Details
+                // SHEET 2: Client Details (بدون Phone، Building بعد Sub#، Room بعد Building، ألوان حسب المبنى)
                 data.months.forEach { monthData ->
-                    appendLine("""<Worksheet ss:Name="Clients ${monthData.month}">""")
+                    appendLine("""<Worksheet ss:Name="Clients - ${monthData.month}">""")
                     appendLine("""<Table>""")
-                    appendLine("""<Column ss:Width="120"/><Column ss:Width="80"/><Column ss:Width="90"/><Column ss:Width="70"/><Column ss:Width="50"/><Column ss:Width="100"/><Column ss:Width="80"/><Column ss:Width="80"/><Column ss:Width="80"/><Column ss:Width="70"/><Column ss:Width="110"/><Column ss:Width="180"/>""")
+                    appendLine("""<Row/>""")
+                    appendLine("""<Row ss:StyleID="Title"><Cell ss:MergeAcross="10"><Data ss:Type="String">Client Details — ${monthData.month}</Data></Cell></Row>""")
+                    appendLine("""<Row ss:StyleID="Header"><Cell><Data ss:Type="String">Client</Data></Cell><Cell><Data ss:Type="String">Sub#</Data></Cell><Cell><Data ss:Type="String">Building</Data></Cell><Cell><Data ss:Type="String">Room</Data></Cell><Cell><Data ss:Type="String">Package</Data></Cell><Cell><Data ss:Type="String">Amount</Data></Cell><Cell><Data ss:Type="String">Paid</Data></Cell><Cell><Data ss:Type="String">Remaining</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Last Payment</Data></Cell><Cell><Data ss:Type="String">Notes</Data></Cell></Row>""")
 
-                    appendLine("""<Row><Cell ss:StyleID="Title" ss:MergeAcross="11"><Data ss:Type="String">Client Details — ${monthData.month}</Data></Cell></Row>""")
-                    appendLine("""<Row><Cell ss:StyleID="Header"><Data ss:Type="String">Client</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Sub#</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Phone</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Package</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Room</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Building</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Amount</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Paid</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Remaining</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Status</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Last Payment</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Notes</Data></Cell></Row>""")
+                    val sortedClients = monthData.clients.sortedBy { it.buildingName }
+                    val buildingColorMap = mutableMapOf<String, Int>()
+                    val buildingRowCounter = mutableMapOf<String, Int>()
 
-                    monthData.clients.forEachIndexed { index, c ->
-                        val rowStyle = if (index % 2 == 0) "Cell" else "CellAlt"
-                        val curStyle = if (index % 2 == 0) "Currency" else "CurrencyAlt"
+                    sortedClients.forEach { c ->
+                        val colorIdx = getBuildingColorIndex(c.buildingName, buildingColorMap)
+                        val rowInBld = buildingRowCounter.getOrDefault(c.buildingName, 0)
+                        buildingRowCounter[c.buildingName] = rowInBld + 1
+
+                        val cellStyle = getBldStyle(colorIdx, rowInBld, false)
+                        val curStyle = getBldStyle(colorIdx, rowInBld, true)
                         val statusStyle = when (c.status) {
                             "PAID" -> "Paid"
                             "PARTIAL" -> "Partial"
                             else -> "Unpaid"
                         }
-
                         val clientNote = c.clientNote.orEmpty()
                         val txnNote = c.transactions.lastOrNull()?.notes.orEmpty()
                         val notes = when {
@@ -719,64 +768,71 @@ class PaymentsExportManager(private val context: Context) {
                             clientNote.isNotEmpty() -> clientNote
                             else -> txnNote
                         }
-
                         appendLine(
-                            """<Row><Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.clientName}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.subscriptionNumber}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.phone}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.packageType}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.roomNumber ?: "-"}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.buildingName}</Data></Cell>""" +
+                            """<Row><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.clientName}</Data></Cell>""" +
+                                    """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.subscriptionNumber}</Data></Cell>""" +
+                                    """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.buildingName}</Data></Cell>""" +
+                                    """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.roomNumber ?: "-"}</Data></Cell>""" +
+                                    """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.packageType}</Data></Cell>""" +
                                     """<Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.monthlyAmount}</Data></Cell>""" +
                                     """<Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.totalPaid}</Data></Cell>""" +
                                     """<Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.remaining}</Data></Cell>""" +
                                     """<Cell ss:StyleID="$statusStyle"><Data ss:Type="String">${c.statusIcon} ${c.status}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.lastPaymentDate ?: "-"}</Data></Cell>""" +
-                                    """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">$notes</Data></Cell></Row>"""
+                                    """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.lastPaymentDate ?: "-"}</Data></Cell>""" +
+                                    """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">$notes</Data></Cell></Row>"""
                         )
                     }
 
                     // TOTAL row
                     appendLine(
-                        """<Row><Cell ss:StyleID="TotalRow" ss:MergeAcross="5"><Data ss:Type="String">TOTAL</Data></Cell>""" +
-                                """<Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${monthData.totalExpected}</Data></Cell>""" +
-                                """<Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${monthData.totalCollected}</Data></Cell>""" +
-                                """<Cell ss:StyleID="TotalRow"><Data ss:Type="Number">${monthData.totalRemaining}</Data></Cell>""" +
-                                """<Cell ss:StyleID="TotalRow"><Data ss:Type="String">${
-                                    "%.1f".format(
-                                        monthData.collectionRate
-                                    )
-                                }%</Data></Cell>""" +
-                                """<Cell ss:StyleID="TotalRow"/><Cell ss:StyleID="TotalRow"/></Row>"""
+                        """<Row ss:StyleID="TotalRow"><Cell><Data ss:Type="String">TOTAL</Data></Cell>""" +
+                                """<Cell/><Cell/><Cell/><Cell/>""" +
+                                """<Cell><Data ss:Type="Number">${monthData.totalExpected}</Data></Cell>""" +
+                                """<Cell><Data ss:Type="Number">${monthData.totalCollected}</Data></Cell>""" +
+                                """<Cell><Data ss:Type="Number">${monthData.totalRemaining}</Data></Cell>""" +
+                                """<Cell><Data ss:Type="String">${"%.1f".format(monthData.collectionRate)}%</Data></Cell>""" +
+                                """<Cell/><Cell/></Row>"""
                     )
 
                     appendLine("""</Table></Worksheet>""")
                 }
 
-                // SHEET 3: Transactions
+                // SHEET 3: Transactions (إضافة Sub# بعد Client، Room بعد Building، Type ملون + Bold، ألوان حسب المبنى)
                 appendLine("""<Worksheet ss:Name="Transactions">""")
                 appendLine("""<Table>""")
-                appendLine("""<Column ss:Width="80"/><Column ss:Width="120"/><Column ss:Width="100"/><Column ss:Width="130"/><Column ss:Width="80"/><Column ss:Width="110"/><Column ss:Width="180"/>""")
+                appendLine("""<Row/>""")
+                appendLine("""<Row ss:StyleID="Title"><Cell ss:MergeAcross="8"><Data ss:Type="String">Transaction Audit Trail</Data></Cell></Row>""")
+                appendLine("""<Row ss:StyleID="Header"><Cell><Data ss:Type="String">Month</Data></Cell><Cell><Data ss:Type="String">Client</Data></Cell><Cell><Data ss:Type="String">Sub#</Data></Cell><Cell><Data ss:Type="String">Building</Data></Cell><Cell><Data ss:Type="String">Room</Data></Cell><Cell><Data ss:Type="String">Date</Data></Cell><Cell><Data ss:Type="String">Amount</Data></Cell><Cell><Data ss:Type="String">Type</Data></Cell><Cell><Data ss:Type="String">Notes</Data></Cell></Row>""")
 
-                appendLine("""<Row><Cell ss:StyleID="Title" ss:MergeAcross="6"><Data ss:Type="String">Transaction Audit Trail</Data></Cell></Row>""")
-                appendLine("""<Row><Cell ss:StyleID="Header"><Data ss:Type="String">Month</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Client</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Building</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Amount</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Type</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Notes</Data></Cell></Row>""")
+                val txBuildingColorMap = mutableMapOf<String, Int>()
+                val txBuildingRowCounter = mutableMapOf<String, Int>()
 
-                var txRowIdx = 0
                 data.months.forEach { monthData ->
-                    monthData.clients.forEach { c ->
+                    val sortedClientsForTx = monthData.clients.sortedBy { it.buildingName }
+                    sortedClientsForTx.forEach { c ->
                         c.transactions.forEach { tx ->
-                            val rowStyle = if (txRowIdx % 2 == 0) "Cell" else "CellAlt"
-                            val curStyle = if (txRowIdx % 2 == 0) "Currency" else "CurrencyAlt"
+                            val colorIdx = getBuildingColorIndex(c.buildingName, txBuildingColorMap)
+                            val rowInBld = txBuildingRowCounter.getOrDefault(c.buildingName, 0)
+                            txBuildingRowCounter[c.buildingName] = rowInBld + 1
+
+                            val cellStyle = getBldStyle(colorIdx, rowInBld, false)
+                            val curStyle = getBldStyle(colorIdx, rowInBld, true)
+                            val typeStyle = when {
+                                tx.type.contains("Refund", true) -> "TypeRefund"
+                                tx.type.contains("Partial", true) -> "TypePartial"
+                                else -> "TypeFull"
+                            }
                             appendLine(
-                                """<Row><Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${monthData.month}</Data></Cell>""" +
-                                        """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.clientName}</Data></Cell>""" +
-                                        """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${c.buildingName}</Data></Cell>""" +
-                                        """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${tx.date}</Data></Cell>""" +
+                                """<Row><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${monthData.month}</Data></Cell>""" +
+                                        """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.clientName}</Data></Cell>""" +
+                                        """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.subscriptionNumber}</Data></Cell>""" +
+                                        """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.buildingName}</Data></Cell>""" +
+                                        """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.roomNumber ?: "-"}</Data></Cell>""" +
+                                        """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${tx.date}</Data></Cell>""" +
                                         """<Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${tx.amount}</Data></Cell>""" +
-                                        """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${tx.type}</Data></Cell>""" +
-                                        """<Cell ss:StyleID="$rowStyle"><Data ss:Type="String">${tx.notes}</Data></Cell></Row>"""
+                                        """<Cell ss:StyleID="$typeStyle"><Data ss:Type="String">${tx.type}</Data></Cell>""" +
+                                        """<Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${tx.notes}</Data></Cell></Row>"""
                             )
-                            txRowIdx++
                         }
                     }
                 }
@@ -1017,8 +1073,24 @@ class PaymentsExportManager(private val context: Context) {
         }
 
         // ===================== DETAILED ONLY: Client Details =====================
-
         if (data.reportType == PaymentReportType.DETAILED) {
+
+            // ألوان المباني للـ PDF (6 ألوان × درجتين)
+            val pdfBuildingColors = listOf(
+                Pair(android.graphics.Color.parseColor("#E3F2FD"), android.graphics.Color.parseColor("#BBDEFB")),
+                Pair(android.graphics.Color.parseColor("#E8F5E9"), android.graphics.Color.parseColor("#C8E6C9")),
+                Pair(android.graphics.Color.parseColor("#FFF3E0"), android.graphics.Color.parseColor("#FFE0B2")),
+                Pair(android.graphics.Color.parseColor("#FCE4EC"), android.graphics.Color.parseColor("#F8BBD0")),
+                Pair(android.graphics.Color.parseColor("#F3E5F5"), android.graphics.Color.parseColor("#E1BEE7")),
+                Pair(android.graphics.Color.parseColor("#E0F7FA"), android.graphics.Color.parseColor("#B2EBF2"))
+            )
+            val pdfBuildingColorMap = mutableMapOf<String, Int>()
+
+            fun getPdfBuildingColor(buildingName: String, rowInBuilding: Int): Int {
+                val idx = pdfBuildingColorMap.getOrPut(buildingName) { pdfBuildingColorMap.size % 6 }
+                return if (rowInBuilding % 2 == 0) pdfBuildingColors[idx].first else pdfBuildingColors[idx].second
+            }
+
             data.months.forEach { monthData ->
                 checkNewPage()
                 canvas.drawText("Client Details - ${monthData.month}", margin, yPos, sectionPaint)
@@ -1027,20 +1099,11 @@ class PaymentsExportManager(private val context: Context) {
                 fillPaint.color = android.graphics.Color.parseColor("#7E57C2")
                 canvas.drawRect(margin, yPos - 10f, pageWidth - margin, yPos + 4f, fillPaint)
 
+                // ✅ ترتيب جديد: Name, Sub#, Building, Room, Package, Amount, Paid, Rem., Status, Notes
                 val cols = listOf(
-                    "Name",
-                    "Sub#",
-                    "Package",
-                    "Building",
-                    "Room",
-                    "Amount",
-                    "Paid",
-                    "Rem.",
-                    "Status",
-                    "Notes"
+                    "Name", "Sub#", "Building", "Room", "Package", "Amount", "Paid", "Rem.", "Status", "Notes"
                 )
-                val colW = listOf(85f, 65f, 65f, 85f, 45f, 65f, 65f, 65f, 65f, 150f)
-
+                val colW = listOf(85f, 65f, 85f, 45f, 65f, 65f, 65f, 65f, 65f, 150f)
                 var xPos = margin
                 cols.forEachIndexed { i, h ->
                     canvas.drawText(h, xPos + 2f, yPos, headerPaint)
@@ -1048,16 +1111,18 @@ class PaymentsExportManager(private val context: Context) {
                 }
                 yPos += 14f
 
-                monthData.clients.forEachIndexed { index, c ->
+                val sortedClients = monthData.clients.sortedBy { it.buildingName }
+                val bldRowCounter = mutableMapOf<String, Int>()
+
+                sortedClients.forEach { c ->
                     checkNewPage()
+                    val rowInBld = bldRowCounter.getOrDefault(c.buildingName, 0)
+                    bldRowCounter[c.buildingName] = rowInBld + 1
 
-                    // Zebra striping
-                    if (index % 2 == 1) {
-                        fillPaint.color = android.graphics.Color.parseColor("#F5F5F5")
-                        canvas.drawRect(margin, yPos - 9f, pageWidth - margin, yPos + 3f, fillPaint)
-                    }
+                    // رسم خلفية بلون المبنى
+                    fillPaint.color = getPdfBuildingColor(c.buildingName, rowInBld)
+                    canvas.drawRect(margin, yPos - 9f, pageWidth - margin, yPos + 3f, fillPaint)
 
-                    // ✅ الإصلاح:
                     val clientNote = c.clientNote.orEmpty()
                     val txnNote = c.transactions.lastOrNull()?.notes.orEmpty()
                     val notes = when {
@@ -1066,19 +1131,13 @@ class PaymentsExportManager(private val context: Context) {
                         else -> txnNote
                     }
 
+                    // ✅ ترتيب جديد: بدون Phone، Building بعد Sub#
                     val rowValues = listOf(
-                        c.clientName,
-                        c.subscriptionNumber,
-                        c.packageType,
-                        c.buildingName,
-                        c.roomNumber ?: "",
-                        "%.2f".format(c.monthlyAmount),
-                        "%.2f".format(c.totalPaid),
-                        "%.2f".format(c.remaining),
-                        "${c.statusIcon} ${c.status}",
-                        notes
+                        c.clientName, c.subscriptionNumber, c.buildingName,
+                        c.roomNumber ?: "", c.packageType, "%.2f".format(c.monthlyAmount),
+                        "%.2f".format(c.totalPaid), "%.2f".format(c.remaining),
+                        "${c.statusIcon} ${c.status}", notes
                     )
-
                     xPos = margin
                     rowValues.forEachIndexed { i, d ->
                         val maxLen = if (i == cols.lastIndex) 22 else 14
@@ -1093,44 +1152,32 @@ class PaymentsExportManager(private val context: Context) {
                 checkNewPage()
                 fillPaint.color = android.graphics.Color.parseColor("#9575CD")
                 canvas.drawRect(margin, yPos - 9f, pageWidth - margin, yPos + 3f, fillPaint)
-
                 val totalPaint = android.graphics.Paint().apply {
                     textSize = 8f
                     color = android.graphics.Color.WHITE
                     isFakeBoldText = true
                 }
-
                 xPos = margin
                 canvas.drawText("TOTAL", xPos + 2f, yPos, totalPaint)
                 xPos += colW[0] + colW[1] + colW[2] + colW[3] + colW[4] // Skip first 5 cols
                 canvas.drawText("%.2f".format(monthData.totalExpected), xPos + 2f, yPos, totalPaint)
                 xPos += colW[5]
                 canvas.drawText(
-                    "%.2f".format(monthData.totalCollected),
-                    xPos + 2f,
-                    yPos,
-                    totalPaint
+                    "%.2f".format(monthData.totalCollected), xPos + 2f, yPos, totalPaint
                 )
                 xPos += colW[6]
                 canvas.drawText(
-                    "%.2f".format(monthData.totalRemaining),
-                    xPos + 2f,
-                    yPos,
-                    totalPaint
+                    "%.2f".format(monthData.totalRemaining), xPos + 2f, yPos, totalPaint
                 )
                 xPos += colW[7]
                 canvas.drawText(
-                    "%.1f".format(monthData.collectionRate) + "%",
-                    xPos + 2f,
-                    yPos,
-                    totalPaint
+                    "%.1f".format(monthData.collectionRate) + "%", xPos + 2f, yPos, totalPaint
                 )
-
                 yPos += 18f
             }
 
-            // ===================== Transaction Audit Trail ==========================
 
+            // ===================== Transaction Audit Trail ==========================
             checkNewPage()
             canvas.drawText("Transaction Audit Trail", margin, yPos, sectionPaint)
             yPos += 14f
@@ -1138,9 +1185,9 @@ class PaymentsExportManager(private val context: Context) {
             fillPaint.color = android.graphics.Color.parseColor("#7E57C2")
             canvas.drawRect(margin, yPos - 10f, pageWidth - margin, yPos + 4f, fillPaint)
 
-            val tHeaders = listOf("Month", "Client", "Building", "Date", "Amount", "Type", "Notes")
-            val tW = listOf(65f, 95f, 85f, 100f, 65f, 75f, 160f)
-
+            // ✅ أعمدة جديدة: Month, Client, Sub#, Building, Room, Date, Amount, Type, Notes
+            val tHeaders = listOf("Month", "Client", "Sub#", "Building", "Room", "Date", "Amount", "Type", "Notes")
+            val tW = listOf(55f, 80f, 55f, 75f, 40f, 90f, 60f, 70f, 120f)
             var txX = margin
             tHeaders.forEachIndexed { i, h ->
                 canvas.drawText(h, txX + 2f, yPos, headerPaint)
@@ -1148,42 +1195,58 @@ class PaymentsExportManager(private val context: Context) {
             }
             yPos += 14f
 
-            var txRow = 0
+            // Paint خاص لـ Type (ملون + Bold)
+            val typePaint = android.graphics.Paint().apply {
+                textSize = 7f
+                isFakeBoldText = true
+            }
+
+            val txBldRowCounter = mutableMapOf<String, Int>()
+
             data.months.forEach { monthData ->
-                monthData.clients.forEach { c ->
+                val sortedClientsForTx = monthData.clients.sortedBy { it.buildingName }
+                sortedClientsForTx.forEach { c ->
                     c.transactions.forEach { tx ->
                         checkNewPage()
 
-                        if (txRow % 2 == 1) {
-                            fillPaint.color = android.graphics.Color.parseColor("#F5F5F5")
-                            canvas.drawRect(
-                                margin,
-                                yPos - 9f,
-                                pageWidth - margin,
-                                yPos + 3f,
-                                fillPaint
-                            )
-                        }
+                        val rowInBld = txBldRowCounter.getOrDefault(c.buildingName, 0)
+                        txBldRowCounter[c.buildingName] = rowInBld + 1
 
-                        txX = margin
-                        val rowVals = listOf(
-                            monthData.month,
-                            c.clientName,
-                            c.buildingName,
-                            tx.date,
-                            "%.2f".format(tx.amount),
-                            tx.type,
-                            tx.notes
+                        // رسم خلفية بلون المبنى
+                        fillPaint.color = getPdfBuildingColor(c.buildingName, rowInBld)
+                        canvas.drawRect(
+                            margin, yPos - 9f, pageWidth - margin, yPos + 3f, fillPaint
                         )
 
+                        txX = margin
+                        // رسم كل الأعمدة ما عدا Type
+                        val rowVals = listOf(
+                            monthData.month, c.clientName, c.subscriptionNumber,
+                            c.buildingName, c.roomNumber ?: "-", tx.date,
+                            "%.2f".format(tx.amount)
+                        )
                         rowVals.forEachIndexed { i, d ->
-                            val maxLen = if (i == tHeaders.lastIndex) 24 else 16
+                            val maxLen = 14
                             val text = if (d.length > maxLen) d.take(maxLen - 2) + ".." else d
                             canvas.drawText(text, txX + 2f, yPos, cellPaint)
                             txX += tW[i]
                         }
+
+                        // Type ملون + Bold
+                        typePaint.color = when {
+                            tx.type.contains("Refund", true) -> android.graphics.Color.parseColor("#C62828")
+                            tx.type.contains("Partial", true) -> android.graphics.Color.parseColor("#F57F17")
+                            else -> android.graphics.Color.parseColor("#2E7D32")
+                        }
+                        val typeText = if (tx.type.length > 14) tx.type.take(12) + ".." else tx.type
+                        canvas.drawText(typeText, txX + 2f, yPos, typePaint)
+                        txX += tW[7]
+
+                        // Notes
+                        val noteText = if (tx.notes.length > 18) tx.notes.take(16) + ".." else tx.notes
+                        canvas.drawText(noteText, txX + 2f, yPos, cellPaint)
+
                         yPos += 12f
-                        txRow++
                     }
                 }
             }
