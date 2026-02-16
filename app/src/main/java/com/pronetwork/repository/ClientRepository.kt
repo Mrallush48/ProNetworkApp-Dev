@@ -9,7 +9,7 @@ class ClientRepository(private val clientDao: ClientDao) {
     fun searchClients(search: String) = clientDao.searchClients(search)
     fun getClientsCount() = clientDao.getClientsCount()
 
-    suspend fun insert(client: Client) = clientDao.insert(client)
+    suspend fun insert(client: Client): Long = clientDao.insert(client)
     suspend fun update(client: Client) = clientDao.update(client)
     suspend fun delete(client: Client) = clientDao.delete(client)
 }

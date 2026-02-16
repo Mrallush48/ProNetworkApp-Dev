@@ -34,6 +34,10 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun insert(client: Client) = viewModelScope.launch { repository.insert(client) }
+    // دالة جديدة ترجع الـ ID مباشرة (تستخدم في الاستيراد)
+    suspend fun insertAndGetId(client: Client): Long {
+        return repository.insert(client)
+    }
     fun update(client: Client) = viewModelScope.launch { repository.update(client) }
     fun delete(client: Client) = viewModelScope.launch { repository.delete(client) }
 }

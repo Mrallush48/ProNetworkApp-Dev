@@ -95,6 +95,7 @@ import android.app.Activity
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import com.pronetwork.app.export.ClientsImportManager
+import androidx.activity.compose.BackHandler
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -121,34 +122,28 @@ class MainActivity : ComponentActivity() {
                 val result = importManager.importFromFile(
                     uri = selectedUri,
                     onClientsReady = { newClients ->
-                        val monthsList = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).let { fmt ->
-                            val cal = java.util.Calendar.getInstance()
-                            List(25) {
-                                val m = fmt.format(cal.time)
-                                cal.add(java.util.Calendar.MONTH, -1)
-                                m
-                            }
-                        }
+                        val monthsList =
+                            java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+                                .let { fmt ->
+                                    val cal = java.util.Calendar.getInstance()
+                                    List(25) {
+                                        val m = fmt.format(cal.time)
+                                        cal.add(java.util.Calendar.MONTH, -1)
+                                        m
+                                    }
+                                }
+                        // حفظ كل عميل والحصول على ID مباشرة ثم إنشاء سجلات الدفع
                         newClients.forEach { client ->
-                            clientViewModel.insert(client)
-                        }
-                        // انتظر حتى تنحفظ كل العملاء ثم أنشئ سجلات الدفع
-                        kotlinx.coroutines.delay(500)
-                        val allClientsNow = clientViewModel.clients.value ?: emptyList()
-                        newClients.forEach { importedClient ->
-                            val matched = allClientsNow.firstOrNull {
-                                it.subscriptionNumber == importedClient.subscriptionNumber
-                            }
-                            matched?.let { savedClient ->
-                                paymentViewModel.createPaymentsForClient(
-                                    clientId = savedClient.id,
-                                    startMonth = savedClient.startMonth,
-                                    endMonth = null,
-                                    amount = savedClient.price,
-                                    monthOptions = monthsList,
-                                    firstMonthAmount = savedClient.firstMonthAmount
-                                )
-                            }
+                            val newId = clientViewModel.insertAndGetId(client)
+                            val savedClientId = newId.toInt()
+                            paymentViewModel.createPaymentsForClient(
+                                clientId = savedClientId,
+                                startMonth = client.startMonth,
+                                endMonth = null,
+                                amount = client.price,
+                                monthOptions = monthsList,
+                                firstMonthAmount = client.firstMonthAmount
+                            )
                         }
                     }
                 )
@@ -164,7 +159,11 @@ class MainActivity : ComponentActivity() {
                         append("Import failed: ${result.errors.firstOrNull() ?: "Unknown error"}")
                     }
                 }
-                android.widget.Toast.makeText(this@MainActivity, msg, android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(
+                    this@MainActivity,
+                    msg,
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -238,7 +237,8 @@ class MainActivity : ComponentActivity() {
         dailyExportManager = DailyCollectionExportManager(this)
 
         val buildingRepo = buildingViewModel.let {
-            val buildingDao = com.pronetwork.app.data.BuildingDatabase.getDatabase(application).buildingDao()
+            val buildingDao =
+                com.pronetwork.app.data.BuildingDatabase.getDatabase(application).buildingDao()
             val clientDatabase = com.pronetwork.app.data.ClientDatabase.getDatabase(application)
             com.pronetwork.app.repository.BuildingRepository(buildingDao, clientDatabase)
         }
@@ -262,6 +262,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             ProNetworkSpotTheme(darkTheme = false) {
                 var refreshTrigger by remember { mutableStateOf(0) }
+                var showExitDialog by remember { mutableStateOf(false) }
                 var showExportDialogClients by remember { mutableStateOf(false) }
                 var showExportDialogBuildings by remember { mutableStateOf(false) }
                 var showExportDialogStats by remember { mutableStateOf(false) }
@@ -289,6 +290,34 @@ class MainActivity : ComponentActivity() {
                             set(Calendar.MILLISECOND, 0)
                         }.timeInMillis
                     )
+                }
+
+                // معالجة زر الرجوع في النظام
+                BackHandler(enabled = true) {
+                    when {
+                        // إذا في شاشة تفاصيل عميل → ارجع لقائمة العملاء/المبنى
+                        selectedClient != null -> {
+                            selectedClient = null
+                            showEditClientDialog = false
+                        }
+                        // إذا في شاشة تفاصيل مبنى → ارجع لقائمة المباني
+                        selectedBuilding != null -> {
+                            selectedBuilding = null
+                            showEditBuildingDialog = false
+                        }
+                        // إذا في التحصيل اليومي → ارجع للإحصائيات
+                        showDailyCollection -> {
+                            showDailyCollection = false
+                        }
+                        // إذا في أي شاشة غير clients → ارجع لـ clients
+                        currentScreen != "clients" -> {
+                            currentScreen = "clients"
+                        }
+                        // إذا في الشاشة الرئيسية → أظهر مربع حوار تأكيد الخروج
+                        else -> {
+                            showExitDialog = true
+                        }
+                    }
                 }
 
                 val clients by clientViewModel.clients.observeAsState(emptyList())
@@ -1559,6 +1588,24 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
+            // مربع حوار تأكيد الخروج
+            if (showExitDialog) {
+                AlertDialog(
+                    onDismissRequest = { showExitDialog = false },
+                    title = { Text("Exit App") },
+                    text = { Text("Are you sure you want to exit?") },
+                    confirmButton = {
+                        Button(onClick = { finish() }) {
+                            Text("Exit")
+                        }
+                    },
+                    dismissButton = {
+                        OutlinedButton(onClick = { showExitDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }

@@ -89,6 +89,15 @@ class ClientsImportManager(
                     val price = priceStr.replace(",", "").toDoubleOrNull() ?: 0.0
                     val day = startDay.replace(",", "").toIntOrNull() ?: 1
 
+                    // حساب مبلغ الشهر الأول تلقائياً (نفس منطق ClientEditDialog)
+                    val firstMonthAmount: Double? = if (day > 1 && price > 0) {
+                        val daysInMonth = 30
+                        val remainingDays = daysInMonth - day + 1
+                        (price / daysInMonth) * remainingDays
+                    } else {
+                        null
+                    }
+
                     // البحث عن المبنى أو إنشاؤه
                     var building = existingBuildings.firstOrNull {
                         it.name.equals(buildingName, true)
@@ -117,6 +126,7 @@ class ClientsImportManager(
                             phone = phone,
                             packageType = packageType,
                             price = price,
+                            firstMonthAmount = firstMonthAmount,
                             buildingId = buildingId,
                             roomNumber = roomNumber,
                             startMonth = startMonth.ifBlank {

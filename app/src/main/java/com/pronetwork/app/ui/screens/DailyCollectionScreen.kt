@@ -85,43 +85,55 @@ fun DailyCollectionScreen(
                     style = MaterialTheme.typography.titleLarge
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        val cal = Calendar.getInstance().apply {
-                            timeInMillis = selectedDateMillis
-                            add(Calendar.DAY_OF_YEAR, -1)
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                        onChangeDate(cal.timeInMillis)
-                    }) {
-                        Text(stringResource(R.string.daily_collection_prev_day))
+                    OutlinedButton(
+                        onClick = {
+                            val cal = Calendar.getInstance().apply {
+                                timeInMillis = selectedDateMillis
+                                add(Calendar.DAY_OF_YEAR, -1)
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            onChangeDate(cal.timeInMillis)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            stringResource(R.string.daily_collection_prev_day),
+                            maxLines = 1
+                        )
                     }
 
-                    Button(onClick = {
-                        val todayCal = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                        val cal = Calendar.getInstance().apply {
-                            timeInMillis = selectedDateMillis
-                            add(Calendar.DAY_OF_YEAR, 1)
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                        val newTime = if (cal.timeInMillis > todayCal.timeInMillis) {
-                            todayCal.timeInMillis
-                        } else {
-                            cal.timeInMillis
-                        }
-                        onChangeDate(newTime)
-                    }) {
-                        Text(stringResource(R.string.daily_collection_next_day))
+                    Button(
+                        onClick = {
+                            val todayCal = Calendar.getInstance().apply {
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            val cal = Calendar.getInstance().apply {
+                                timeInMillis = selectedDateMillis
+                                add(Calendar.DAY_OF_YEAR, 1)
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            val newTime = if (cal.timeInMillis > todayCal.timeInMillis) {
+                                todayCal.timeInMillis
+                            } else {
+                                cal.timeInMillis
+                            }
+                            onChangeDate(newTime)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            stringResource(R.string.daily_collection_next_day),
+                            maxLines = 1
+                        )
                     }
                 }
             }
