@@ -1,5 +1,17 @@
 package com.pronetwork.app.data
 
+
+
+/**
+ * حركة واحدة لعميل في يوم معيّن
+ */
+data class DailyTransactionItem(
+    val amount: Double,
+    val time: String,
+    val type: String,       // "Payment" or "Refund"
+    val notes: String
+)
+
 /**
  * تفاصيل تحصيل عميل واحد في يوم معيّن
  */
@@ -12,8 +24,10 @@ data class DailyClientCollection(
     val monthlyAmount: Double,
     val paidAmount: Double,
     val transactionTime: String,
-    val notes: String
+    val notes: String,
+    val transactions: List<DailyTransactionItem> = emptyList()
 )
+
 
 /**
  * نتيجة استعلام Room البسيط — تحصيل مبنى يومي

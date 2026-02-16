@@ -15,6 +15,7 @@ import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.repository.PaymentRepository
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import kotlinx.coroutines.launch
+import com.pronetwork.app.data.DailyTransactionItem
 
 // enum جديد لحالة الدفع
 enum class PaymentStatus {
@@ -139,13 +140,23 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 val clients = clientGroups.map { (clientId, clientTxs) ->
                     val firstTx = clientTxs.first()
                     val totalPaid = clientTxs.sumOf { it.paidAmount }
-                    // آخر حركة = وقت العرض
                     val lastTxTime = clientTxs.maxOf { it.transactionDate }
                     val allNotes = clientTxs
                         .map { it.notes }
                         .filter { it.isNotBlank() }
                         .distinct()
                         .joinToString(" | ")
+
+                    // بناء قائمة الحركات الفردية
+                    val txItems = clientTxs.map { tx ->
+                        val txType = if (tx.paidAmount < 0) "Refund" else "Payment"
+                        DailyTransactionItem(
+                            amount = tx.paidAmount,
+                            time = timeFormat.format(java.util.Date(tx.transactionDate)),
+                            type = txType,
+                            notes = tx.notes
+                        )
+                    }
 
                     DailyClientCollection(
                         clientId = clientId,
@@ -156,9 +167,11 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         monthlyAmount = firstTx.monthlyAmount,
                         paidAmount = totalPaid,
                         transactionTime = timeFormat.format(java.util.Date(lastTxTime)),
-                        notes = allNotes
+                        notes = allNotes,
+                        transactions = txItems
                     )
                 }.sortedBy { it.clientName }
+
 
                 val totalAmount = clients.sumOf { it.paidAmount }
                 val expectedAmount = clients.sumOf { it.monthlyAmount }

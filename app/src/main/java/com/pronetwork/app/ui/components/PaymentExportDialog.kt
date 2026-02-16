@@ -32,6 +32,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.stringResource
+import com.pronetwork.app.R
+import androidx.compose.material3.Icon
+
+
 
 enum class PaymentReportType {
     SUMMARY,
@@ -431,6 +441,71 @@ fun PaymentExportDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // ══════ Save to Downloads ══════
+                Text(
+                    stringResource(R.string.export_save_to_downloads),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onExport(
+                                reportType, period, chosenMonth,
+                                if (period == PaymentReportPeriod.CUSTOM) endMonth else null,
+                                ExportFormat.PDF,
+                                buildingFilter, packageFilter, statusFilter
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PictureAsPdf,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.export_pdf), style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    Button(
+                        onClick = {
+                            onExport(
+                                reportType, period, chosenMonth,
+                                if (period == PaymentReportPeriod.CUSTOM) endMonth else null,
+                                ExportFormat.EXCEL,
+                                buildingFilter, packageFilter, statusFilter
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.TableChart,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.export_excel), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                // ══════ Share ══════
+                Text(
+                    stringResource(R.string.export_share_via),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -438,61 +513,56 @@ fun PaymentExportDialog(
                     OutlinedButton(
                         onClick = {
                             onExport(
-                                reportType,
-                                period,
-                                chosenMonth,
+                                reportType, period, chosenMonth,
                                 if (period == PaymentReportPeriod.CUSTOM) endMonth else null,
-                                ExportFormat.SHARE,
-                                buildingFilter,
-                                packageFilter,
-                                statusFilter
+                                ExportFormat.SHARE_PDF,
+                                buildingFilter, packageFilter, statusFilter
                             )
                         },
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                    ) { Text("Share", style = MaterialTheme.typography.bodySmall) }
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PictureAsPdf,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.export_share_pdf), style = MaterialTheme.typography.bodySmall)
+                    }
 
                     OutlinedButton(
                         onClick = {
                             onExport(
-                                reportType,
-                                period,
-                                chosenMonth,
+                                reportType, period, chosenMonth,
                                 if (period == PaymentReportPeriod.CUSTOM) endMonth else null,
-                                ExportFormat.PDF,
-                                buildingFilter,
-                                packageFilter,
-                                statusFilter
+                                ExportFormat.SHARE,
+                                buildingFilter, packageFilter, statusFilter
                             )
                         },
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                    ) { Text("PDF", style = MaterialTheme.typography.bodySmall) }
-
-                    Button(
-                        onClick = {
-                            onExport(
-                                reportType,
-                                period,
-                                chosenMonth,
-                                if (period == PaymentReportPeriod.CUSTOM) endMonth else null,
-                                ExportFormat.EXCEL,
-                                buildingFilter,
-                                packageFilter,
-                                statusFilter
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                    ) { Text("Excel", style = MaterialTheme.typography.bodySmall) }
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.TableChart,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.export_share_excel), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
 
+                // Cancel
                 TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) { Text("Cancel") }
+                ) {
+                    Text(stringResource(R.string.export_cancel))
+                }
             }
         },
+
         dismissButton = null
     )
 }

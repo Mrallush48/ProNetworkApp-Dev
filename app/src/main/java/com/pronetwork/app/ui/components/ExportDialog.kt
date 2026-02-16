@@ -17,7 +17,8 @@ import com.pronetwork.app.R
 
 enum class ExportType { SUMMARY, DETAILED }
 enum class ExportPeriod { MONTHLY, QUARTERLY, YEARLY, CUSTOM }
-enum class ExportFormat { SHARE, PDF, EXCEL }
+enum class ExportFormat { SHARE, PDF, EXCEL, SHARE_PDF }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,44 +219,17 @@ fun ExportDialog(
 
                 HorizontalDivider()
 
-                // أزرار التصدير
+// ══════ حفظ في Downloads ══════
                 Text(
-                    text = stringResource(R.string.export_as),
+                    text = stringResource(R.string.export_save_to_downloads),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FilledTonalButton(
-                        onClick = {
-                            onExport(
-                                selectedType,
-                                selectedPeriod,
-                                ExportFormat.SHARE,
-                                selectedBuilding,
-                                selectedPackage
-                            )
-                            onDismiss()
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(2.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Share,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                stringResource(R.string.export_share),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
                     FilledTonalButton(
                         onClick = {
                             onExport(
@@ -284,6 +258,7 @@ fun ExportDialog(
                             )
                         }
                     }
+
                     FilledTonalButton(
                         onClick = {
                             onExport(
@@ -314,7 +289,79 @@ fun ExportDialog(
                     }
                 }
 
-                // زر Cancel
+                Spacer(modifier = Modifier.height(8.dp))
+
+// ══════ مشاركة ══════
+                Text(
+                    text = stringResource(R.string.export_share_via),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            onExport(
+                                selectedType,
+                                selectedPeriod,
+                                ExportFormat.SHARE_PDF,
+                                selectedBuilding,
+                                selectedPackage
+                            )
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(2.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.PictureAsPdf,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                stringResource(R.string.export_share_pdf),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            onExport(
+                                selectedType,
+                                selectedPeriod,
+                                ExportFormat.SHARE,
+                                selectedBuilding,
+                                selectedPackage
+                            )
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(2.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.TableChart,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                stringResource(R.string.export_share_excel),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+
+// زر Cancel
                 TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.CenterHorizontally)

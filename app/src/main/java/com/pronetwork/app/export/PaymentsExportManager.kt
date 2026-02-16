@@ -1057,8 +1057,14 @@ class PaymentsExportManager(private val context: Context) {
                         canvas.drawRect(margin, yPos - 9f, pageWidth - margin, yPos + 3f, fillPaint)
                     }
 
-                    val clientNote = c.transactions.lastOrNull()?.notes.orEmpty()
-                    val notes = clientNote
+                    // ✅ الإصلاح:
+                    val clientNote = c.clientNote.orEmpty()
+                    val txnNote = c.transactions.lastOrNull()?.notes.orEmpty()
+                    val notes = when {
+                        clientNote.isNotEmpty() && txnNote.isNotEmpty() -> "$clientNote | $txnNote"
+                        clientNote.isNotEmpty() -> clientNote
+                        else -> txnNote
+                    }
 
                     val rowValues = listOf(
                         c.clientName,
@@ -1271,6 +1277,47 @@ class PaymentsExportManager(private val context: Context) {
                 try {
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "application/vnd.ms-excel"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(
+                        Intent.createChooser(intent, "Share Payment Report").apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Share failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    suspend fun sharePdf(
+        reportType: PaymentReportType,
+        period: PaymentReportPeriod,
+        startMonth: String,
+        endMonth: String?,
+        buildingFilter: Int?,
+        packageFilter: String?,
+        statusFilter: PaymentReportFilter
+    ) {
+        withContext(Dispatchers.IO) {
+            val data = gatherFullReport(
+                reportType, period, startMonth, endMonth,
+                buildingFilter, packageFilter, statusFilter
+            )
+            val pdfBytes = buildPdf(data)
+            val fileName = "payment_report_${startMonth}_${period.name.lowercase()}.pdf"
+            val file = java.io.File(context.cacheDir, fileName)
+            file.writeBytes(pdfBytes)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", file
+            )
+            withContext(Dispatchers.Main) {
+                try {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/pdf"
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

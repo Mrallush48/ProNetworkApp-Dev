@@ -507,5 +507,13 @@
 
     <string name="client_edit_room_number_label">Room No.</string>
 
+    <!-- Export dialog - new buttons -->
+    <string name="export_save_to_downloads">Save to Downloads</string>
+    <string name="export_share_via">Share via</string>
+    <string name="export_share_pdf">Share PDF</string>
+    <string name="export_share_excel">Share Excel</string>
+
+
+
 
 </resources>

@@ -63,8 +63,10 @@ import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.export.ClientsExportManager
+import com.pronetwork.app.export.DailyCollectionExportManager
 import com.pronetwork.app.export.PaymentsExportManager
 import com.pronetwork.app.repository.PaymentTransactionRepository
+import com.pronetwork.app.ui.components.DailyExportDialog
 import com.pronetwork.app.ui.components.ExportDialog
 import com.pronetwork.app.ui.components.ExportFormat
 import com.pronetwork.app.ui.components.ExportOption
@@ -101,6 +103,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var exportManager: ClientsExportManager
 
     private lateinit var paymentsExportManager: PaymentsExportManager
+
+    private lateinit var dailyExportManager: DailyCollectionExportManager
 
 
     private val transactionRepository by lazy {
@@ -167,6 +171,8 @@ class MainActivity : ComponentActivity() {
         exportManager = ClientsExportManager(this)
 
         paymentsExportManager = PaymentsExportManager(this)
+
+        dailyExportManager = DailyCollectionExportManager(this)
 
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
@@ -787,6 +793,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
 
+                                        // ✅ تعديل: إضافة SHARE_PDF لتصدير العملاء
                                         if (showExportDialogClients) {
                                             ExportDialog(
                                                 onDismiss = { showExportDialogClients = false },
@@ -804,14 +811,18 @@ class MainActivity : ComponentActivity() {
                                                                 buildings = buildings
                                                             )
                                                         }
-
+                                                        ExportFormat.SHARE_PDF -> {
+                                                            exportManager.sharePdf(
+                                                                clients = filteredClientsForExport,
+                                                                buildings = buildings
+                                                            )
+                                                        }
                                                         ExportFormat.PDF -> {
                                                             exportManager.exportPdfToDownloads(
                                                                 clients = filteredClientsForExport,
                                                                 buildings = buildings
                                                             )
                                                         }
-
                                                         ExportFormat.EXCEL -> {
                                                             exportManager.exportExcelToDownloads(
                                                                 clients = filteredClientsForExport,
@@ -819,6 +830,7 @@ class MainActivity : ComponentActivity() {
                                                             )
                                                         }
                                                     }
+
                                                 },
                                                 buildings = buildings.map { it.id to it.name },
                                                 packages = clients.map { it.packageType }.distinct()
@@ -1278,6 +1290,49 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+
+                                if (showExportDialogDaily) {
+                                    val dailyDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    val dailyDateLabel = dailyDateFormat.format(Date(selectedDailyDateMillis))
+
+                                    DailyExportDialog(
+                                        dateLabel = dailyDateLabel,
+                                        onDismiss = { showExportDialogDaily = false },
+                                        onExport = { format ->
+                                            val currentUi = dailyUi
+                                            val currentSummary = dailySummary
+                                            if (currentUi != null) {
+                                                lifecycleScope.launch {
+                                                    when (format) {
+                                                        ExportFormat.EXCEL -> dailyExportManager.exportExcelToDownloads(
+                                                            date = dailyDateLabel,
+                                                            ui = currentUi,
+                                                            summary = currentSummary
+                                                        )
+                                                        ExportFormat.PDF -> dailyExportManager.exportPdfToDownloads(
+                                                            date = dailyDateLabel,
+                                                            ui = currentUi,
+                                                            summary = currentSummary
+                                                        )
+                                                        ExportFormat.SHARE -> dailyExportManager.shareExcel(
+                                                            date = dailyDateLabel,
+                                                            ui = currentUi,
+                                                            summary = currentSummary
+                                                        )
+                                                        ExportFormat.SHARE_PDF -> dailyExportManager.sharePdf(
+                                                            date = dailyDateLabel,
+                                                            ui = currentUi,
+                                                            summary = currentSummary
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            showExportDialogDaily = false
+                                        }
+                                    )
+                                }
+
+                                // ✅ تعديل: إضافة SHARE_PDF لتصدير الإحصائيات
                                 if (showExportDialogStats) {
                                     PaymentExportDialog(
                                         monthOptions = monthOptions,
@@ -1286,7 +1341,8 @@ class MainActivity : ComponentActivity() {
                                         packages = clients.map { it.packageType }.distinct()
                                             .sorted(),
                                         onDismiss = { showExportDialogStats = false },
-                                        onExport = { reportType, period, month, endMonth, format, buildingFilter, packageFilter, statusFilter ->
+                                        onExport = { reportType, period, month, endMonth, format,
+                                                     buildingFilter, packageFilter, statusFilter ->
                                             lifecycleScope.launch {
                                                 when (format) {
                                                     ExportFormat.EXCEL -> paymentsExportManager.exportExcelToDownloads(
@@ -1298,7 +1354,6 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
-
                                                     ExportFormat.SHARE -> paymentsExportManager.shareExcel(
                                                         reportType = reportType,
                                                         period = period,
@@ -1308,7 +1363,6 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
-
                                                     ExportFormat.PDF -> paymentsExportManager.exportPdfToDownloads(
                                                         reportType = reportType,
                                                         period = period,
@@ -1318,7 +1372,17 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
+                                                    ExportFormat.SHARE_PDF -> paymentsExportManager.sharePdf(
+                                                        reportType = reportType,
+                                                        period = period,
+                                                        startMonth = month,
+                                                        endMonth = endMonth,
+                                                        buildingFilter = buildingFilter,
+                                                        packageFilter = packageFilter,
+                                                        statusFilter = statusFilter
+                                                    )
                                                 }
+
                                             }
                                             showExportDialogStats = false
                                         }

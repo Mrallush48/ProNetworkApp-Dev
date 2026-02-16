@@ -508,5 +508,12 @@
 
     <string name="client_edit_room_number_label">رقم الغرفة</string>
 
+    <!-- Export dialog - new buttons -->
+    <string name="export_save_to_downloads">حفظ في التنزيلات</string>
+    <string name="export_share_via">مشاركة عبر</string>
+    <string name="export_share_pdf">مشاركة PDF</string>
+    <string name="export_share_excel">مشاركة إكسل</string>
+
+
 
 </resources>
