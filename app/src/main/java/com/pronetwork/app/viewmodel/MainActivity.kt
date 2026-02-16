@@ -121,8 +121,34 @@ class MainActivity : ComponentActivity() {
                 val result = importManager.importFromFile(
                     uri = selectedUri,
                     onClientsReady = { newClients ->
+                        val monthsList = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).let { fmt ->
+                            val cal = java.util.Calendar.getInstance()
+                            List(25) {
+                                val m = fmt.format(cal.time)
+                                cal.add(java.util.Calendar.MONTH, -1)
+                                m
+                            }
+                        }
                         newClients.forEach { client ->
                             clientViewModel.insert(client)
+                        }
+                        // انتظر حتى تنحفظ كل العملاء ثم أنشئ سجلات الدفع
+                        kotlinx.coroutines.delay(500)
+                        val allClientsNow = clientViewModel.clients.value ?: emptyList()
+                        newClients.forEach { importedClient ->
+                            val matched = allClientsNow.firstOrNull {
+                                it.subscriptionNumber == importedClient.subscriptionNumber
+                            }
+                            matched?.let { savedClient ->
+                                paymentViewModel.createPaymentsForClient(
+                                    clientId = savedClient.id,
+                                    startMonth = savedClient.startMonth,
+                                    endMonth = null,
+                                    amount = savedClient.price,
+                                    monthOptions = monthsList,
+                                    firstMonthAmount = savedClient.firstMonthAmount
+                                )
+                            }
                         }
                     }
                 )
