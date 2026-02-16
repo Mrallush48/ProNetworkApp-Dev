@@ -8,7 +8,10 @@ import com.pronetwork.app.data.ClientDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class ClientsImportManager(private val context: Context) {
+class ClientsImportManager(
+    private val context: Context,
+    private val buildingRepository: com.pronetwork.app.repository.BuildingRepository? = null
+) {
 
     data class ImportResult(
         val success: Int,
@@ -94,7 +97,12 @@ class ClientsImportManager(private val context: Context) {
                     if (building == null && buildingName.isNotBlank()) {
                         // إنشاء المبنى الجديد تلقائياً
                         val newBuilding = Building(name = buildingName)
-                        val newId = buildingDao.insert(newBuilding)
+                        val newId = if (buildingRepository != null) {
+                            // يدخل في القاعدتين تلقائياً (building_database + client_database)
+                            buildingRepository.insert(newBuilding)
+                        } else {
+                            buildingDao.insert(newBuilding)
+                        }
                         building = newBuilding.copy(id = newId.toInt())
                         existingBuildings.add(building)
                         newBuildingsCount++

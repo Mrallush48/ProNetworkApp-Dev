@@ -211,7 +211,12 @@ class MainActivity : ComponentActivity() {
 
         dailyExportManager = DailyCollectionExportManager(this)
 
-        importManager = ClientsImportManager(this)
+        val buildingRepo = buildingViewModel.let {
+            val buildingDao = com.pronetwork.app.data.BuildingDatabase.getDatabase(application).buildingDao()
+            val clientDatabase = com.pronetwork.app.data.ClientDatabase.getDatabase(application)
+            com.pronetwork.app.repository.BuildingRepository(buildingDao, clientDatabase)
+        }
+        importManager = ClientsImportManager(this, buildingRepo)
 
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),

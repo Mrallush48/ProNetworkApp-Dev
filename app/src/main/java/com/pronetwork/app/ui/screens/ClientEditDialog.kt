@@ -137,7 +137,7 @@ fun ClientEditDialog(
         }
     }
 
-    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "25Mbps", "30Mbps", "Other")
+    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "20Mbps", "25Mbps", "30Mbps", "Other")
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
