@@ -74,11 +74,12 @@ fun StatisticsScreen(
             }
         }
 
-        // Monthly Collection Ratio Card - مبني على monthStats حسب الشهر المختار
+        // Monthly Collection Ratio Card
         if (monthStats != null) {
-            val totalClients = monthStats.paidCount + monthStats.partiallyPaidCount + monthStats.unpaidCount
+            val totalClients = monthStats.paidCount + monthStats.partiallyPaidCount + monthStats.settledCount + monthStats.unpaidCount
+            val collectedClients = monthStats.paidCount + monthStats.settledCount
             val collectionRate = if (totalClients > 0) {
-                (monthStats.paidCount.toFloat() / totalClients.toFloat()) * 100f
+                (collectedClients.toFloat() / totalClients.toFloat()) * 100f
             } else {
                 0f
             }
@@ -100,23 +101,27 @@ fun StatisticsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("${stringResource(R.string.expected_clients)}: $totalClients")
-                        Text("${stringResource(R.string.paid_clients)}: ${monthStats.paidCount}")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text("${stringResource(R.string.expected_clients)}: $totalClients")
+                            Text("${stringResource(R.string.paid_clients)}: ${monthStats.paidCount}")
+                        }
+                        if (monthStats.settledCount > 0) {
+                            Text("${stringResource(R.string.stats_settled_clients)}: ${monthStats.settledCount}")
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     LinearProgressIndicator(
                         progress = { collectionRate / 100f },
                         modifier = Modifier.fillMaxWidth(),
                     )
-
                     Spacer(modifier = Modifier.height(4.dp))
-
                     Text(
                         text = "%.1f%%".format(collectionRate),
                         style = MaterialTheme.typography.headlineMedium,
@@ -125,26 +130,24 @@ fun StatisticsScreen(
                     )
                 }
             }
-        }
 
-        // كروت الاحصائيات العامة
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StatCard(
-                title = stringResource(R.string.stats_total_clients),
-                value = clientsCount.toString(),
-                modifier = Modifier.weight(1f)
-            )
-            StatCard(
-                title = stringResource(R.string.stats_total_buildings),
-                value = buildingsCount.toString(),
-                modifier = Modifier.weight(1f)
-            )
-        }
+            // كروت الاحصائيات العامة
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatCard(
+                    title = stringResource(R.string.stats_total_clients),
+                    value = clientsCount.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = stringResource(R.string.stats_total_buildings),
+                    value = buildingsCount.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
-        if (monthStats != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -159,6 +162,17 @@ fun StatisticsScreen(
                     title = stringResource(R.string.stats_partial_clients),
                     value = monthStats.partiallyPaidCount.toString(),
                     color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatCard(
+                    title = stringResource(R.string.stats_settled_clients),
+                    value = monthStats.settledCount.toString(),
+                    color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(

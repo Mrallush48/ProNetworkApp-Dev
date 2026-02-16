@@ -212,9 +212,11 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         val month: String,
         val paidCount: Int,
         val partiallyPaidCount: Int,
+        val settledCount: Int,
         val unpaidCount: Int,
         val totalPaidAmount: Double,
-        val totalUnpaidAmount: Double
+        val totalUnpaidAmount: Double,
+        val settledAmount: Double
     )
 
     // LiveData للإحصائيات الشهرية الجاهزة
@@ -226,40 +228,44 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
 
             fun update() {
                 val ps = payments ?: return
-
                 viewModelScope.launch {
                     val ids = ps.map { it.id }
                     val totalsMap = transactionRepository.getTotalsForPayments(ids)
+                    val refundIds = transactionRepository.getPaymentIdsWithRefunds(ids).toSet()
 
                     var fullPaidCount = 0
                     var partialPaidCount = 0
+                    var settledCount = 0
                     var unpaidCount = 0
                     var totalRemaining = 0.0
                     var totalPaidAmount = 0.0
+                    var settledAmount = 0.0
 
                     ps.forEach { p ->
                         val paidForThis = totalsMap[p.id] ?: 0.0
                         val remainingForThis = (p.amount - paidForThis).coerceAtLeast(0.0)
-
                         totalPaidAmount += paidForThis
+
+                        val hasRefund = refundIds.contains(p.id)
 
                         when {
                             paidForThis <= 0.0 -> {
-                                // لا يوجد أي دفع لهذا الشهر
                                 unpaidCount += 1
                                 totalRemaining += p.amount
                             }
-
+                            paidForThis < p.amount && hasRefund -> {
+                                // مُسوَّى: دفع كامل ثم استرجاع
+                                settledCount += 1
+                                settledAmount += paidForThis
+                                // لا يُضاف للمتبقي لأنه مُسوَّى
+                            }
                             paidForThis < p.amount -> {
-                                // دفع جزئي
+                                // دفع جزئي عادي
                                 partialPaidCount += 1
                                 totalRemaining += remainingForThis
                             }
-
                             else -> {
-                                // مدفوع بالكامل
                                 fullPaidCount += 1
-                                // لا يضاف شيء للمتبقي
                             }
                         }
                     }
@@ -269,9 +275,11 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                             month = month,
                             paidCount = fullPaidCount,
                             partiallyPaidCount = partialPaidCount,
+                            settledCount = settledCount,
                             unpaidCount = unpaidCount,
                             totalPaidAmount = totalPaidAmount,
-                            totalUnpaidAmount = totalRemaining
+                            totalUnpaidAmount = totalRemaining,
+                            settledAmount = settledAmount
                         )
                     )
                 }

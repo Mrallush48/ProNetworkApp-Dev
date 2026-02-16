@@ -460,6 +460,7 @@
     <string name="stats_total_buildings">Total buildings</string>
     <string name="stats_paid_clients">Fully paid clients</string>
     <string name="stats_partial_clients">Partially paid clients</string>
+    <string name="stats_settled_clients">Settled</string>
     <string name="stats_unpaid_clients">Unpaid clients</string>
     <string name="stats_total_paid_amount">Total collected amount</string>
     <string name="stats_total_unpaid_amount">Total remaining amount</string>
