@@ -62,7 +62,6 @@ import androidx.lifecycle.lifecycleScope
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
-import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.export.ClientsExportManager
 import com.pronetwork.app.export.PaymentsExportManager
 import com.pronetwork.app.repository.PaymentTransactionRepository
@@ -233,22 +232,38 @@ class MainActivity : ComponentActivity() {
                     val dayStartMillis = calendar.timeInMillis
                     calendar.add(Calendar.DAY_OF_MONTH, 1)
                     val dayEndMillis = calendar.timeInMillis
-                    val liveData = paymentViewModel.getDailyBuildingCollectionsForDay(
+
+                    // جلب التحصيل التفصيلي (عميل بعميل)
+                    val detailedLiveData = paymentViewModel.getDetailedDailyCollections(
                         dayStartMillis = dayStartMillis,
                         dayEndMillis = dayEndMillis
                     )
-                    liveData.observe(this@MainActivity) { buildingCollections: List<DailyBuildingCollection> ->
-                        val total = buildingCollections.sumOf { it.totalAmount }
+                    detailedLiveData.observe(this@MainActivity) { detailedBuildings ->
+                        val total = detailedBuildings.sumOf { it.totalAmount }
+                        val totalExpected = detailedBuildings.sumOf { it.expectedAmount }
+                        val overallRate =
+                            if (totalExpected > 0) (total / totalExpected) * 100 else 0.0
+                        val totalClients = detailedBuildings.sumOf { it.clientsCount }
+                        val topBuilding =
+                            detailedBuildings.maxByOrNull { it.collectionRate }?.buildingName
+                        val lowBuilding =
+                            detailedBuildings.minByOrNull { it.collectionRate }?.buildingName
+
                         dailyUi = DailyCollectionUi(
                             dateMillis = dateMillis,
                             totalAmount = total,
-                            buildings = buildingCollections
+                            buildings = detailedBuildings,
+                            totalExpected = totalExpected,
+                            overallCollectionRate = overallRate,
+                            totalClientsCount = totalClients,
+                            topBuilding = topBuilding,
+                            lowBuilding = lowBuilding
                         )
                     }
 
+                    // جلب الملخص (totalAmount, totalClients, totalTransactions)
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val dateString = dateFormat.format(Date(dateMillis))
-
                     lifecycleScope.launch {
                         transactionRepository.getDailySummary(dateString)
                             .collect { summary ->

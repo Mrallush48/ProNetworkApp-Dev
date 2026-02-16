@@ -8,6 +8,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
+import com.pronetwork.app.data.DailyBuildingDetailedUi
+import com.pronetwork.app.data.DailyClientCollection
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.repository.PaymentRepository
@@ -109,6 +111,73 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             result.postValue(list)
         }
 
+        return result
+    }
+
+    // ================== تحصيل يومي تفصيلي (عميل بعميل مع تفاصيل كل مبنى) ==================
+    fun getDetailedDailyCollections(
+        dayStartMillis: Long,
+        dayEndMillis: Long
+    ): LiveData<List<DailyBuildingDetailedUi>> {
+        val result = MutableLiveData<List<DailyBuildingDetailedUi>>()
+        viewModelScope.launch {
+            val rawTransactions = transactionRepository.getDetailedDailyCollections(
+                dayStartMillis, dayEndMillis
+            )
+
+            val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+
+            // تجميع الحركات حسب المبنى ثم حسب العميل
+            val buildingGroups = rawTransactions.groupBy { it.buildingId }
+
+            val buildingCollections = buildingGroups.map { (buildingId, txList) ->
+                val buildingName = txList.first().buildingName
+
+                // تجميع حسب العميل داخل المبنى
+                val clientGroups = txList.groupBy { it.clientId }
+
+                val clients = clientGroups.map { (clientId, clientTxs) ->
+                    val firstTx = clientTxs.first()
+                    val totalPaid = clientTxs.sumOf { it.paidAmount }
+                    // آخر حركة = وقت العرض
+                    val lastTxTime = clientTxs.maxOf { it.transactionDate }
+                    val allNotes = clientTxs
+                        .map { it.notes }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .joinToString(" | ")
+
+                    DailyClientCollection(
+                        clientId = clientId,
+                        clientName = firstTx.clientName,
+                        subscriptionNumber = firstTx.subscriptionNumber,
+                        roomNumber = firstTx.roomNumber,
+                        packageType = firstTx.packageType,
+                        monthlyAmount = firstTx.monthlyAmount,
+                        paidAmount = totalPaid,
+                        transactionTime = timeFormat.format(java.util.Date(lastTxTime)),
+                        notes = allNotes
+                    )
+                }.sortedBy { it.clientName }
+
+                val totalAmount = clients.sumOf { it.paidAmount }
+                val expectedAmount = clients.sumOf { it.monthlyAmount }
+                val rate = if (expectedAmount > 0) (totalAmount / expectedAmount) * 100 else 0.0
+
+                DailyBuildingDetailedUi(
+                    buildingId = buildingId,
+                    buildingName = buildingName,
+                    totalAmount = totalAmount,
+                    clientsCount = clients.size,
+                    expectedAmount = expectedAmount,
+                    collectionRate = rate,
+                    clients = clients
+                )
+
+            }.sortedByDescending { it.totalAmount }
+
+            result.postValue(buildingCollections)
+        }
         return result
     }
 

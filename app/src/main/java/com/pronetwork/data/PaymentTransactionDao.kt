@@ -150,5 +150,49 @@ interface PaymentTransactionDao {
         val buildingName: String
     )
 
+    // ================== تحصيل يومي تفصيلي (عميل بعميل) ==================
+    @Query(
+        """
+        SELECT 
+            pt.id AS transactionId,
+            pt.amount AS paidAmount,
+            pt.date AS transactionDate,
+            pt.notes AS notes,
+            p.amount AS monthlyAmount,
+            p.clientId AS clientId,
+            c.name AS clientName,
+            c.subscriptionNumber AS subscriptionNumber,
+            c.roomNumber AS roomNumber,
+            c.packageType AS packageType,
+            c.buildingId AS buildingId,
+            COALESCE(b.name, 'Unknown') AS buildingName
+        FROM payment_transactions AS pt
+        INNER JOIN payments AS p ON p.id = pt.paymentId
+        INNER JOIN clients AS c ON c.id = p.clientId
+        LEFT JOIN buildings AS b ON b.id = c.buildingId
+        WHERE pt.date >= :dayStartMillis AND pt.date < :dayEndMillis
+        ORDER BY b.name COLLATE NOCASE ASC, c.name COLLATE NOCASE ASC, pt.date ASC
+    """
+    )
+    suspend fun getDetailedDailyCollections(
+        dayStartMillis: Long,
+        dayEndMillis: Long
+    ): List<DailyDetailedTransaction>
+
+    data class DailyDetailedTransaction(
+        val transactionId: Int,
+        val paidAmount: Double,
+        val transactionDate: Long,
+        val notes: String,
+        val monthlyAmount: Double,
+        val clientId: Int,
+        val clientName: String,
+        val subscriptionNumber: String,
+        val roomNumber: String?,
+        val packageType: String,
+        val buildingId: Int,
+        val buildingName: String
+    )
+
 
 }

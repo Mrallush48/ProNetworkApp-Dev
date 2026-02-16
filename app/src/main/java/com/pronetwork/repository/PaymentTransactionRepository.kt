@@ -78,5 +78,13 @@ class PaymentTransactionRepository(
         return transactionDao.getDetailedTransactionsForMonth(month)
     }
 
+    // ================== تحصيل يومي تفصيلي ==================
+    suspend fun getDetailedDailyCollections(
+        dayStartMillis: Long,
+        dayEndMillis: Long
+    ): List<PaymentTransactionDao.DailyDetailedTransaction> {
+        return transactionDao.getDetailedDailyCollections(dayStartMillis, dayEndMillis)
+    }
+
 
 }
