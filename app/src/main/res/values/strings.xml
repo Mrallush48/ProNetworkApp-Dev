@@ -83,6 +83,7 @@
     <string name="building_details_status_unpaid">Unpaid</string>
     <string name="building_details_status_partial">Partially paid</string>
     <string name="building_details_status_full">Paid</string>
+    <string name="building_details_status_settled">Settled</string>
     <string name="building_details_status_label">Status:</string>
 
     <string name="building_details_confirm_payment">Confirm</string>
@@ -161,6 +162,7 @@
     <string name="clients_status_unpaid">Unpaid</string>
     <string name="clients_status_partial">Partially paid</string>
     <string name="clients_status_full">Paid</string>
+    <string name="clients_status_settled">Settled</string>
     <string name="clients_status_label">Status:</string>
 
     <string name="clients_dialog_confirm_title">Confirm payment</string>

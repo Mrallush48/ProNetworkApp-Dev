@@ -74,6 +74,18 @@ interface PaymentTransactionDao {
         dayEndMillis: Long
     ): List<DailyBuildingCollection>
 
+    /** هل يوجد حركة سالبة (Refund) لهذا الـ Payment؟ */
+    @Query("SELECT COUNT(*) > 0 FROM payment_transactions WHERE paymentId = :paymentId AND amount < 0")
+    suspend fun hasNegativeTransaction(paymentId: Int): Boolean
+
+    /** استعلام جماعي: أي paymentIds فيها حركات سالبة */
+    @Query("""
+        SELECT DISTINCT paymentId 
+        FROM payment_transactions 
+        WHERE paymentId IN (:paymentIds) AND amount < 0
+    """)
+    suspend fun getPaymentIdsWithRefunds(paymentIds: List<Int>): List<Int>
+
     data class PaymentTotal(
         val paymentId: Int,
         val totalPaid: Double

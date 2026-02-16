@@ -84,6 +84,7 @@
     <string name="building_details_status_unpaid">غير مدفوع</string>
     <string name="building_details_status_partial">مدفوع جزئيًا</string>
     <string name="building_details_status_full">مدفوع</string>
+    <string name="clients_status_settled">مُسوَّى</string>
     <string name="building_details_status_label">الحالة:</string>
 
     <string name="building_details_confirm_payment">تأكيد</string>

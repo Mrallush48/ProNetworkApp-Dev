@@ -264,6 +264,7 @@ private fun ClientCardItem(
             containerColor = when (status) {
                 PaymentStatus.FULL -> MaterialTheme.colorScheme.secondaryContainer
                 PaymentStatus.PARTIAL -> MaterialTheme.colorScheme.surfaceVariant
+                PaymentStatus.SETTLED -> MaterialTheme.colorScheme.tertiaryContainer
                 PaymentStatus.UNPAID -> MaterialTheme.colorScheme.surface
             }
         )
@@ -325,16 +326,15 @@ private fun ClientCardItem(
                 Spacer(Modifier.height(4.dp))
 
                 val statusText = when (status) {
-                    PaymentStatus.UNPAID ->
-                        stringResource(R.string.clients_status_unpaid)
-                    PaymentStatus.PARTIAL ->
-                        stringResource(R.string.clients_status_partial)
-                    PaymentStatus.FULL ->
-                        stringResource(R.string.clients_status_full)
+                    PaymentStatus.UNPAID -> stringResource(R.string.clients_status_unpaid)
+                    PaymentStatus.PARTIAL -> stringResource(R.string.clients_status_partial)
+                    PaymentStatus.SETTLED -> stringResource(R.string.clients_status_settled)
+                    PaymentStatus.FULL -> stringResource(R.string.clients_status_full)
                 }
                 val statusColor = when (status) {
                     PaymentStatus.UNPAID -> MaterialTheme.colorScheme.error
                     PaymentStatus.PARTIAL -> MaterialTheme.colorScheme.primary
+                    PaymentStatus.SETTLED -> MaterialTheme.colorScheme.secondary
                     PaymentStatus.FULL -> MaterialTheme.colorScheme.tertiary
                 }
 
@@ -371,7 +371,13 @@ private fun ClientCardItem(
                         )
                     }
                 }
-
+                PaymentStatus.SETTLED -> {
+                    Text(
+                        text = stringResource(R.string.clients_status_settled),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
                 PaymentStatus.FULL -> {
                     OutlinedButton(
                         onClick = onShowPaymentDialog
@@ -385,7 +391,6 @@ private fun ClientCardItem(
                     }
                 }
             }
-
         }
     }
 }

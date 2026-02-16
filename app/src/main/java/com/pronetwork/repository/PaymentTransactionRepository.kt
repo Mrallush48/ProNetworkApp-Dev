@@ -86,5 +86,16 @@ class PaymentTransactionRepository(
         return transactionDao.getDetailedDailyCollections(dayStartMillis, dayEndMillis)
     }
 
+    /** هل يوجد حركة سالبة (Refund) لهذا الـ Payment؟ */
+    suspend fun hasNegativeTransaction(paymentId: Int): Boolean {
+        return transactionDao.hasNegativeTransaction(paymentId)
+    }
+
+    /** أي paymentIds فيها حركات سالبة */
+    suspend fun getPaymentIdsWithRefunds(paymentIds: List<Int>): List<Int> {
+        if (paymentIds.isEmpty()) return emptyList()
+        return transactionDao.getPaymentIdsWithRefunds(paymentIds)
+    }
+
 
 }

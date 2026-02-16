@@ -361,6 +361,7 @@ fun BuildingDetailsScreen(
                         containerColor = when (status) {
                             PaymentStatus.FULL -> MaterialTheme.colorScheme.secondaryContainer
                             PaymentStatus.PARTIAL -> MaterialTheme.colorScheme.surfaceVariant
+                            PaymentStatus.SETTLED -> MaterialTheme.colorScheme.tertiaryContainer
                             PaymentStatus.UNPAID -> MaterialTheme.colorScheme.surface
                         }
                     )
@@ -411,18 +412,15 @@ fun BuildingDetailsScreen(
                             Spacer(Modifier.height(6.dp))
 
                             val statusText = when (status) {
-                                PaymentStatus.UNPAID ->
-                                    stringResource(R.string.building_details_status_unpaid)
-
-                                PaymentStatus.PARTIAL ->
-                                    stringResource(R.string.building_details_status_partial)
-
-                                PaymentStatus.FULL ->
-                                    stringResource(R.string.building_details_status_full)
+                                PaymentStatus.UNPAID -> stringResource(R.string.building_details_status_unpaid)
+                                PaymentStatus.PARTIAL -> stringResource(R.string.building_details_status_partial)
+                                PaymentStatus.SETTLED -> stringResource(R.string.building_details_status_settled)
+                                PaymentStatus.FULL -> stringResource(R.string.building_details_status_full)
                             }
                             val statusColor = when (status) {
                                 PaymentStatus.UNPAID -> MaterialTheme.colorScheme.error
                                 PaymentStatus.PARTIAL -> MaterialTheme.colorScheme.primary
+                                PaymentStatus.SETTLED -> MaterialTheme.colorScheme.secondary
                                 PaymentStatus.FULL -> MaterialTheme.colorScheme.tertiary
                             }
 
@@ -470,6 +468,14 @@ fun BuildingDetailsScreen(
                                             color = MaterialTheme.colorScheme.onTertiary
                                         )
                                     }
+                                }
+
+                                PaymentStatus.SETTLED -> {
+                                    Text(
+                                        text = stringResource(R.string.building_details_status_settled),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
                                 }
 
                                 PaymentStatus.FULL -> {

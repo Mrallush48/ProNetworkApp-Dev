@@ -21,8 +21,10 @@ import com.pronetwork.app.data.DailyTransactionItem
 enum class PaymentStatus {
     UNPAID,
     PARTIAL,
+    SETTLED,
     FULL
 }
+
 
 // موديل عرض حالة دفع العميل لكل شهر
 data class ClientMonthPaymentUi(
@@ -69,12 +71,16 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 val ids = payments.map { it.id }
                 val totalsMap = transactionRepository.getTotalsForPayments(ids)
 
+                // جلب قائمة الـ paymentIds التي فيها حركات سالبة (Refund)
+                val refundIds = transactionRepository.getPaymentIdsWithRefunds(ids).toSet()
+
                 val uiList = payments.map { p ->
                     val totalPaid = totalsMap[p.id] ?: 0.0
                     val remaining = (p.amount - totalPaid).coerceAtLeast(0.0)
-
+                    val hasRefund = refundIds.contains(p.id)
                     val status = when {
                         totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                        totalPaid < p.amount && hasRefund -> PaymentStatus.SETTLED
                         totalPaid < p.amount -> PaymentStatus.PARTIAL
                         else -> PaymentStatus.FULL
                     }
@@ -388,8 +394,10 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             val totalPaid = transactionRepository.getTotalPaidForPayment(payment.id)
 
             // 3) طبّق نفس قاعدة الحالة التي تستخدمها في الإحصائيات
+            val hasRefund = transactionRepository.hasNegativeTransaction(payment.id)
             val status = when {
                 totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                totalPaid < payment.amount && hasRefund -> PaymentStatus.SETTLED
                 totalPaid < payment.amount -> PaymentStatus.PARTIAL
                 else -> PaymentStatus.FULL
             }
