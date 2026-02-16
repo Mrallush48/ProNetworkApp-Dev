@@ -32,6 +32,10 @@ interface ClientDao {
     @Query("SELECT * FROM clients WHERE name LIKE '%' || :search || '%' ORDER BY name ASC")
     fun searchClients(search: String): LiveData<List<Client>>
 
+    @Query("SELECT * FROM clients ORDER BY name ASC")
+    suspend fun getAllClientsDirect(): List<Client>
+
+
     // New: Get clients by building and month (Flow)
     @Query(
         """

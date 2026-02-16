@@ -91,6 +91,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.result.contract.ActivityResultContracts
+import com.pronetwork.app.export.ClientsImportManager
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -105,6 +109,39 @@ class MainActivity : ComponentActivity() {
     private lateinit var paymentsExportManager: PaymentsExportManager
 
     private lateinit var dailyExportManager: DailyCollectionExportManager
+
+
+    private lateinit var importManager: ClientsImportManager
+
+    private val importFileLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            lifecycleScope.launch {
+                val result = importManager.importFromFile(
+                    uri = selectedUri,
+                    onClientsReady = { newClients ->
+                        newClients.forEach { client ->
+                            clientViewModel.insert(client)
+                        }
+                    }
+                )
+
+                val msg = buildString {
+                    if (result.success > 0) append("Imported ${result.success} clients")
+                    if (result.newBuildings > 0) append(" (${result.newBuildings} new buildings created)")
+                    if (result.skipped > 0) {
+                        if (result.success > 0) append(", ")
+                        append("Skipped ${result.skipped} duplicates")
+                    }
+                    if (result.success == 0 && result.skipped == 0) {
+                        append("Import failed: ${result.errors.firstOrNull() ?: "Unknown error"}")
+                    }
+                }
+                android.widget.Toast.makeText(this@MainActivity, msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
 
     private val transactionRepository by lazy {
@@ -173,6 +210,8 @@ class MainActivity : ComponentActivity() {
         paymentsExportManager = PaymentsExportManager(this)
 
         dailyExportManager = DailyCollectionExportManager(this)
+
+        importManager = ClientsImportManager(this)
 
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
@@ -396,14 +435,20 @@ class MainActivity : ComponentActivity() {
                                                 showOptions = true,
                                                 options = listOf(
                                                     ExportOption.EXPORT,
-                                                    ExportOption.IMPORT_CSV
+                                                    ExportOption.IMPORT_EXCEL
                                                 ),
                                                 onOptionClick = { option ->
                                                     when (option) {
                                                         ExportOption.EXPORT -> showExportDialogClients =
                                                             true
 
-                                                        ExportOption.IMPORT_CSV -> { /* Import */
+                                                        ExportOption.IMPORT_EXCEL -> {
+                                                            importFileLauncher.launch(
+                                                                arrayOf(
+                                                                    "application/vnd.ms-excel",
+                                                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                                                )
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -811,18 +856,21 @@ class MainActivity : ComponentActivity() {
                                                                 buildings = buildings
                                                             )
                                                         }
+
                                                         ExportFormat.SHARE_PDF -> {
                                                             exportManager.sharePdf(
                                                                 clients = filteredClientsForExport,
                                                                 buildings = buildings
                                                             )
                                                         }
+
                                                         ExportFormat.PDF -> {
                                                             exportManager.exportPdfToDownloads(
                                                                 clients = filteredClientsForExport,
                                                                 buildings = buildings
                                                             )
                                                         }
+
                                                         ExportFormat.EXCEL -> {
                                                             exportManager.exportExcelToDownloads(
                                                                 clients = filteredClientsForExport,
@@ -929,14 +977,14 @@ class MainActivity : ComponentActivity() {
                                             showOptions = true,
                                             options = listOf(
                                                 ExportOption.EXPORT,
-                                                ExportOption.IMPORT_CSV
+                                                ExportOption.IMPORT_EXCEL
                                             ),
                                             onOptionClick = { option ->
                                                 when (option) {
                                                     ExportOption.EXPORT -> showExportDialogBuildings =
                                                         true
 
-                                                    ExportOption.IMPORT_CSV -> { /* Import */
+                                                    ExportOption.IMPORT_EXCEL -> { /* Import */
                                                     }
                                                 }
                                             }
@@ -1292,8 +1340,10 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 if (showExportDialogDaily) {
-                                    val dailyDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                    val dailyDateLabel = dailyDateFormat.format(Date(selectedDailyDateMillis))
+                                    val dailyDateFormat =
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    val dailyDateLabel =
+                                        dailyDateFormat.format(Date(selectedDailyDateMillis))
 
                                     DailyExportDialog(
                                         dateLabel = dailyDateLabel,
@@ -1309,16 +1359,19 @@ class MainActivity : ComponentActivity() {
                                                             ui = currentUi,
                                                             summary = currentSummary
                                                         )
+
                                                         ExportFormat.PDF -> dailyExportManager.exportPdfToDownloads(
                                                             date = dailyDateLabel,
                                                             ui = currentUi,
                                                             summary = currentSummary
                                                         )
+
                                                         ExportFormat.SHARE -> dailyExportManager.shareExcel(
                                                             date = dailyDateLabel,
                                                             ui = currentUi,
                                                             summary = currentSummary
                                                         )
+
                                                         ExportFormat.SHARE_PDF -> dailyExportManager.sharePdf(
                                                             date = dailyDateLabel,
                                                             ui = currentUi,
@@ -1354,6 +1407,7 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
+
                                                     ExportFormat.SHARE -> paymentsExportManager.shareExcel(
                                                         reportType = reportType,
                                                         period = period,
@@ -1363,6 +1417,7 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
+
                                                     ExportFormat.PDF -> paymentsExportManager.exportPdfToDownloads(
                                                         reportType = reportType,
                                                         period = period,
@@ -1372,6 +1427,7 @@ class MainActivity : ComponentActivity() {
                                                         packageFilter = packageFilter,
                                                         statusFilter = statusFilter
                                                     )
+
                                                     ExportFormat.SHARE_PDF -> paymentsExportManager.sharePdf(
                                                         reportType = reportType,
                                                         period = period,

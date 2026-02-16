@@ -498,7 +498,7 @@
     <string name="export_excel">إكسل</string>
     <string name="export_cancel">إلغاء</string>
     <string name="export_option_export">تصدير</string>
-    <string name="export_option_import">استيراد من CSV</string>
+    <string name="export_option_import">استيراد Excel</string>
 
     <!-- Toast Messages -->
     <string name="export_saved_to_downloads">تم الحفظ في التنزيلات: %1$s</string>
@@ -514,6 +514,7 @@
     <string name="export_share_pdf">مشاركة PDF</string>
     <string name="export_share_excel">مشاركة إكسل</string>
 
+    <string name="client_edit_room_error">رقم الغرفة مطلوب</string>
 
 
 </resources>

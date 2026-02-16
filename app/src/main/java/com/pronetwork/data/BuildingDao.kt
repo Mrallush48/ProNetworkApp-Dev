@@ -34,4 +34,8 @@ interface BuildingDao {
 
     @Query("SELECT * FROM buildings WHERE name LIKE '%' || :search || '%' ORDER BY name ASC")
     fun searchBuildingsFlow(search: String): Flow<List<Building>>
+
+    @Query("SELECT * FROM buildings ORDER BY name ASC")
+    suspend fun getAllBuildingsDirect(): List<Building>
+
 }

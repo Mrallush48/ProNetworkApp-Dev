@@ -497,7 +497,7 @@
     <string name="export_excel">Excel</string>
     <string name="export_cancel">Cancel</string>
     <string name="export_option_export">Export</string>
-    <string name="export_option_import">Import from CSV</string>
+    <string name="export_option_import">Import Excel</string>
 
     <!-- Toast Messages -->
     <string name="export_saved_to_downloads">Saved to Downloads: %1$s</string>
@@ -512,6 +512,9 @@
     <string name="export_share_via">Share via</string>
     <string name="export_share_pdf">Share PDF</string>
     <string name="export_share_excel">Share Excel</string>
+
+    <string name="client_edit_room_error">Room number is required</string>
+
 
 
 

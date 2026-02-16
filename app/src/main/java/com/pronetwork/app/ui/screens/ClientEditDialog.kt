@@ -114,6 +114,8 @@ fun ClientEditDialog(
     var firstMonthAmountError by remember { mutableStateOf<String?>(null) }
     var buildingError by remember { mutableStateOf<String?>(null) }
     var packageError by remember { mutableStateOf<String?>(null) }
+    val roomErrorText = stringResource(R.string.client_edit_room_error)
+    var roomError by remember { mutableStateOf<String?>(null) }
 
     var buildingDropdownExpanded by remember { mutableStateOf(false) }
     var packageDropdownExpanded by remember { mutableStateOf(false) }
@@ -135,7 +137,7 @@ fun ClientEditDialog(
         }
     }
 
-    val packageOptions = listOf("5Mbps", "10Mbps", "20Mbps", "50Mbps", "100Mbps", "أخرى")
+    val packageOptions = listOf("5Mbps", "7Mbps", "10Mbps", "15Mbps", "25Mbps", "30Mbps", "Other")
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -234,7 +236,10 @@ fun ClientEditDialog(
                         buildingDropdownExpanded = false
                     },
                     roomNumber = roomNumber,
-                    onRoomNumberChange = { roomNumber = it },
+                    onRoomNumberChange = {
+                        roomNumber = it; if (roomError != null && it.isNotBlank()) roomError = null
+                    },
+                    roomError = roomError,
                     phone = phone,
                     onPhoneChange = { phone = it },
                     address = address,
@@ -258,7 +263,8 @@ fun ClientEditDialog(
                 val buildingValid = selectedBuildingId != null
                 val packageValid = !packageType.isNullOrBlank()
 
-                val canSave = basicFieldsValid && buildingValid && packageValid
+                val roomValid = roomNumber.isNotBlank()
+                val canSave = basicFieldsValid && buildingValid && packageValid && roomValid
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -307,6 +313,10 @@ fun ClientEditDialog(
                             }
                             if (packageType.isNullOrBlank()) {
                                 packageError = packageErrorText
+                            }
+
+                            if (roomNumber.isBlank()) {
+                                roomError = roomErrorText
                             }
 
                             // 3) لو في حقل ناقص، نوقف هنا (مع عرض الرسائل فقط)
@@ -654,6 +664,7 @@ private fun BuildingAndContactSection(
     onBuildingSelected: (Int) -> Unit,
     roomNumber: String,
     onRoomNumberChange: (String) -> Unit,
+    roomError: String? = null,
     phone: String,
     onPhoneChange: (String) -> Unit,
     address: String,
@@ -719,7 +730,17 @@ private fun BuildingAndContactSection(
         onValueChange = onRoomNumberChange,
         label = { FixedLabel(stringResource(R.string.client_edit_room_number_label)) },
         modifier = Modifier.fillMaxWidth(),
-        singleLine = true
+        singleLine = true,
+        isError = roomError != null,
+        supportingText = {
+            roomError?.let { msg ->
+                Text(
+                    text = msg,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
     )
 
     Spacer(modifier = Modifier.height(12.dp))

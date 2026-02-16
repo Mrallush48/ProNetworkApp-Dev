@@ -7,7 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import com.pronetwork.app.R
 
-enum class ExportOption { EXPORT, IMPORT_CSV }
+enum class ExportOption { EXPORT, IMPORT_EXCEL }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,10 +37,12 @@ fun ScreenTopBar(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    stringResource(when (option) {
-                                        ExportOption.EXPORT -> R.string.export_option_export
-                                        ExportOption.IMPORT_CSV -> R.string.export_option_import
-                                    })
+                                    stringResource(
+                                        when (option) {
+                                            ExportOption.EXPORT -> R.string.export_option_export
+                                            ExportOption.IMPORT_EXCEL -> R.string.export_option_import
+                                        }
+                                    )
                                 )
 
                             },
