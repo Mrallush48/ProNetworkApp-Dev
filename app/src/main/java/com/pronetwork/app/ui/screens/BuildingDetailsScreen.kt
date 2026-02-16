@@ -599,19 +599,27 @@ fun BuildingDetailsScreen(
         val payment by paymentViewModel
             .getPaymentLive(client.id, month)
             .observeAsState()
+
         val isPaid = payment?.isPaid ?: false
         val shouldPay = !isPaid
+
+        // جلب حالة الدفع التفصيلية لمعرفة المتبقي
+        val monthUiList by paymentViewModel
+            .getClientMonthPaymentsUi(client.id)
+            .observeAsState(emptyList())
+        val monthUi = monthUiList.firstOrNull { it.month == month }
+        val isPartial = monthUi != null && monthUi.status == PaymentStatus.PARTIAL
+        val remaining = monthUi?.remaining ?: monthAmount
 
         AlertDialog(
             onDismissRequest = { showPaymentDialog = null },
             icon = {
                 Icon(
-                    if (shouldPay) Icons.Filled.CheckCircle else Icons.Filled.Close,
+                    if (shouldPay) Icons.Filled.CheckCircle
+                    else Icons.Filled.Close,
                     contentDescription = null,
-                    tint = if (shouldPay)
-                        MaterialTheme.colorScheme.tertiary
-                    else
-                        MaterialTheme.colorScheme.error,
+                    tint = if (shouldPay) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(48.dp)
                 )
             },
@@ -627,7 +635,13 @@ fun BuildingDetailsScreen(
             text = {
                 Column {
                     Text(
-                        text = if (shouldPay)
+                        text = if (isPartial)
+                            stringResource(
+                                R.string.building_details_complete_payment_text,
+                                month,
+                                remaining
+                            )
+                        else if (shouldPay)
                             stringResource(
                                 R.string.building_details_dialog_confirm_text,
                                 month
@@ -660,7 +674,7 @@ fun BuildingDetailsScreen(
                             Text(
                                 text = stringResource(
                                     R.string.building_details_dialog_amount,
-                                    monthAmount
+                                    if (isPartial) remaining else monthAmount
                                 ),
                                 color = MaterialTheme.colorScheme.primary
                             )
