@@ -349,7 +349,10 @@ private fun ClientCardItem(
                         Icon(Icons.Filled.CheckCircle, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = stringResource(R.string.building_details_confirm_payment),
+                            text = if (status == PaymentStatus.PARTIAL)
+                                stringResource(R.string.building_details_complete_payment)
+                            else
+                                stringResource(R.string.building_details_confirm_payment),
                             color = MaterialTheme.colorScheme.onTertiary
                         )
                     }
@@ -368,6 +371,7 @@ private fun ClientCardItem(
                     }
                 }
             }
+
         }
     }
 }

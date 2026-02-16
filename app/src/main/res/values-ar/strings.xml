@@ -95,6 +95,7 @@
     </string>
 
     <string name="building_details_dialog_confirm_title">تأكيد الدفع</string>
+    <string name="building_details_complete_payment">إكمال الدفع</string>
     <string name="building_details_dialog_revert_title">تراجع عن الدفع</string>
     <string name="building_details_dialog_confirm_text">
         هل أنت متأكد من تأكيد دفع شهر %1$s؟

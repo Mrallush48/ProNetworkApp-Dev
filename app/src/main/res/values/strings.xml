@@ -164,6 +164,7 @@
     <string name="clients_status_label">Status:</string>
 
     <string name="clients_dialog_confirm_title">Confirm payment</string>
+    <string name="building_details_complete_payment">Complete payment</string>
     <string name="clients_dialog_revert_title">Revert payment</string>
     <string name="clients_dialog_confirm_text">
         Are you sure you want to confirm payment for month %1$s?
