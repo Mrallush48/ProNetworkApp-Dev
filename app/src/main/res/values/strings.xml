@@ -541,4 +541,25 @@
 
 
 
+    <!-- Dashboard screen -->
+    <string name="screen_dashboard">Dashboard</string>
+    <string name="dashboard_welcome">Welcome Back!</string>
+    <string name="dashboard_total_collection">Total Collection</string>
+    <string name="dashboard_active_clients">Active Clients</string>
+    <string name="dashboard_collection_rate">Collection Rate</string>
+    <string name="dashboard_month_comparison">Month Comparison</string>
+    <string name="dashboard_this_month">This Month</string>
+    <string name="dashboard_last_month">Last Month</string>
+    <string name="dashboard_quick_actions">Quick Actions</string>
+    <string name="dashboard_start_daily">Start Daily</string>
+    <string name="dashboard_add_client">Add Client</string>
+    <string name="dashboard_needs_attention">Needs Attention</string>
+    <string name="dashboard_view_all">View All</string>
+    <string name="dashboard_remaining">Remaining</string>
+    <string name="dashboard_recent_transactions">Recent Transactions</string>
+    <string name="status_paid">Paid</string>
+    <string name="status_partial">Partial</string>
+    <string name="status_settled">Settled</string>
+    <string name="status_unpaid">Unpaid</string>
+
 </resources>
