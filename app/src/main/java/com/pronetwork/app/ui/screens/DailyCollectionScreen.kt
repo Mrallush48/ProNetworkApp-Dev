@@ -54,6 +54,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun DailyCollectionScreen(
@@ -554,14 +555,16 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
     else
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 
-    val paidRatio = if (client.monthlyAmount > 0) client.paidAmount / client.monthlyAmount else 0.0
+    val paidRatio = if (client.monthlyAmount > 0) client.totalPaid / client.monthlyAmount else 0.0
     val isSettled = client.paymentStatus == "SETTLED"
     val amountColor = when {
-        isSettled -> Color(0xFF1565C0)       // أزرق للمُسوَّى
+        isSettled -> Color(0xFF1565C0)
         paidRatio >= 1.0 -> Color(0xFF2E7D32)
         paidRatio >= 0.5 -> Color(0xFFF57F17)
         else -> Color(0xFFC62828)
     }
+    val remaining = (client.monthlyAmount - client.totalPaid).coerceAtLeast(0.0)
+    val hasRefundToday = client.transactions.any { it.type == "Refund" }
 
     Column(
         modifier = Modifier
@@ -629,16 +632,29 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 style = MaterialTheme.typography.bodySmall
             )
 
-            // المبلغ المدفوع / الشهري
+            // المبلغ: دفع اليوم + إجمالي/شهري
             Column(modifier = Modifier.weight(1f)) {
+                // سطر 1: مبلغ اليوم
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    if (hasRefundToday) {
+                        Text(
+                            text = "\u26A0",
+                            fontSize = 9.sp
+                        )
+                    }
+                    Text(
+                        text = String.format("%.0f", client.todayPaid),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (client.todayPaid < 0) Color(0xFFC62828) else amountColor
+                    )
+                }
+                // سطر 2: إجمالي المدفوع / الشهري
                 Text(
-                    text = String.format("%.0f", client.paidAmount),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = amountColor
-                )
-                Text(
-                    text = "/${String.format("%.0f", client.monthlyAmount)}",
+                    text = "${String.format("%.0f", client.totalPaid)}/${String.format("%.0f", client.monthlyAmount)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 9.sp
@@ -654,8 +670,36 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
             )
         }
 
+        // حركات الـ Refund اليوم (تظهر بوضوح)
+        if (hasRefundToday) {
+            client.transactions.filter { it.type == "Refund" }.forEach { refund ->
+                Row(
+                    modifier = Modifier.padding(top = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "\uD83D\uDD34 Refund: ${String.format("%.0f", kotlin.math.abs(refund.amount))} SAR",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp
+                    )
+                    if (refund.notes.isNotBlank()) {
+                        Text(
+                            text = "(${refund.notes})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            fontSize = 9.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
         // ملاحظات (إن وجدت)
-        if (client.notes.isNotBlank()) {
+        if (client.notes.isNotBlank() && !hasRefundToday) {
             Text(
                 text = client.notes,
                 style = MaterialTheme.typography.labelSmall,
@@ -665,6 +709,17 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
             )
+        } else if (client.notes.isNotBlank() && hasRefundToday) {
+            Text(
+                text = client.notes,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 1.dp)
+            )
         }
+
     }
 }

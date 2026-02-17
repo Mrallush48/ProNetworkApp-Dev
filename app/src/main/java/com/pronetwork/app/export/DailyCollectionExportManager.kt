@@ -106,10 +106,10 @@ class DailyCollectionExportManager(private val context: Context) {
             // SHEET 2: Client Details
             appendLine("""<Worksheet ss:Name="Client Details">""")
             appendLine("""<Table>""")
-            appendLine("""<Column ss:Width="120"/><Column ss:Width="80"/><Column ss:Width="100"/><Column ss:Width="50"/><Column ss:Width="70"/><Column ss:Width="80"/><Column ss:Width="80"/><Column ss:Width="60"/><Column ss:Width="70"/><Column ss:Width="80"/><Column ss:Width="150"/>""")
+            appendLine("""<Column ss:Width="120"/><Column ss:Width="80"/><Column ss:Width="100"/><Column ss:Width="50"/><Column ss:Width="70"/><Column ss:Width="80"/><Column ss:Width="80"/><Column ss:Width="80"/><Column ss:Width="80"/><Column ss:Width="60"/><Column ss:Width="70"/><Column ss:Width="150"/>""")
 
-            appendLine("""<Row><Cell ss:StyleID="Title" ss:MergeAcross="10"><Data ss:Type="String">Client Details - $date</Data></Cell></Row>""")
-            appendLine("""<Row><Cell ss:StyleID="Header"><Data ss:Type="String">Client</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Sub#</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Building</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Room</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Package</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Monthly</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Paid</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Rate</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Status</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Time</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Notes</Data></Cell></Row>""")
+            appendLine("""<Row><Cell ss:StyleID="Title" ss:MergeAcross="11"><Data ss:Type="String">Client Details - $date</Data></Cell></Row>""")
+            appendLine("""<Row><Cell ss:StyleID="Header"><Data ss:Type="String">Client</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Sub#</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Building</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Room</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Package</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Monthly</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Today</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Total Paid</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Remaining</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Status</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Time</Data></Cell><Cell ss:StyleID="Header"><Data ss:Type="String">Notes</Data></Cell></Row>""")
 
             ui.buildings.forEachIndexed { bIdx, b ->
                 val colorIdx = bIdx % 8
@@ -140,12 +140,13 @@ class DailyCollectionExportManager(private val context: Context) {
                         "PARTIAL" -> "Warn"
                         else -> "Bad"
                     }
-                    appendLine("""<Row><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.clientName}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.subscriptionNumber}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${b.buildingName}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.roomNumber ?: "-"}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.packageType}</Data></Cell><Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.monthlyAmount}</Data></Cell><Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.paidAmount}</Data></Cell><Cell ss:StyleID="$rateStyle"><Data ss:Type="String">${"%.0f".format(paidRate)}%</Data></Cell><Cell ss:StyleID="$statusStyle"><Data ss:Type="String">$statusIcon $statusLabel</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.transactionTime}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.notes}</Data></Cell></Row>""")
+                    val clientRemaining = (c.monthlyAmount - c.totalPaid).coerceAtLeast(0.0)
+                    appendLine("""<Row><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.clientName}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.subscriptionNumber}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${b.buildingName}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.roomNumber ?: "-"}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.packageType}</Data></Cell><Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.monthlyAmount}</Data></Cell><Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.todayPaid}</Data></Cell><Cell ss:StyleID="$curStyle"><Data ss:Type="Number">${c.totalPaid}</Data></Cell><Cell ss:StyleID="$curStyle"><Data ss:Type="Number">$clientRemaining</Data></Cell><Cell ss:StyleID="$statusStyle"><Data ss:Type="String">$statusIcon $statusLabel</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.transactionTime}</Data></Cell><Cell ss:StyleID="$cellStyle"><Data ss:Type="String">${c.notes}</Data></Cell></Row>""")
                 }
             }
 
             // Total
-            appendLine("""<Row><Cell ss:StyleID="Total"><Data ss:Type="String">TOTAL</Data></Cell><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"><Data ss:Type="Number">${ui.totalExpected}</Data></Cell><Cell ss:StyleID="Total"><Data ss:Type="Number">${ui.totalAmount}</Data></Cell><Cell ss:StyleID="Total"><Data ss:Type="String">${"%.1f".format(ui.overallCollectionRate)}%</Data></Cell><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/></Row>""")
+            appendLine("""<Row><Cell ss:StyleID="Total"><Data ss:Type="String">TOTAL</Data></Cell><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"><Data ss:Type="Number">${ui.totalExpected}</Data></Cell><Cell ss:StyleID="Total"><Data ss:Type="Number">${ui.totalAmount}</Data></Cell><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"><Data ss:Type="String">${"%.1f".format(ui.overallCollectionRate)}%</Data></Cell><Cell ss:StyleID="Total"/><Cell ss:StyleID="Total"/></Row>""")
 
             appendLine("""</Table>""")
             appendLine("""</Worksheet>""")
@@ -291,8 +292,8 @@ class DailyCollectionExportManager(private val context: Context) {
 
         fillPaint.color = android.graphics.Color.parseColor("#7E57C2")
         canvas.drawRect(margin, yPos - 10f, pageWidth - margin, yPos + 4f, fillPaint)
-        val cHeaders = listOf("Client", "Sub#", "Building", "Room", "Monthly", "Paid", "Rate", "Status", "Time", "Notes")
-        val cW = listOf(90f, 60f, 40f, 75f, 60f, 60f, 45f, 45f, 60f, 167f)
+        val cHeaders = listOf("Client", "Sub#", "Building", "Room", "Monthly", "Today", "Total", "Remain", "Status", "Time", "Notes")
+        val cW = listOf(85f, 55f, 40f, 60f, 55f, 50f, 50f, 45f, 42f, 55f, 165f)
         xPos = margin
         cHeaders.forEachIndexed { i, h ->
             canvas.drawText(h, xPos + 2f, yPos, headerPaint)
@@ -316,14 +317,16 @@ class DailyCollectionExportManager(private val context: Context) {
                     "PARTIAL" -> "Partial"
                     else -> "Unpaid"
                 }
+                val clientRemaining = (c.monthlyAmount - c.totalPaid).coerceAtLeast(0.0)
                 val rowVals = listOf(
                     c.clientName,
                     c.subscriptionNumber,
                     b.buildingName,
                     c.roomNumber ?: "-",
                     "%.2f".format(c.monthlyAmount),
-                    "%.2f".format(c.paidAmount),
-                    "%.0f".format(paidRate) + "%",
+                    "%.2f".format(c.todayPaid),
+                    "%.2f".format(c.totalPaid),
+                    "%.2f".format(clientRemaining),
                     statusText,
                     c.transactionTime,
                     c.notes

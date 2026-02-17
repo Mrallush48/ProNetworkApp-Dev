@@ -138,6 +138,11 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 transactionRepository.getPaymentIdsWithRefunds(allPaymentIds).toSet()
             } else emptySet()
 
+            // جلب إجمالي المدفوع الحقيقي لكل paymentId من كل الحركات (وليس فقط اليوم)
+            val allTotalsPaidMap = if (allPaymentIds.isNotEmpty()) {
+                transactionRepository.getTotalsForPayments(allPaymentIds)
+            } else emptyMap()
+
             val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
 
             // تجميع الحركات حسب المبنى ثم حسب العميل
@@ -170,13 +175,17 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         )
                     }
 
-                    // تحديد حالة الدفع لهذا العميل
+                    // حساب المبالغ بشكل محاسبي صحيح
                     val clientPaymentId = firstTx.paymentId
+                    val todayPaidAmount = totalPaid  // مجموع حركات اليوم فقط
+                    val overallTotalPaid = allTotalsPaidMap[clientPaymentId] ?: todayPaidAmount
+
+                    // تحديد حالة الدفع بناءً على الإجمالي الحقيقي (كل الحركات)
                     val hasRefund = refundPaymentIds.contains(clientPaymentId)
                     val status = when {
-                        totalPaid <= 0.0 -> "UNPAID"
-                        totalPaid < firstTx.monthlyAmount && hasRefund -> "SETTLED"
-                        totalPaid < firstTx.monthlyAmount -> "PARTIAL"
+                        overallTotalPaid <= 0.0 -> "UNPAID"
+                        overallTotalPaid < firstTx.monthlyAmount && hasRefund -> "SETTLED"
+                        overallTotalPaid < firstTx.monthlyAmount -> "PARTIAL"
                         else -> "PAID"
                     }
 
@@ -187,7 +196,9 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         roomNumber = firstTx.roomNumber,
                         packageType = firstTx.packageType,
                         monthlyAmount = firstTx.monthlyAmount,
-                        paidAmount = totalPaid,
+                        paidAmount = todayPaidAmount,
+                        todayPaid = todayPaidAmount,
+                        totalPaid = overallTotalPaid,
                         transactionTime = timeFormat.format(java.util.Date(lastTxTime)),
                         notes = allNotes,
                         transactions = txItems,

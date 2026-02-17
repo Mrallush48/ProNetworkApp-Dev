@@ -23,6 +23,8 @@ data class DailyClientCollection(
     val packageType: String,
     val monthlyAmount: Double,
     val paidAmount: Double,
+    val todayPaid: Double = 0.0,
+    val totalPaid: Double = 0.0,
     val transactionTime: String,
     val notes: String,
     val transactions: List<DailyTransactionItem> = emptyList(),
