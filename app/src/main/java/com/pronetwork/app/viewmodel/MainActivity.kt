@@ -365,7 +365,13 @@ class MainActivity : ComponentActivity() {
                             overallCollectionRate = overallRate,
                             totalClientsCount = totalClients,
                             topBuilding = topBuilding,
-                            lowBuilding = lowBuilding
+                            lowBuilding = lowBuilding,
+                                                    paidClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "PAID" },
+                                                    partialClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "PARTIAL" },
+                                                    settledClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "SETTLED" },
+                                                    unpaidClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "UNPAID" },
+                                                    settledAmount = detailedBuildings.flatMap { it.clients }.filter { it.paymentStatus == "SETTLED" }.sumOf { it.totalPaid },
+                                                    refundAmount = detailedBuildings.flatMap { it.clients }.flatMap { it.transactions }.filter { it.type == "Refund" }.sumOf { kotlin.math.abs(it.amount) }
                         )
                     }
 
