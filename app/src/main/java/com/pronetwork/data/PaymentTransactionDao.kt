@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.RoomWarnings
 import com.pronetwork.data.DailySummary
 import kotlinx.coroutines.flow.Flow
 
@@ -98,6 +99,7 @@ interface PaymentTransactionDao {
      * @param date التاريخ المطلوب (بصيغة yyyy-MM-dd)
      * @return Flow<DailySummary> يتحدث تلقائياً عند تغيير البيانات
      */
+    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
     @Query(
         """
         SELECT 
