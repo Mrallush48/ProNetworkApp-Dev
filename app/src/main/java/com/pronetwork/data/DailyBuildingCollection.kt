@@ -25,7 +25,8 @@ data class DailyClientCollection(
     val paidAmount: Double,
     val transactionTime: String,
     val notes: String,
-    val transactions: List<DailyTransactionItem> = emptyList()
+    val transactions: List<DailyTransactionItem> = emptyList(),
+    val paymentStatus: String = ""
 )
 
 

@@ -554,11 +554,10 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
     else
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 
-    val paidRatio = if (client.monthlyAmount > 0)
-        client.paidAmount / client.monthlyAmount
-    else 0.0
-
+    val paidRatio = if (client.monthlyAmount > 0) client.paidAmount / client.monthlyAmount else 0.0
+    val isSettled = client.paymentStatus == "SETTLED"
     val amountColor = when {
+        isSettled -> Color(0xFF1565C0)       // أزرق للمُسوَّى
         paidRatio >= 1.0 -> Color(0xFF2E7D32)
         paidRatio >= 0.5 -> Color(0xFFF57F17)
         else -> Color(0xFFC62828)
@@ -574,21 +573,53 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // اسم العميل + رقم الاشتراك
+            // اسم العميل + رقم الاشتراك + حالة الدفع
             Column(modifier = Modifier.weight(2f)) {
-                Text(
-                    text = client.clientName,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "#${client.subscriptionNumber}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = client.clientName,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (client.paymentStatus == "SETTLED") {
+                        Text(
+                            text = "\uD83D\uDD35",
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "#${client.subscriptionNumber}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 10.sp
+                    )
+                    if (client.paymentStatus.isNotEmpty()) {
+                        val (statusText, statusColor) = when (client.paymentStatus) {
+                            "PAID" -> "Paid" to Color(0xFF2E7D32)
+                            "SETTLED" -> "Settled" to Color(0xFF1565C0)
+                            "PARTIAL" -> "Partial" to Color(0xFFF57F17)
+                            else -> "Unpaid" to Color(0xFFC62828)
+                        }
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp
+                        )
+                    }
+                }
             }
 
             // الغرفة

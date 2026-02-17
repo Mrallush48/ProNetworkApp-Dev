@@ -165,13 +165,14 @@ interface PaymentTransactionDao {
     // ================== تحصيل يومي تفصيلي (عميل بعميل) ==================
     @Query(
         """
-        SELECT 
-            pt.id AS transactionId,
-            pt.amount AS paidAmount,
-            pt.date AS transactionDate,
-            pt.notes AS notes,
-            p.amount AS monthlyAmount,
-            p.clientId AS clientId,
+            SELECT
+        pt.id AS transactionId,
+        pt.amount AS paidAmount,
+        pt.date AS transactionDate,
+        pt.notes AS notes,
+        p.id AS paymentId,
+        p.amount AS monthlyAmount,
+        p.clientId AS clientId,
             c.name AS clientName,
             c.subscriptionNumber AS subscriptionNumber,
             c.roomNumber AS roomNumber,
@@ -196,6 +197,7 @@ interface PaymentTransactionDao {
         val paidAmount: Double,
         val transactionDate: Long,
         val notes: String,
+        val paymentId: Int,
         val monthlyAmount: Double,
         val clientId: Int,
         val clientName: String,

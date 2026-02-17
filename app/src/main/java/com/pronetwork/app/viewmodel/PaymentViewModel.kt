@@ -132,6 +132,12 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 dayStartMillis, dayEndMillis
             )
 
+            // جلب paymentIds اللي فيها حركات سالبة (Refund) لتحديد حالة SETTLED
+            val allPaymentIds = rawTransactions.map { it.paymentId }.distinct()
+            val refundPaymentIds = if (allPaymentIds.isNotEmpty()) {
+                transactionRepository.getPaymentIdsWithRefunds(allPaymentIds).toSet()
+            } else emptySet()
+
             val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
 
             // تجميع الحركات حسب المبنى ثم حسب العميل
@@ -164,6 +170,16 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         )
                     }
 
+                    // تحديد حالة الدفع لهذا العميل
+                    val clientPaymentId = firstTx.paymentId
+                    val hasRefund = refundPaymentIds.contains(clientPaymentId)
+                    val status = when {
+                        totalPaid <= 0.0 -> "UNPAID"
+                        totalPaid < firstTx.monthlyAmount && hasRefund -> "SETTLED"
+                        totalPaid < firstTx.monthlyAmount -> "PARTIAL"
+                        else -> "PAID"
+                    }
+
                     DailyClientCollection(
                         clientId = clientId,
                         clientName = firstTx.clientName,
@@ -174,7 +190,8 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         paidAmount = totalPaid,
                         transactionTime = timeFormat.format(java.util.Date(lastTxTime)),
                         notes = allNotes,
-                        transactions = txItems
+                        transactions = txItems,
+                        paymentStatus = status
                     )
                 }.sortedBy { it.clientName }
 
