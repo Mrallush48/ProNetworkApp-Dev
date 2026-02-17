@@ -64,6 +64,7 @@ import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.export.ClientsExportManager
 import com.pronetwork.app.export.DailyCollectionExportManager
+    import com.pronetwork.app.ui.components.DailyReportMode
 import com.pronetwork.app.export.PaymentsExportManager
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import com.pronetwork.app.ui.components.DailyExportDialog
@@ -1410,9 +1411,9 @@ class MainActivity : ComponentActivity() {
                                     DailyExportDialog(
                                         dateLabel = dailyDateLabel,
                                         onDismiss = { showExportDialogDaily = false },
-                                        onExport = { format ->
-                                            val currentUi = dailyUi
-                                            val currentSummary = dailySummary
+                                        onExport = { format, mode ->
+                                            val currentUi = if (mode == DailyReportMode.TRANSACTIONS_ONLY) dailyUi?.let { ui -> val filteredBuildings = ui.buildings.map { b -> b.copy(clients = b.clients.filter { it.todayPaid != 0.0 || it.transactions.isNotEmpty() }) }.filter { it.clients.isNotEmpty() }; ui.copy(buildings = filteredBuildings, totalClientsCount = filteredBuildings.sumOf { it.clientsCount }) } else dailyUi
+                                            val currentSummary = if (mode == DailyReportMode.TRANSACTIONS_ONLY && currentUi != null) { val txClients = currentUi.buildings.sumOf { it.clientsCount }; val txCount = currentUi.buildings.flatMap { it.clients }.sumOf { it.transactions.size }; dailySummary.copy(totalClients = txClients, totalTransactions = txCount) } else dailySummary
                                             if (currentUi != null) {
                                                 lifecycleScope.launch {
                                                     when (format) {
