@@ -298,8 +298,8 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 }
 
                 val allClients = building.clients + unpaidClients.sortedBy { it.clientName }
-nonTodayPaymentIds = unpaid                val newRate = if (newExpected > 0) (building.totalAmount / newExpected) * 100 else 0.0
-
+                val newExpected = building.expectedAmount + unpaidClients.sumOf { it.monthlyAmount }
+                val newRate = if (newExpected > 0) (building.totalAmount / newExpected) * 100 else 0.0
                 building.copy(
                     clients = allClients,
                     clientsCount = allClients.size,
