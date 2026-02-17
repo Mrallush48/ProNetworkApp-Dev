@@ -229,7 +229,35 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             val paidClientIds = rawTransactions.map { it.clientId }.toSet()
             val unpaidPayments = allPaymentsForMonth.filter { it.clientId !in paidClientIds }
 
-            val unpaidClientIds = unpaidPayments.map { it.clientId }.distinct()
+                                // حساب حالة الدفع الفعلية لكل عميل لم يدفع اليوم
+                    val nonTodayPaymentIds = unpaidPayments.map { it.id }
+                    val nonTodayTotalsMap = if (nonTodayPaymentIds.isNotEmpty()) {
+                        transactionRepository.getTotalsForPayments(nonTodayPaymentIds)
+                    } else emptyMap()
+                    val nonTodayRefundIds = if (nonTodayPaymentIds.isNotEmpty()) {
+                        transactionRepository.getPaymentIdsWithRefunds(nonTodayPaymentIds).toSet()
+                    } else emptySet()
+
+                    // بناء خريطة حالة الدفع الفعلية لكل payment
+                    val nonTodayStatusMap = unpaidPayments.associate { p ->
+                        val totalPaidAll = nonTodayTotalsMap[p.id] ?: 0.0
+                        val hasRefund = nonTodayRefundIds.contains(p.id)
+                        val actualStatus = when {
+                            totalPaidAll >= p.amount -> "PAID"
+                            totalPaidAll > 0.0 && hasRefund -> "SETTLED"
+                            totalPaidAll > 0.0 -> "PARTIAL"
+                            else -> "UNPAID"
+                        }
+                        p.id to Triple(actualStatus, totalPaidAll, p.amount)
+                    }
+
+                    // تصفية فقط من لم يكتمل دفعهم (استثناء المدفوع بالكامل)
+                    val filteredNonTodayPayments = unpaidPayments.filter {
+                        val st = nonTodayStatusMap[it.id]?.first ?: "UNPAID"
+                        st != "PAID"
+                    }
+
+            val unpaidClientIds = filteredNonTodayPayments.map { it.clientId }.distinct()
             val unpaidClientsMap = if (unpaidClientIds.isNotEmpty()) {
                 paymentRepository.getClientsByIds(unpaidClientIds).associateBy { it.id }
             } else emptyMap()
@@ -239,7 +267,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
             val allBuildingsMap = allBuildings.associate { it.id to it.name }
 
             // تجميع العملاء غير المدفوعين حسب المبنى
-            val unpaidByBuilding = unpaidPayments.groupBy { payment ->
+            val unpaidByBuilding = filteredNonTodayPayments.groupBy { payment ->
                 val client = unpaidClientsMap[payment.clientId]
                 client?.buildingId ?: -1
             }
@@ -259,19 +287,18 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         roomNumber = client.roomNumber,
                         packageType = client.packageType,
                         monthlyAmount = payment.amount,
-                        paidAmount = 0.0,
+                        paidAmount = nonTodayStatusMap[payment.id]?.second ?: 0.0,
                         todayPaid = 0.0,
-                        totalPaid = 0.0,
+                        totalPaid = nonTodayStatusMap[payment.id]?.second ?: 0.0,
                         transactionTime = "",
                         notes = "",
                         transactions = emptyList(),
-                        paymentStatus = "UNPAID"
+                        paymentStatus = nonTodayStatusMap[payment.id]?.first ?: "UNPAID"
                     )
                 }
 
                 val allClients = building.clients + unpaidClients.sortedBy { it.clientName }
-                val newExpected = allClients.sumOf { it.monthlyAmount }
-                val newRate = if (newExpected > 0) (building.totalAmount / newExpected) * 100 else 0.0
+nonTodayPaymentIds = unpaid                val newRate = if (newExpected > 0) (building.totalAmount / newExpected) * 100 else 0.0
 
                 building.copy(
                     clients = allClients,
@@ -292,13 +319,13 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         roomNumber = client.roomNumber,
                         packageType = client.packageType,
                         monthlyAmount = payment.amount,
-                        paidAmount = 0.0,
+                        paidAmount = nonTodayStatusMap[payment.id]?.second ?: 0.0,
                         todayPaid = 0.0,
-                        totalPaid = 0.0,
+                        totalPaid = nonTodayStatusMap[payment.id]?.second ?: 0.0,
                         transactionTime = "",
                         notes = "",
                         transactions = emptyList(),
-                        paymentStatus = "UNPAID"
+                        paymentStatus = nonTodayStatusMap[payment.id]?.first ?: "UNPAID"
                     )
                 }.sortedBy { it.clientName }
 
