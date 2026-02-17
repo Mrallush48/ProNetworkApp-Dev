@@ -14,6 +14,7 @@ import com.pronetwork.app.data.Client
 import com.pronetwork.app.viewmodel.PaymentViewModel
 import java.text.NumberFormat
 import java.util.Locale
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,7 +148,6 @@ fun StatisticsScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -155,13 +155,13 @@ fun StatisticsScreen(
                 StatCard(
                     title = stringResource(R.string.stats_paid_clients),
                     value = monthStats.paidCount.toString(),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFF2E7D32),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     title = stringResource(R.string.stats_partial_clients),
                     value = monthStats.partiallyPaidCount.toString(),
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = Color(0xFFF57F17),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -172,7 +172,7 @@ fun StatisticsScreen(
                 StatCard(
                     title = stringResource(R.string.stats_settled_clients),
                     value = monthStats.settledCount.toString(),
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
@@ -182,36 +182,33 @@ fun StatisticsScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatCard(
-                    title = stringResource(R.string.stats_total_paid_amount),
-                    value = formatCurrencyLocalized(monthStats.totalPaidAmount),
+                    title = stringResource(R.string.stats_settled_amount),
+                    value = formatCurrencyLocalized(monthStats.settledAmount),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = stringResource(R.string.stats_total_unpaid_amount),
-                    value = formatCurrencyLocalized(monthStats.totalUnpaidAmount),
-                    color = MaterialTheme.colorScheme.tertiary,
+                    title = stringResource(R.string.stats_total_paid_amount),
+                    value = formatCurrencyLocalized(monthStats.totalPaidAmount),
+                    color = Color(0xFF2E7D32),
                     modifier = Modifier.weight(1f)
                 )
             }
-            if (monthStats.settledAmount > 0.0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    StatCard(
-                        title = stringResource(R.string.stats_settled_amount),
-                        value = formatCurrencyLocalized(monthStats.settledAmount),
-                        color = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatCard(
+                    title = stringResource(R.string.stats_total_unpaid_amount),
+                    value = formatCurrencyLocalized(monthStats.totalUnpaidAmount),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
             }
         } else {
             Box(
