@@ -529,6 +529,11 @@
     <string name="export_save_to_downloads">حفظ في التنزيلات</string>
     <string name="export_share_via">مشاركة عبر</string>
     <string name="export_share_pdf">مشاركة PDF</string>
+
+    <!-- Daily export dialog -->
+    <string name="daily_export_report_mode">وضع التقرير</string>
+    <string name="daily_export_transactions_only">عمليات اليوم فقط</string>
+    <string name="daily_export_full_report">تقرير كامل</string>
     <string name="export_share_excel">مشاركة إكسل</string>
 
     <string name="client_edit_room_error">رقم الغرفة مطلوب</string>
