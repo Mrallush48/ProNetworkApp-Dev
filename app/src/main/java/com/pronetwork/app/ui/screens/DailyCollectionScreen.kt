@@ -72,10 +72,20 @@ fun DailyCollectionScreen(
 
     // Compute status breakdown from buildings
     val allClients = dailyCollection?.buildings?.flatMap { it.clients } ?: emptyList()
+    var showAllClients by remember { mutableStateOf(false) }
     val paidCount = allClients.count { it.paymentStatus == "PAID" }
     val partialCount = allClients.count { it.paymentStatus == "PARTIAL" }
     val settledCount = allClients.count { it.paymentStatus == "SETTLED" }
     val unpaidCount = allClients.count { it.paymentStatus == "UNPAID" }
+
+    // Filter buildings: show only clients with today's transactions by default
+    val displayBuildings = if (showAllClients) {
+        dailyCollection?.buildings ?: emptyList()
+    } else {
+        dailyCollection?.buildings?.map { b ->
+            b.copy(clients = b.clients.filter { it.todayPaid != 0.0 || it.transactions.isNotEmpty() })
+        }?.filter { it.clients.isNotEmpty() } ?: emptyList()
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -377,6 +387,25 @@ fun DailyCollectionScreen(
         }
 
         // ===== Building Details Title =====
+        // ===== Toggle: Today's Transactions / All Clients =====
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = { showAllClients = !showAllClients }
+                ) {
+                    Text(
+                        text = if (showAllClients) "\uD83D\uDC65 Show Today's Transactions Only"
+                               else "\uD83D\uDCCB Show All Clients",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+
         item {
             Spacer(Modifier.height(8.dp))
             Text(
@@ -386,7 +415,7 @@ fun DailyCollectionScreen(
         }
 
         // ===== Building List =====
-        val buildings: List<DailyBuildingDetailedUi> = dailyCollection?.buildings ?: emptyList()
+        val buildings: List<DailyBuildingDetailedUi> = displayBuildings
         if (buildings.isEmpty()) {
             item {
                 Box(
