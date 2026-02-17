@@ -530,6 +530,11 @@
     <string name="export_share_pdf">Share PDF</string>
     <string name="export_share_excel">Share Excel</string>
 
+    <!-- Daily export dialog -->
+    <string name="daily_export_report_mode">Report Mode</string>
+    <string name="daily_export_transactions_only">Today\'s Transactions</string>
+    <string name="daily_export_full_report">Full Report</string>
+
     <string name="client_edit_room_error">Room number is required</string>
 
 
