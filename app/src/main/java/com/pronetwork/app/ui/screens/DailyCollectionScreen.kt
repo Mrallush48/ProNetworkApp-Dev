@@ -14,8 +14,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -40,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,13 +70,20 @@ fun DailyCollectionScreen(
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     var expandedBuildingId by remember { mutableStateOf<Int?>(null) }
 
+    // Compute status breakdown from buildings
+    val allClients = dailyCollection?.buildings?.flatMap { it.clients } ?: emptyList()
+    val paidCount = allClients.count { it.paymentStatus == "PAID" }
+    val partialCount = allClients.count { it.paymentStatus == "PARTIAL" }
+    val settledCount = allClients.count { it.paymentStatus == "SETTLED" }
+    val unpaidCount = allClients.count { it.paymentStatus == "UNPAID" }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // ===== أزرار التنقل =====
+        // ===== Navigation buttons =====
         item {
             Row(
                 modifier = Modifier
@@ -100,7 +111,6 @@ fun DailyCollectionScreen(
                         maxLines = 1
                     )
                 }
-
                 Button(
                     onClick = {
                         val todayCal = Calendar.getInstance().apply {
@@ -134,8 +144,7 @@ fun DailyCollectionScreen(
             }
         }
 
-
-        // ===== التاريخ =====
+        // ===== Date =====
         item {
             Text(
                 text = stringResource(
@@ -146,7 +155,7 @@ fun DailyCollectionScreen(
             )
         }
 
-        // ===== ملخص التحصيل — 3 Cards =====
+        // ===== Summary Cards =====
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -227,7 +236,63 @@ fun DailyCollectionScreen(
             }
         }
 
-        // ===== تقييم الأداء + نسبة التحصيل =====
+        // ===== NEW: Payment Status Breakdown =====
+        if (allClients.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(1.dp)
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Payment Status",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            StatusBadge(
+                                label = "Paid",
+                                count = paidCount,
+                                color = Color(0xFF2E7D32),
+                                bgColor = Color(0xFFE8F5E9),
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatusBadge(
+                                label = "Partial",
+                                count = partialCount,
+                                color = Color(0xFFF57F17),
+                                bgColor = Color(0xFFFFF8E1),
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatusBadge(
+                                label = "Settled",
+                                count = settledCount,
+                                color = Color(0xFF1565C0),
+                                bgColor = Color(0xFFE3F2FD),
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatusBadge(
+                                label = "Unpaid",
+                                count = unpaidCount,
+                                color = Color(0xFFC62828),
+                                bgColor = Color(0xFFFFEBEE),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ===== Performance + Collection Rate =====
         item {
             val total = dailyCollection?.totalAmount ?: 0.0
             val performance = getDailyPerformance(total)
@@ -236,7 +301,6 @@ fun DailyCollectionScreen(
                 DailyPerformanceLevel.GOOD -> "\uD83D\uDFE1" to Color(0xFFFFC107)
                 DailyPerformanceLevel.POOR -> "\uD83D\uDD34" to MaterialTheme.colorScheme.error
             }
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -277,7 +341,6 @@ fun DailyCollectionScreen(
                             )
                         }
                     }
-
                     val collectionRate = dailyCollection?.overallCollectionRate ?: 0.0
                     if (collectionRate > 0) {
                         Spacer(Modifier.height(8.dp))
@@ -313,7 +376,7 @@ fun DailyCollectionScreen(
             }
         }
 
-        // ===== عنوان التفاصيل حسب المبنى =====
+        // ===== Building Details Title =====
         item {
             Spacer(Modifier.height(8.dp))
             Text(
@@ -322,10 +385,8 @@ fun DailyCollectionScreen(
             )
         }
 
-        // ===== قائمة المباني =====
-        val buildings: List<DailyBuildingDetailedUi> =
-            dailyCollection?.buildings ?: emptyList()
-
+        // ===== Building List =====
+        val buildings: List<DailyBuildingDetailedUi> = dailyCollection?.buildings ?: emptyList()
         if (buildings.isEmpty()) {
             item {
                 Box(
@@ -344,7 +405,8 @@ fun DailyCollectionScreen(
                     isExpanded = expandedBuildingId == building.buildingId,
                     onToggle = {
                         expandedBuildingId =
-                            if (expandedBuildingId == building.buildingId) null else building.buildingId
+                            if (expandedBuildingId == building.buildingId) null
+                            else building.buildingId
                     }
                 )
             }
@@ -354,7 +416,40 @@ fun DailyCollectionScreen(
     }
 }
 
-// ================== كارد مبنى تفصيلي (قابل للتوسيع) ==================
+// ================== Status Badge (NEW) ==================
+@Composable
+private fun StatusBadge(
+    label: String,
+    count: Int,
+    color: Color,
+    bgColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(bgColor, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+    }
+}
+
+// ================== Building Detail Card ==================
 @Composable
 private fun BuildingDetailCard(
     building: DailyBuildingDetailedUi,
@@ -366,13 +461,11 @@ private fun BuildingDetailCard(
         building.collectionRate >= 50 -> Color(0xFFF57F17)
         else -> Color(0xFFC62828)
     }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(Modifier.padding(12.dp)) {
-            // === رأس الكارد (قابل للضغط) ===
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -401,8 +494,6 @@ private fun BuildingDetailCard(
                         )
                     }
                 }
-
-                // نسبة التحصيل + سهم التوسيع
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -416,23 +507,16 @@ private fun BuildingDetailCard(
                         )
                     }
                     Icon(
-                        imageVector = if (isExpanded)
-                            Icons.Filled.KeyboardArrowUp
-                        else
-                            Icons.Filled.KeyboardArrowDown,
+                        imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
-            // === شريط التحصيل ===
             if (building.expectedAmount > 0) {
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(
-                    progress = {
-                        (building.collectionRate / 100f).toFloat().coerceIn(0f, 1f)
-                    },
+                    progress = { (building.collectionRate / 100f).toFloat().coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
@@ -457,8 +541,6 @@ private fun BuildingDetailCard(
                     )
                 }
             }
-
-            // === تفاصيل العملاء (تظهر عند التوسيع) ===
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),
@@ -469,8 +551,6 @@ private fun BuildingDetailCard(
                         modifier = Modifier.padding(vertical = 4.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
-
-                    // عنوان الجدول
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -480,34 +560,14 @@ private fun BuildingDetailCard(
                             )
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
-                        Text(stringResource(R.string.daily_table_client),
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(stringResource(R.string.daily_table_room),
-                            modifier = Modifier.weight(0.7f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(stringResource(R.string.daily_table_paid),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(stringResource(R.string.daily_table_time),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(stringResource(R.string.daily_table_client), modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.daily_table_room), modifier = Modifier.weight(0.7f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.daily_table_paid), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.daily_table_time), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
-
-                    // صفوف العملاء
                     building.clients.forEachIndexed { index, client ->
                         ClientRow(client = client, isEven = index % 2 == 0)
                     }
-
-                    // صف الإجمالي
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -517,29 +577,10 @@ private fun BuildingDetailCard(
                             )
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
-                        Text(stringResource(R.string.daily_table_total),
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "${building.clientsCount}",
-                            modifier = Modifier.weight(0.7f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            String.format("%.2f", building.totalAmount),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "",
-                            modifier = Modifier.weight(1f)
-                        )
+                        Text(stringResource(R.string.daily_table_total), modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text("${building.clientsCount}", modifier = Modifier.weight(0.7f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(String.format("%.2f", building.totalAmount), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text("", modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -547,14 +588,10 @@ private fun BuildingDetailCard(
     }
 }
 
-// ================== صف عميل واحد ==================
+// ================== Client Row ==================
 @Composable
 private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
-    val bgColor = if (isEven)
-        Color.Transparent
-    else
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-
+    val bgColor = if (isEven) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     val paidRatio = if (client.monthlyAmount > 0) client.totalPaid / client.monthlyAmount else 0.0
     val isSettled = client.paymentStatus == "SETTLED"
     val amountColor = when {
@@ -576,7 +613,6 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // اسم العميل + رقم الاشتراك + حالة الدفع
             Column(modifier = Modifier.weight(2f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -591,10 +627,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (client.paymentStatus == "SETTLED") {
-                        Text(
-                            text = "\uD83D\uDD35",
-                            fontSize = 10.sp
-                        )
+                        Text(text = "\uD83D\uDD35", fontSize = 10.sp)
                     }
                 }
                 Row(
@@ -624,26 +657,18 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                     }
                 }
             }
-
-            // الغرفة
             Text(
                 text = client.roomNumber ?: "-",
                 modifier = Modifier.weight(0.7f),
                 style = MaterialTheme.typography.bodySmall
             )
-
-            // المبلغ: دفع اليوم + إجمالي/شهري
             Column(modifier = Modifier.weight(1f)) {
-                // سطر 1: مبلغ اليوم
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     if (hasRefundToday) {
-                        Text(
-                            text = "\u26A0",
-                            fontSize = 9.sp
-                        )
+                        Text(text = "\u26A0", fontSize = 9.sp)
                     }
                     Text(
                         text = String.format("%.0f", client.todayPaid),
@@ -652,7 +677,6 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                         color = if (client.todayPaid < 0) Color(0xFFC62828) else amountColor
                     )
                 }
-                // سطر 2: إجمالي المدفوع / الشهري
                 Text(
                     text = "${String.format("%.0f", client.totalPaid)}/${String.format("%.0f", client.monthlyAmount)}",
                     style = MaterialTheme.typography.labelSmall,
@@ -660,8 +684,6 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                     fontSize = 9.sp
                 )
             }
-
-            // وقت الدفع
             Text(
                 text = client.transactionTime,
                 modifier = Modifier.weight(1f),
@@ -669,8 +691,6 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        // حركات الـ Refund اليوم (تظهر بوضوح)
         if (hasRefundToday) {
             client.transactions.filter { it.type == "Refund" }.forEach { refund ->
                 Row(
@@ -698,8 +718,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 }
             }
         }
-        // ملاحظات (إن وجدت)
-        if (client.notes.isNotBlank() && !hasRefundToday) {
+        if (client.notes.isNotBlank()) {
             Text(
                 text = client.notes,
                 style = MaterialTheme.typography.labelSmall,
@@ -709,17 +728,6 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
             )
-        } else if (client.notes.isNotBlank() && hasRefundToday) {
-            Text(
-                text = client.notes,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 1.dp)
-            )
         }
-
     }
 }
