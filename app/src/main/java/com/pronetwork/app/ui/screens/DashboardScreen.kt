@@ -11,15 +11,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pronetwork.app.R
@@ -60,98 +63,99 @@ fun DashboardScreen(
     onNavigateToStats: () -> Unit,
     onClientClick: (Int) -> Unit
 ) {
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("ar", "SA")).apply {
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "SA")).apply {
         maximumFractionDigits = 0
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp)
-    ) {
-        // ===== Welcome Card with Date =====
-        item {
-            WelcomeCard()
-        }
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
+        ) {
+            // ===== Welcome Card with Date =====
+            item {
+                WelcomeCard()
+            }
 
-        // ===== KPI Cards Row =====
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Total Collection This Month
-                KpiCard(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.dashboard_total_collection),
-                    value = currencyFormat.format(currentMonthStats?.totalPaidAmount ?: 0.0),
-                    icon = Icons.Filled.AttachMoney,
-                    color = Color(0xFF4CAF50)
-                )
-                
-                // Active Clients
-                KpiCard(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.dashboard_active_clients),
-                    value = totalClients.toString(),
-                    icon = Icons.Filled.People,
-                    color = Color(0xFF2196F3)
+            // ===== KPI Cards Row =====
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Total Collection This Month
+                    KpiCard(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.dashboard_total_collection),
+                        value = currencyFormat.format(currentMonthStats?.totalPaidAmount ?: 0.0),
+                        icon = Icons.Filled.AttachMoney,
+                        color = Color(0xFF4CAF50)
+                    )
+                    // Active Clients
+                    KpiCard(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.dashboard_active_clients),
+                        value = totalClients.toString(),
+                        icon = Icons.Filled.People,
+                        color = Color(0xFF2196F3)
+                    )
+                }
+            }
+
+            // ===== Collection Rate Card =====
+            item {
+                CollectionRateCard(
+                    currentMonthStats = currentMonthStats,
+                    totalClients = totalClients
                 )
             }
-        }
 
-        // ===== Collection Rate Card =====
-        item {
-            CollectionRateCard(
-                currentMonthStats = currentMonthStats,
-                totalClients = totalClients
-            )
-        }
-
-        // ===== Month Comparison Card =====
-        item {
-            MonthComparisonCard(
-                currentMonthStats = currentMonthStats,
-                previousMonthStats = previousMonthStats,
-                currencyFormat = currencyFormat
-            )
-        }
-
-        // ===== Quick Actions =====
-        item {
-            QuickActionsCard(
-                onNavigateToDaily = onNavigateToDaily,
-                onNavigateToClients = onNavigateToClients
-            )
-        }
-
-        // ===== Needs Attention (Top Unpaid Clients) =====
-        if (topUnpaidClients.isNotEmpty()) {
+            // ===== Month Comparison Card =====
             item {
-                NeedsAttentionCard(
-                    topUnpaidClients = topUnpaidClients,
-                    currencyFormat = currencyFormat,
-                    onClientClick = onClientClick,
-                    onViewAll = onNavigateToStats
-                )
-            }
-        }
-
-        // ===== Recent Transactions =====
-        if (recentTransactions.isNotEmpty()) {
-            item {
-                RecentTransactionsCard(
-                    recentTransactions = recentTransactions,
+                MonthComparisonCard(
+                    currentMonthStats = currentMonthStats,
+                    previousMonthStats = previousMonthStats,
                     currencyFormat = currencyFormat
                 )
             }
-        }
 
-        // Bottom spacing
-        item {
-            Spacer(modifier = Modifier.height(80.dp))
+            // ===== Quick Actions =====
+            item {
+                QuickActionsCard(
+                    onNavigateToDaily = onNavigateToDaily,
+                    onNavigateToClients = onNavigateToClients
+                )
+            }
+
+            // ===== Needs Attention (Top Unpaid Clients) =====
+            if (topUnpaidClients.isNotEmpty()) {
+                item {
+                    NeedsAttentionCard(
+                        topUnpaidClients = topUnpaidClients,
+                        currencyFormat = currencyFormat,
+                        onClientClick = onClientClick,
+                        onViewAll = onNavigateToStats
+                    )
+                }
+            }
+
+            // ===== Recent Transactions =====
+            if (recentTransactions.isNotEmpty()) {
+                item {
+                    RecentTransactionsCard(
+                        recentTransactions = recentTransactions,
+                        currencyFormat = currencyFormat
+                    )
+                }
+            }
+
+            // Bottom spacing
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
         }
     }
 }
@@ -162,20 +166,20 @@ private fun WelcomeCard() {
     val today = Date()
     val gregorianFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("ar"))
     val gregorianDate = gregorianFormat.format(today)
-    
-    // Hijri date calculation (approximate)
-    val hijriCalendar = Calendar.getInstance()
+
+    // Hijri date calculation
     val islamicCalendar = android.icu.util.IslamicCalendar()
     islamicCalendar.time = today
     val hijriDay = islamicCalendar.get(android.icu.util.Calendar.DAY_OF_MONTH)
     val hijriMonth = islamicCalendar.get(android.icu.util.Calendar.MONTH)
     val hijriYear = islamicCalendar.get(android.icu.util.Calendar.YEAR)
+
     val hijriMonthNames = arrayOf(
-        "محرم", "صفر", "ربيع الأول", "ربيع الثاني",
-        "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان",
-        "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
+        "Muharram", "Safar", "Rabi al-Awwal", "Rabi al-Thani",
+        "Jumada al-Ula", "Jumada al-Akhirah", "Rajab", "Sha'ban",
+        "Ramadan", "Shawwal", "Dhul-Qi'dah", "Dhul-Hijjah"
     )
-    val hijriDate = "$hijriDay ${hijriMonthNames[hijriMonth]} $hijriYear هـ"
+    val hijriDate = "$hijriDay ${hijriMonthNames[hijriMonth]} $hijriYear H"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -201,11 +205,13 @@ private fun WelcomeCard() {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
-            Text(
-                text = hijriDate,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Text(
+                    text = hijriDate,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
@@ -248,12 +254,14 @@ private fun KpiCard(
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
@@ -297,7 +305,7 @@ private fun CollectionRateCard(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Circular Progress
             Box(
                 modifier = Modifier
@@ -322,9 +330,9 @@ private fun CollectionRateCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Status breakdown
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -419,7 +427,7 @@ private fun MonthComparisonCard(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -431,32 +439,35 @@ private fun MonthComparisonCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        text = currencyFormat.format(currentAmount),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50)
-                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Text(
+                            text = currencyFormat.format(currentAmount),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CAF50)
+                        )
+                    }
                 }
-                
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = stringResource(R.string.dashboard_last_month),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        text = currencyFormat.format(previousAmount),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Text(
+                            text = currencyFormat.format(previousAmount),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -469,18 +480,22 @@ private fun MonthComparisonCard(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${if (isPositive) "+" else ""}${String.format("%.1f", percentChange)}%",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
-                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Text(
+                        text = "${if (isPositive) "+" else ""}${String.format(Locale.ENGLISH, "%.1f", percentChange)}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "(${if (isPositive) "+" else ""}${currencyFormat.format(difference)})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Text(
+                        text = "(${if (isPositive) "+" else ""}${currencyFormat.format(difference)})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -511,7 +526,7 @@ private fun QuickActionsCard(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -535,7 +550,6 @@ private fun QuickActionsCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
                 OutlinedButton(
                     onClick = onNavigateToClients,
                     modifier = Modifier.weight(1f)
@@ -605,9 +619,9 @@ private fun NeedsAttentionCard(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             topUnpaidClients.take(5).forEach { client ->
                 UnpaidClientRow(
                     client = client,
@@ -615,7 +629,7 @@ private fun NeedsAttentionCard(
                     onClick = { onClientClick(client.clientId) }
                 )
                 if (client != topUnpaidClients.last()) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
                         color = Color(0xFFFFCC80)
                     )
@@ -654,12 +668,14 @@ private fun UnpaidClientRow(
             )
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = currencyFormat.format(client.remaining),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFF44336)
-            )
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Text(
+                    text = currencyFormat.format(client.remaining),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF44336)
+                )
+            }
             Text(
                 text = stringResource(R.string.dashboard_remaining),
                 style = MaterialTheme.typography.labelSmall,
@@ -704,16 +720,16 @@ private fun RecentTransactionsCard(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             recentTransactions.take(5).forEach { transaction ->
                 TransactionRow(
                     transaction = transaction,
                     currencyFormat = currencyFormat
                 )
                 if (transaction != recentTransactions.last()) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
         }
@@ -726,7 +742,7 @@ private fun TransactionRow(
     currencyFormat: NumberFormat
 ) {
     val isRefund = transaction.type == "Refund"
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -743,7 +759,8 @@ private fun TransactionRow(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isRefund) Color(0xFFFFF3E0) else Color(0xFFE8F5E9)
+                        if (isRefund) Color(0xFFFFF3E0)
+                        else Color(0xFFE8F5E9)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -770,12 +787,13 @@ private fun TransactionRow(
                 )
             }
         }
-        
-        Text(
-            text = "${if (isRefund) "-" else "+"}${currencyFormat.format(kotlin.math.abs(transaction.amount))}",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = if (isRefund) Color(0xFFFF9800) else Color(0xFF4CAF50)
-        )
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Text(
+                text = "${if (isRefund) "-" else "+"}${currencyFormat.format(kotlin.math.abs(transaction.amount))}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isRefund) Color(0xFFFF9800) else Color(0xFF4CAF50)
+            )
+        }
     }
 }
