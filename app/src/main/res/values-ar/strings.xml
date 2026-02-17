@@ -455,6 +455,19 @@
     <string name="daily_collection_clients_count">عدد العملاء: %1$d</string>
     <string name="daily_collection_building_total">المبلغ: %1$.2f ريال</string>
 
+    <string name="stats_settled_amount">المبلغ المُسوَّى</string>
+    <string name="daily_collection_rate_label">نسبة التحصيل</string>
+    <string name="daily_building_clients_count">%1$d عميل</string>
+    <string name="daily_building_amount_sar">%1$s ر.س</string>
+    <string name="daily_collected_label">المحصّل: %1$s</string>
+    <string name="daily_expected_label">المتوقع: %1$s</string>
+    <string name="daily_table_client">العميل</string>
+    <string name="daily_table_room">الغرفة</string>
+    <string name="daily_table_paid">المدفوع</string>
+    <string name="daily_table_time">الوقت</string>
+    <string name="daily_table_total">الإجمالي</string>
+
+
     <!-- شاشة الإحصائيات -->
     <string name="stats_month_label">الشهر</string>
     <string name="stats_total_clients">إجمالي العملاء</string>

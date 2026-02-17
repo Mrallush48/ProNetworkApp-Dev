@@ -482,6 +482,18 @@
     <string name="performance_good">Good Performance</string>
     <string name="performance_poor">Poor Performance</string>
 
+    <string name="stats_settled_amount">Settled amount</string>
+    <string name="daily_collection_rate_label">Collection Rate</string>
+    <string name="daily_building_clients_count">%1$d clients</string>
+    <string name="daily_building_amount_sar">%1$s SAR</string>
+    <string name="daily_collected_label">Collected: %1$s</string>
+    <string name="daily_expected_label">Expected: %1$s</string>
+    <string name="daily_table_client">Client</string>
+    <string name="daily_table_room">Room</string>
+    <string name="daily_table_paid">Paid</string>
+    <string name="daily_table_time">Time</string>
+    <string name="daily_table_total">TOTAL</string>
+
     <!-- Export Dialog -->
     <string name="export_dialog_title">Export Options</string>
     <string name="export_report_type">Report Type</string>

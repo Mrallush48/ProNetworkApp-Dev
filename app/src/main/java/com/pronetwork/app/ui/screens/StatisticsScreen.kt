@@ -200,6 +200,19 @@ fun StatisticsScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
+            if (monthStats.settledAmount > 0.0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatCard(
+                        title = stringResource(R.string.stats_settled_amount),
+                        value = formatCurrencyLocalized(monthStats.settledAmount),
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         } else {
             Box(
                 modifier = Modifier

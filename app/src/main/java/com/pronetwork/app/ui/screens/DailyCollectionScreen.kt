@@ -289,7 +289,7 @@ fun DailyCollectionScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Collection Rate", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.daily_collection_rate_label), style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 text = String.format("%.1f%%", collectionRate),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -388,12 +388,12 @@ private fun BuildingDetailCard(
                     Spacer(Modifier.height(2.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
-                            text = "${building.clientsCount} clients",
+                            text = stringResource(R.string.daily_building_clients_count, building.clientsCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = String.format("%.2f SAR", building.totalAmount),
+                            text = stringResource(R.string.daily_building_amount_sar, String.format("%.2f", building.totalAmount)),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -445,12 +445,12 @@ private fun BuildingDetailCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Collected: ${String.format("%.2f", building.totalAmount)}",
+                        text = stringResource(R.string.daily_collected_label, String.format("%.2f", building.totalAmount)),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFF2E7D32)
                     )
                     Text(
-                        text = "Expected: ${String.format("%.2f", building.expectedAmount)}",
+                        text = stringResource(R.string.daily_expected_label, String.format("%.2f", building.expectedAmount)),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -479,26 +479,22 @@ private fun BuildingDetailCard(
                             )
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
-                        Text(
-                            "Client",
+                        Text(stringResource(R.string.daily_table_client),
                             modifier = Modifier.weight(2f),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            "Room",
+                        Text(stringResource(R.string.daily_table_room),
                             modifier = Modifier.weight(0.7f),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            "Paid",
+                        Text(stringResource(R.string.daily_table_paid),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            "Time",
+                        Text(stringResource(R.string.daily_table_time),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
@@ -520,8 +516,7 @@ private fun BuildingDetailCard(
                             )
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
-                        Text(
-                            "TOTAL",
+                        Text(stringResource(R.string.daily_table_total),
                             modifier = Modifier.weight(2f),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
