@@ -13,12 +13,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 
+// وضع التقرير اليومي
+enum class DailyReportMode {
+    TRANSACTIONS_ONLY,  // عمليات اليوم فقط
+    FULL_REPORT          // تقرير كامل (كل العملاء)
+}
+
 @Composable
 fun DailyExportDialog(
     dateLabel: String,
     onDismiss: () -> Unit,
-    onExport: (format: ExportFormat) -> Unit
+    onExport: (format: ExportFormat, mode: DailyReportMode) -> Unit
 ) {
+    var selectedMode by remember { mutableStateOf(DailyReportMode.TRANSACTIONS_ONLY) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -41,6 +49,34 @@ fun DailyExportDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // ══════ Report Mode Selection ══════
+                Text(
+                    text = stringResource(R.string.daily_export_report_mode),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedMode == DailyReportMode.TRANSACTIONS_ONLY,
+                        onClick = { selectedMode = DailyReportMode.TRANSACTIONS_ONLY },
+                        label = { Text(stringResource(R.string.daily_export_transactions_only), style = MaterialTheme.typography.bodySmall) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = selectedMode == DailyReportMode.FULL_REPORT,
+                        onClick = { selectedMode = DailyReportMode.FULL_REPORT },
+                        label = { Text(stringResource(R.string.daily_export_full_report), style = MaterialTheme.typography.bodySmall) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                HorizontalDivider()
+
                 // ══════ Save to Downloads ══════
                 Text(
                     text = stringResource(R.string.export_save_to_downloads),
@@ -54,7 +90,7 @@ fun DailyExportDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { onExport(ExportFormat.PDF) },
+                        onClick = { onExport(ExportFormat.PDF, selectedMode) },
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                     ) {
@@ -68,7 +104,7 @@ fun DailyExportDialog(
                     }
 
                     Button(
-                        onClick = { onExport(ExportFormat.EXCEL) },
+                        onClick = { onExport(ExportFormat.EXCEL, selectedMode) },
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                     ) {
@@ -97,7 +133,7 @@ fun DailyExportDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
-                        onClick = { onExport(ExportFormat.SHARE_PDF) },
+                        onClick = { onExport(ExportFormat.SHARE_PDF, selectedMode) },
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                     ) {
@@ -111,7 +147,7 @@ fun DailyExportDialog(
                     }
 
                     OutlinedButton(
-                        onClick = { onExport(ExportFormat.SHARE) },
+                        onClick = { onExport(ExportFormat.SHARE, selectedMode) },
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                     ) {
