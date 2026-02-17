@@ -29,6 +29,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -80,6 +81,9 @@ import com.pronetwork.app.ui.screens.ClientDetailsScreen
 import com.pronetwork.app.ui.screens.ClientEditDialog
 import com.pronetwork.app.ui.screens.ClientListScreen
 import com.pronetwork.app.ui.screens.DailyCollectionScreen
+import com.pronetwork.app.ui.screens.DashboardScreen
+import com.pronetwork.app.ui.screens.RecentTransaction
+import com.pronetwork.app.ui.screens.UnpaidClientInfo
 import com.pronetwork.app.ui.screens.StatisticsScreen
 import com.pronetwork.app.ui.theme.ProNetworkSpotTheme
 import com.pronetwork.app.viewmodel.BuildingViewModel
@@ -268,7 +272,7 @@ class MainActivity : ComponentActivity() {
                 var showExportDialogBuildings by remember { mutableStateOf(false) }
                 var showExportDialogStats by remember { mutableStateOf(false) }
                 var showExportDialogDaily by remember { mutableStateOf(false) }
-                var currentScreen by remember { mutableStateOf("clients") }
+                var currentScreen by remember { mutableStateOf("dashboard") }
                 var showClientDialog by remember { mutableStateOf(false) }
                 var showBuildingDialog by remember { mutableStateOf(false) }
                 var showEditBuildingDialog by remember { mutableStateOf(false) }
@@ -424,6 +428,18 @@ class MainActivity : ComponentActivity() {
                             NavigationBarItem(
                                 selected = currentScreen == "clients",
                                 onClick = {
+                    // Dashboard Tab
+                    NavigationBarItem(
+                        selected = currentScreen == "dashboard",
+                        onClick = {
+                            currentScreen = "dashboard"
+                            selectedBuilding = null
+                            selectedClient = null
+                            showDailyCollection = false
+                        },
+                        icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
+                        label = { Text(stringResource(R.string.screen_dashboard)) }
+                    )
                                     currentScreen = "clients"
                                     selectedBuilding = null
                                     selectedClient = null
@@ -494,6 +510,35 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         when {
+                        // ===== Dashboard =====
+                        currentScreen == "dashboard" -> {
+                            DashboardScreen(
+                                currentMonthStats = monthStats,
+                                previousMonthStats = null, // TODO: Add previous month stats
+                                totalClients = clients.size,
+                                totalBuildings = buildings.size,
+                                recentTransactions = emptyList(), // TODO: Implement
+                                topUnpaidClients = emptyList(), // TODO: Implement
+                                onNavigateToDaily = {
+                                    currentScreen = "stats"
+                                    showDailyCollection = true
+                                    loadDailyCollectionFor(selectedDailyDateMillis)
+                                },
+                                onNavigateToClients = {
+                                    currentScreen = "clients"
+                                },
+                                onNavigateToStats = {
+                                    currentScreen = "stats"
+                                },
+                                onClientClick = { clientId ->
+                                    val client = clients.find { it.id == clientId }
+                                    if (client != null) {
+                                        selectedClient = client
+                                        currentScreen = "clients"
+                                    }
+                                }
+                            )
+                        }
                             // ===== clients =====
                             currentScreen == "clients" && selectedBuilding == null -> {
                                 if (selectedClient == null) {
