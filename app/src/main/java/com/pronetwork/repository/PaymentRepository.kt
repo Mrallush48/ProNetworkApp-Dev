@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import com.pronetwork.app.data.ClientDao
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentDao
+import com.pronetwork.app.data.Client
 
 
 // توحيد صيغة الشهر إلى yyyy-MM
@@ -220,5 +221,14 @@ class PaymentRepository(
     suspend fun getFirstUnpaidMonthForClient(clientId: Int): String? {
         return paymentDao.getFirstUnpaidMonthForClient(clientId)
     }
+
+    suspend fun getPaymentsByMonthDirect(month: String): List<Payment> {
+        return paymentDao.getPaymentsByMonthDirect(normalizeMonth(month))
+    }
+
+    suspend fun getClientsByIds(ids: List<Int>): List<Client> {
+        return clientDao.getClientsByIds(ids)
+    }
+
 
 }

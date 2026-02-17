@@ -60,4 +60,8 @@ interface ClientDao {
     """
     )
     fun searchClients(buildingId: Int, month: String, query: String): Flow<List<Client>>
+
+    @Query("SELECT * FROM clients WHERE id IN (:ids)")
+    suspend fun getClientsByIds(ids: List<Int>): List<Client>
+
 }

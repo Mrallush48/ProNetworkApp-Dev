@@ -338,10 +338,12 @@ class MainActivity : ComponentActivity() {
                     calendar.add(Calendar.DAY_OF_MONTH, 1)
                     val dayEndMillis = calendar.timeInMillis
 
+                    val monthFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+                    val currentMonth = monthFormat.format(java.util.Date(dateMillis))
+
                     // جلب التحصيل التفصيلي (عميل بعميل)
                     val detailedLiveData = paymentViewModel.getDetailedDailyCollections(
-                        dayStartMillis = dayStartMillis,
-                        dayEndMillis = dayEndMillis
+                        dayStartMillis, dayEndMillis, currentMonth
                     )
                     detailedLiveData.observe(this@MainActivity) { detailedBuildings ->
                         val total = detailedBuildings.sumOf { it.totalAmount }

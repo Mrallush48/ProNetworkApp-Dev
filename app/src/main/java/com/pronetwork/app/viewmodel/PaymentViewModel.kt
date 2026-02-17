@@ -124,7 +124,8 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
     // ================== تحصيل يومي تفصيلي (عميل بعميل مع تفاصيل كل مبنى) ==================
     fun getDetailedDailyCollections(
         dayStartMillis: Long,
-        dayEndMillis: Long
+        dayEndMillis: Long,
+        month: String
     ): LiveData<List<DailyBuildingDetailedUi>> {
         val result = MutableLiveData<List<DailyBuildingDetailedUi>>()
         viewModelScope.launch {
@@ -223,13 +224,108 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
 
             }.sortedByDescending { it.totalAmount }
 
-            result.postValue(buildingCollections)
+            // === إضافة العملاء غير المدفوعين لكل مبنى ===
+            val allPaymentsForMonth = paymentRepository.getPaymentsByMonthDirect(month)
+            val paidClientIds = rawTransactions.map { it.clientId }.toSet()
+            val unpaidPayments = allPaymentsForMonth.filter { it.clientId !in paidClientIds }
+
+            val unpaidClientIds = unpaidPayments.map { it.clientId }.distinct()
+            val unpaidClientsMap = if (unpaidClientIds.isNotEmpty()) {
+                paymentRepository.getClientsByIds(unpaidClientIds).associateBy { it.id }
+            } else emptyMap()
+
+            val db = ClientDatabase.getDatabase(getApplication())
+            val allBuildings = db.buildingDao().getAllBuildingsDirect()
+            val allBuildingsMap = allBuildings.associate { it.id to it.name }
+
+            // تجميع العملاء غير المدفوعين حسب المبنى
+            val unpaidByBuilding = unpaidPayments.groupBy { payment ->
+                val client = unpaidClientsMap[payment.clientId]
+                client?.buildingId ?: -1
+            }
+
+            // دمج العملاء غير المدفوعين مع المباني الموجودة + إنشاء مباني جديدة
+            val existingBuildingIds = buildingCollections.map { it.buildingId }.toSet()
+            val updatedBuildings = buildingCollections.map { building ->
+                val unpaidForBuilding = unpaidByBuilding[building.buildingId] ?: emptyList()
+                if (unpaidForBuilding.isEmpty()) return@map building
+
+                val unpaidClients = unpaidForBuilding.mapNotNull { payment ->
+                    val client = unpaidClientsMap[payment.clientId] ?: return@mapNotNull null
+                    DailyClientCollection(
+                        clientId = client.id,
+                        clientName = client.name,
+                        subscriptionNumber = client.subscriptionNumber,
+                        roomNumber = client.roomNumber,
+                        packageType = client.packageType,
+                        monthlyAmount = payment.amount,
+                        paidAmount = 0.0,
+                        todayPaid = 0.0,
+                        totalPaid = 0.0,
+                        transactionTime = "",
+                        notes = "",
+                        transactions = emptyList(),
+                        paymentStatus = "UNPAID"
+                    )
+                }
+
+                val allClients = building.clients + unpaidClients.sortedBy { it.clientName }
+                val newExpected = allClients.sumOf { it.monthlyAmount }
+                val newRate = if (newExpected > 0) (building.totalAmount / newExpected) * 100 else 0.0
+
+                building.copy(
+                    clients = allClients,
+                    clientsCount = allClients.size,
+                    expectedAmount = newExpected,
+                    collectionRate = newRate
+                )
+            }.toMutableList()
+
+            // مباني جديدة فيها عملاء غير مدفوعين فقط
+            unpaidByBuilding.filter { it.key !in existingBuildingIds && it.key != -1 }.forEach { (buildingId, payments) ->
+                val unpaidClients = payments.mapNotNull { payment ->
+                    val client = unpaidClientsMap[payment.clientId] ?: return@mapNotNull null
+                    DailyClientCollection(
+                        clientId = client.id,
+                        clientName = client.name,
+                        subscriptionNumber = client.subscriptionNumber,
+                        roomNumber = client.roomNumber,
+                        packageType = client.packageType,
+                        monthlyAmount = payment.amount,
+                        paidAmount = 0.0,
+                        todayPaid = 0.0,
+                        totalPaid = 0.0,
+                        transactionTime = "",
+                        notes = "",
+                        transactions = emptyList(),
+                        paymentStatus = "UNPAID"
+                    )
+                }.sortedBy { it.clientName }
+
+                if (unpaidClients.isNotEmpty()) {
+                    val buildingName = allBuildingsMap[buildingId] ?: "Unknown Building"
+
+                    updatedBuildings.add(
+                        DailyBuildingDetailedUi(
+                            buildingId = buildingId,
+                            buildingName = buildingName,
+                            totalAmount = 0.0,
+                            clientsCount = unpaidClients.size,
+                            expectedAmount = unpaidClients.sumOf { it.monthlyAmount },
+                            collectionRate = 0.0,
+                            clients = unpaidClients
+                        )
+                    )
+                }
+            }
+
+            result.postValue(updatedBuildings.sortedByDescending { it.totalAmount })
         }
         return result
     }
 
 
-    // ================== إحصائيات شهرية عامة ==================
+// ================== إحصائيات شهرية عامة ==================
 
     // الشهر المختار للإحصائيات (مثل "2026-01")
     private val _selectedStatsMonth = MutableLiveData<String>()
