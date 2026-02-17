@@ -73,6 +73,24 @@ class DailyCollectionExportManager(private val context: Context) {
             appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Collection Rate</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">${"%.1f".format(ui.overallCollectionRate)}%</Data></Cell></Row>""")
             appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Clients Count</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">${summary.totalClients}</Data></Cell></Row>""")
             appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Transactions Count</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">${summary.totalTransactions}</Data></Cell></Row>""")
+                            // === Payment Status Breakdown ===
+                                            val allDailyClients = ui.buildings.flatMap { it.clients }
+                                                            val paidCount = allDailyClients.count { it.paymentStatus == "PAID" }
+                                                                            val partialCount = allDailyClients.count { it.paymentStatus == "PARTIAL" }
+                                                                                            val settledCount = allDailyClients.count { it.paymentStatus == "SETTLED" }
+                                                                                                            val unpaidCount = allDailyClients.count { it.paymentStatus == "UNPAID" }
+                                                                                                                            val settledAmountTotal = allDailyClients.filter { it.paymentStatus == "SETTLED" }.sumOf { it.totalPaid }
+                                                                                                                                            val refundAmountTotal = allDailyClients.flatMap { it.transactions }.filter { it.type == "Refund" }.sumOf { kotlin.math.abs(it.amount) }
+                                                                                                                                                            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Paid Clients</Data></Cell><Cell ss:StyleID="Good"><Data ss:Type="Number">$paidCount</Data></Cell></Row>""")
+                                                                                                                                                                            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Partial Clients</Data></Cell><Cell ss:StyleID="Warn"><Data ss:Type="Number">$partialCount</Data></Cell></Row>""")
+                                                                                                                                                                                            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Settled Clients</Data></Cell><Cell ss:StyleID="TrendStable"><Data ss:Type="Number">$settledCount</Data></Cell></Row>""")
+                                                                                                                                                                                                            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Unpaid Clients</Data></Cell><Cell ss:StyleID="Bad"><Data ss:Type="Number">$unpaidCount</Data></Cell></Row>""")
+                                                                                                                                                                                                                            if (settledAmountTotal > 0) {
+                                                                                                                                                                                                                                                    appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Settled Amount</Data></Cell><Cell ss:StyleID="TrendStable"><Data ss:Type="Number">$settledAmountTotal</Data></Cell></Row>""")
+                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                            if (refundAmountTotal > 0) {
+                                                                                                                                                                                                                                                                    appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Refund Amount</Data></Cell><Cell ss:StyleID="Bad"><Data ss:Type="Number">$refundAmountTotal</Data></Cell></Row>""")
+                                                                                                                                                                                                                                                                                    }
             if (ui.topBuilding != null) {
                 appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Top Building</Data></Cell><Cell ss:StyleID="Good"><Data ss:Type="String">${ui.topBuilding}</Data></Cell></Row>""")
             }
@@ -248,6 +266,14 @@ class DailyCollectionExportManager(private val context: Context) {
         canvas.drawText("Collection Rate: ${"%.1f".format(ui.overallCollectionRate)}%", margin, yPos, ratePaint)
         yPos += 18f
 
+                    // === Payment Status Breakdown (PDF) ===
+                    val pdfAllClients = ui.buildings.flatMap { it.clients }
+                                val pdfPaid = pdfAllClients.count { it.paymentStatus == "PAID" }
+                                            val pdfPartial = pdfAllClients.count { it.paymentStatus == "PARTIAL" }
+                                                        val pdfSettled = pdfAllClients.count { it.paymentStatus == "SETTLED" }
+                                                                    val pdfUnpaid = pdfAllClients.count { it.paymentStatus == "UNPAID" }
+                                                                                canvas.drawText("Status: Paid=$pdfPaid | Partial=$pdfPartial | Settled=$pdfSettled | Unpaid=$pdfUnpaid", margin, yPos, cellPaint)
+                                                                                            yPos += 12f
         // Building Summary Table
         checkNewPage()
         canvas.drawText("Collection by Building", margin, yPos, sectionPaint)
