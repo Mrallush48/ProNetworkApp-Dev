@@ -59,7 +59,8 @@ enum class PaymentReportFilter {
     ALL,
     PAID_ONLY,
     UNPAID_ONLY,
-    PARTIAL_ONLY
+    PARTIAL_ONLY,
+    SETTLED_ONLY
 }
 
 @Composable
@@ -334,6 +335,17 @@ fun PaymentExportDialog(
                         selected = statusFilter == PaymentReportFilter.PARTIAL_ONLY,
                         onClick = { statusFilter = PaymentReportFilter.PARTIAL_ONLY },
                         label = { Text("Half", style = MaterialTheme.typography.bodySmall) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    FilterChip(
+                        selected = statusFilter == PaymentReportFilter.SETTLED_ONLY,
+                        onClick = { statusFilter = PaymentReportFilter.SETTLED_ONLY },
+                        label = { Text("Settled", style = MaterialTheme.typography.bodySmall) },
                         modifier = Modifier.weight(1f)
                     )
                     FilterChip(

@@ -66,10 +66,12 @@ class PaymentsExportManager(private val context: Context) {
         val totalClients: Int,
         val paidCount: Int,
         val partialCount: Int,
+        val settledCount: Int,
         val unpaidCount: Int,
         val totalExpected: Double,
         val totalCollected: Double,
         val totalRemaining: Double,
+        val settledAmount: Double,
         val collectionRate: Double,
         val clients: List<ClientPaymentSummary>,
         val buildings: List<BuildingSummary>
@@ -156,6 +158,17 @@ class PaymentsExportManager(private val context: Context) {
                     "WARNING",
                     "$totalPartial Partial Payments",
                     "$totalPartial clients have partial payments — contact for remaining balance"
+                )
+            )
+        }
+
+        // 3.5 Settled clients
+        val totalSettled = data.months.maxOfOrNull { it.settledCount } ?: 0
+        if (totalSettled > 0) {
+            insights.add(
+                SmartInsight(
+                    "🔵", "INFO", "$totalSettled Settled Accounts",
+                    "$totalSettled clients have settled accounts (paid then partially refunded)"
                 )
             )
         }
@@ -312,18 +325,28 @@ class PaymentsExportManager(private val context: Context) {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         val txByClient = transactions.groupBy { it.clientId }
 
+        // جلب قائمة الـ paymentIds التي فيها حركات سالبة (Refund)
+        val allPaymentIds = allPaymentsForMonth.map { it.id }
+        val refundPaymentIds = if (allPaymentIds.isNotEmpty()) {
+            transactionRepo.getPaymentIdsWithRefunds(allPaymentIds).toSet()
+        } else emptySet()
+
         val clientSummaries = allPaymentsForMonth.map { payment ->
             val clientTxs = txByClient[payment.clientId] ?: emptyList()
             val totalPaid = clientTxs.sumOf { it.transactionAmount }
             val remaining = (payment.amount - totalPaid).coerceAtLeast(0.0)
+            val hasRefund = refundPaymentIds.contains(payment.id)
 
             val status = when {
                 totalPaid <= 0.0 -> "UNPAID"
+                totalPaid < payment.amount && hasRefund -> "SETTLED"
                 totalPaid < payment.amount -> "PARTIAL"
                 else -> "PAID"
             }
+
             val statusIcon = when (status) {
                 "PAID" -> "✅"
+                "SETTLED" -> "🔵"
                 "PARTIAL" -> "⚠️"
                 else -> "❌"
             }
@@ -411,6 +434,7 @@ class PaymentsExportManager(private val context: Context) {
                     PaymentReportFilter.PAID_ONLY -> c.status == "PAID"
                     PaymentReportFilter.UNPAID_ONLY -> c.status == "UNPAID"
                     PaymentReportFilter.PARTIAL_ONLY -> c.status == "PARTIAL"
+                    PaymentReportFilter.SETTLED_ONLY -> c.status == "SETTLED"
                 }
             }
 
@@ -427,18 +451,23 @@ class PaymentsExportManager(private val context: Context) {
         val totalRemaining = (totalExpected - totalCollected).coerceAtLeast(0.0)
         val rate = if (totalExpected > 0) (totalCollected / totalExpected) * 100 else 0.0
 
+        val settledClients = filtered.filter { it.status == "SETTLED" }
+        val settledAmount = settledClients.sumOf { it.totalPaid }
+
         return MonthData(
-            month,
-            filtered.size,
-            filtered.count { it.status == "PAID" },
-            filtered.count { it.status == "PARTIAL" },
-            filtered.count { it.status == "UNPAID" },
-            totalExpected,
-            totalCollected,
-            totalRemaining,
-            rate,
-            filtered.sortedBy { it.buildingName },
-            buildingSummaries
+            month = month,
+            totalClients = filtered.size,
+            paidCount = filtered.count { it.status == "PAID" },
+            partialCount = filtered.count { it.status == "PARTIAL" },
+            settledCount = settledClients.size,
+            unpaidCount = filtered.count { it.status == "UNPAID" },
+            totalExpected = totalExpected,
+            totalCollected = totalCollected,
+            totalRemaining = totalRemaining,
+            settledAmount = settledAmount,
+            collectionRate = rate,
+            clients = filtered.sortedBy { it.buildingName },
+            buildings = buildingSummaries
         )
     }
 
@@ -605,6 +634,7 @@ class PaymentsExportManager(private val context: Context) {
 
             val paidCount = data.months.sumOf { it.paidCount }
             val partialCount = data.months.sumOf { it.partialCount }
+            val settledCount = data.months.sumOf { it.settledCount }
             val unpaidCount = data.months.sumOf { it.unpaidCount }
 
             appendLine("""<Row><Cell ss:StyleID="SectionHeader" ss:MergeAcross="3"><Data ss:Type="String">Key Performance Indicators</Data></Cell></Row>""")
@@ -615,9 +645,9 @@ class PaymentsExportManager(private val context: Context) {
                     )
                 }%</Data></Cell></Row>"""
             )
-            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">✅ Fully Paid</Data></Cell><Cell ss:StyleID="Paid"><Data ss:Type="Number">$paidCount</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">⚠️ Partial</Data></Cell><Cell ss:StyleID="Partial"><Data ss:Type="Number">$partialCount</Data></Cell></Row>""")
-            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">❌ Unpaid</Data></Cell><Cell ss:StyleID="Unpaid"><Data ss:Type="Number">$unpaidCount</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">Avg/Month</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.avgMonthlyCollection}</Data></Cell></Row>""")
-            appendLine("""<Row></Row>""")
+            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">✅ Fully Paid</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">$paidCount</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">⚠️ Partial</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">$partialCount</Data></Cell></Row>""")
+            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">🔵 Settled</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">$settledCount</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="String">❌ Unpaid</Data></Cell><Cell ss:StyleID="Cell"><Data ss:Type="Number">$unpaidCount</Data></Cell></Row>""")
+            appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Avg/Month</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">${data.avgMonthlyCollection}</Data></Cell><Cell/><Cell/></Row>""")
 
             // --- Financial Summary ---
             appendLine("""<Row><Cell ss:StyleID="SectionHeader" ss:MergeAcross="3"><Data ss:Type="String">Financial Summary</Data></Cell></Row>""")
@@ -640,6 +670,13 @@ class PaymentsExportManager(private val context: Context) {
                     )
                 }%</Data></Cell><Cell/></Row>"""
             )
+
+            val grandSettledAmount = data.months.sumOf { it.settledAmount }
+            if (grandSettledAmount > 0) {
+                val settledPct = if (data.grandTotalExpected > 0) ((grandSettledAmount / data.grandTotalExpected) * 100) else 0.0
+                appendLine("""<Row><Cell ss:StyleID="Cell"><Data ss:Type="String">Settled Amount</Data></Cell><Cell ss:StyleID="Currency"><Data ss:Type="Number">$grandSettledAmount</Data></Cell><Cell ss:StyleID="TrendStable"><Data ss:Type="String">${"%.1f".format(settledPct)}%</Data></Cell><Cell/></Row>""")
+            }
+
             appendLine("""<Row></Row>""")
 
             // --- Trend (multi-month only) ---
@@ -758,6 +795,7 @@ class PaymentsExportManager(private val context: Context) {
                         val curStyle = getBldStyle(colorIdx, rowInBld, true)
                         val statusStyle = when (c.status) {
                             "PAID" -> "Paid"
+                            "SETTLED" -> "TrendStable"
                             "PARTIAL" -> "Partial"
                             else -> "Unpaid"
                         }
@@ -926,14 +964,14 @@ class PaymentsExportManager(private val context: Context) {
 
         val paidCount = data.months.sumOf { it.paidCount }
         val partialCount = data.months.sumOf { it.partialCount }
+        val settledCount = data.months.sumOf { it.settledCount }
         val unpaidCount = data.months.sumOf { it.unpaidCount }
 
+        val settledCountPdf = data.months.sumOf { it.settledCount }
         cellPaint.textSize = 7f
         canvas.drawText(
-            "Total Clients: ${data.grandTotalClients} | ✅ Fully Paid: $paidCount | ⚠  Partial: $partialCount | ✘ Unpaid: $unpaidCount",
-            margin,
-            yPos,
-            cellPaint
+            "Total Clients: ${data.grandTotalClients} | ✅ Paid: $paidCount | ⚠ Partial: $partialCount | 🔵 Settled: $settledCountPdf | ✘ Unpaid: $unpaidCount",
+            margin, yPos, cellPaint
         )
         yPos += 11f
         canvas.drawText(
@@ -948,6 +986,15 @@ class PaymentsExportManager(private val context: Context) {
             }%", margin, yPos, cellPaint
         )
         yPos += 11f
+
+        val grandSettledAmountPdf = data.months.sumOf { it.settledAmount }
+        if (grandSettledAmountPdf > 0) {
+            canvas.drawText(
+                "Settled Amount: ${"%.2f".format(grandSettledAmountPdf)} SAR",
+                margin, yPos, cellPaint
+            )
+            yPos += 11f
+        }
 
         if (data.months.size > 1) {
             canvas.drawText(
