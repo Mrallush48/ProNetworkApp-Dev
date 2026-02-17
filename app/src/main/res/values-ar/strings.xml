@@ -539,4 +539,25 @@
     <string name="client_edit_room_error">رقم الغرفة مطلوب</string>
 
 
+    <!-- Dashboard screen -->
+    <string name="screen_dashboard">الرئيسية</string>
+    <string name="dashboard_welcome">مرحباً بعودتك!</string>
+    <string name="dashboard_total_collection">إجمالي التحصيل</string>
+    <string name="dashboard_active_clients">العملاء النشطين</string>
+    <string name="dashboard_collection_rate">نسبة التحصيل</string>
+    <string name="dashboard_month_comparison">مقارنة الشهور</string>
+    <string name="dashboard_this_month">هذا الشهر</string>
+    <string name="dashboard_last_month">الشهر السابق</string>
+    <string name="dashboard_quick_actions">إجراءات سريعة</string>
+    <string name="dashboard_start_daily">بدء التحصيل</string>
+    <string name="dashboard_add_client">إضافة عميل</string>
+    <string name="dashboard_needs_attention">يحتاج انتباه</string>
+    <string name="dashboard_view_all">عرض الكل</string>
+    <string name="dashboard_remaining">المتبقي</string>
+    <string name="dashboard_recent_transactions">آخر العمليات</string>
+    <string name="status_paid">مدفوع</string>
+    <string name="status_partial">جزئي</string>
+    <string name="status_settled">مُسوَّى</string>
+    <string name="status_unpaid">غير مدفوع</string>
+
 </resources>
