@@ -571,6 +571,21 @@
 
     <string name="buildings_count_label">المباني: %1$d</string>
 
+    <!-- Phase 2.2: View Options / Sort -->
+    <string name="view_options_title">خيارات العرض</string>
+    <string name="view_options_sort_by">ترتيب حسب</string>
+    <string name="sort_name_asc">الاسم (أ → ي)</string>
+    <string name="sort_name_desc">الاسم (ي → أ)</string>
+    <string name="sort_unpaid_first">غير المدفوع أولاً</string>
+    <string name="sort_paid_first">المدفوع أولاً</string>
+    <string name="sort_price_high">السعر (الأعلى → الأقل)</string>
+    <string name="sort_price_low">السعر (الأقل → الأعلى)</string>
+    <string name="sort_by_building">حسب المبنى</string>
+    <string name="sort_by_package">حسب الباقة</string>
+    <string name="sort_by_start_month">حسب تاريخ البداية</string>
+    <string name="view_options_button">ترتيب</string>
+
+
 
 
 

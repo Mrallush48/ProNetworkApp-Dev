@@ -573,6 +573,21 @@
 
     <string name="buildings_count_label">Buildings: %1$d</string>
 
+    <!-- Phase 2.2: View Options / Sort -->
+    <string name="view_options_title">View Options</string>
+    <string name="view_options_sort_by">Sort by</string>
+    <string name="sort_name_asc">Name (A → Z)</string>
+    <string name="sort_name_desc">Name (Z → A)</string>
+    <string name="sort_unpaid_first">Unpaid first</string>
+    <string name="sort_paid_first">Paid first</string>
+    <string name="sort_price_high">Price (High → Low)</string>
+    <string name="sort_price_low">Price (Low → High)</string>
+    <string name="sort_by_building">By building</string>
+    <string name="sort_by_package">By package</string>
+    <string name="sort_by_start_month">By start month</string>
+    <string name="view_options_button">Sort</string>
+
+
 
 
 

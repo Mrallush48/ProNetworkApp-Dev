@@ -101,6 +101,9 @@ import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import com.pronetwork.app.export.ClientsImportManager
 import androidx.activity.compose.BackHandler
+import com.pronetwork.app.ui.components.SortOption
+import com.pronetwork.app.ui.components.ViewOptionsDialog
+import androidx.compose.foundation.layout.size
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -185,7 +188,7 @@ class MainActivity : ComponentActivity() {
         searchQuery: String,
         selectedFilterBuildingId: Int?,
         selectedFilterPackage: String?,
-        sortByStartMonth: Boolean
+        sortOption: SortOption
     ): List<Client> {
         val monthFilteredClients = clients.filter { client ->
             try {
@@ -198,16 +201,13 @@ class MainActivity : ComponentActivity() {
                     if (client.endMonth != null) {
                         val endDate = dateFormat.parse(client.endMonth)
                         endDate != null && viewDate.time < endDate.time
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                }
+                    } else { true }
+                } else { false }
             } catch (e: Exception) {
                 client.startMonth == selectedMonth
             }
         }
+
         val searchedClients = monthFilteredClients.filter { client ->
             if (searchQuery.isBlank()) return@filter true
             val q = searchQuery.trim()
@@ -215,20 +215,29 @@ class MainActivity : ComponentActivity() {
                     client.subscriptionNumber.contains(q, ignoreCase = true) ||
                     client.phone.contains(q, ignoreCase = true)
         }
+
         val buildingFilteredClients = searchedClients.filter { client ->
-            selectedFilterBuildingId?.let { bid ->
-                client.buildingId == bid
-            } ?: true
+            selectedFilterBuildingId?.let { bid -> client.buildingId == bid } ?: true
         }
+
         val packageFilteredClients = buildingFilteredClients.filter { client ->
-            selectedFilterPackage?.let { pkg ->
-                client.packageType == pkg
-            } ?: true
+            selectedFilterPackage?.let { pkg -> client.packageType == pkg } ?: true
         }
-        return if (sortByStartMonth) {
-            packageFilteredClients.sortedBy { it.startMonth }
-        } else {
-            packageFilteredClients
+
+        return when (sortOption) {
+            SortOption.NAME_ASC -> packageFilteredClients.sortedBy { it.name.lowercase() }
+            SortOption.NAME_DESC -> packageFilteredClients.sortedByDescending { it.name.lowercase() }
+            SortOption.STATUS_UNPAID_FIRST -> packageFilteredClients.sortedBy {
+                when { it.isPaid -> 3; else -> 0 }
+            }
+            SortOption.STATUS_PAID_FIRST -> packageFilteredClients.sortedByDescending {
+                when { it.isPaid -> 3; else -> 0 }
+            }
+            SortOption.PRICE_HIGH -> packageFilteredClients.sortedByDescending { it.price }
+            SortOption.PRICE_LOW -> packageFilteredClients.sortedBy { it.price }
+            SortOption.BUILDING -> packageFilteredClients.sortedBy { it.buildingId }
+            SortOption.PACKAGE -> packageFilteredClients.sortedBy { it.packageType.lowercase() }
+            SortOption.START_MONTH -> packageFilteredClients.sortedBy { it.startMonth }
         }
     }
 
@@ -282,7 +291,8 @@ class MainActivity : ComponentActivity() {
                 var searchQuery by remember { mutableStateOf("") }
                 var selectedFilterBuildingId by remember { mutableStateOf<Int?>(null) }
                 var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
-                var sortByStartMonth by remember { mutableStateOf(false) }
+                var selectedSortOption by remember { mutableStateOf(SortOption.NAME_ASC) }
+                var showViewOptionsDialog by remember { mutableStateOf(false) }
                 var showFilterDialog by remember { mutableStateOf(false) }
                 var showFilters by remember { mutableStateOf(false) }
                 var showDailyCollection by remember { mutableStateOf(false) }
@@ -410,7 +420,7 @@ class MainActivity : ComponentActivity() {
                     searchQuery = searchQuery,
                     selectedFilterBuildingId = selectedFilterBuildingId,
                     selectedFilterPackage = selectedFilterPackage,
-                    sortByStartMonth = sortByStartMonth
+                    sortOption = selectedSortOption
                 )
 
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -744,6 +754,34 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
 
+                                            // زر خيارات الفرز
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                TextButton(onClick = { showViewOptionsDialog = true }) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.FilterList,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(stringResource(R.string.view_options_button))
+                                                }
+                                            }
+
+                                            // حوار خيارات الفرز
+                                            if (showViewOptionsDialog) {
+                                                ViewOptionsDialog(
+                                                    currentSort = selectedSortOption,
+                                                    onSortSelected = { option ->
+                                                        selectedSortOption = option
+                                                        showViewOptionsDialog = false
+                                                    },
+                                                    onDismiss = { showViewOptionsDialog = false }
+                                                )
+                                            }
+
                                             val addClientRequiresBuildingMessage2 =
                                                 stringResource(R.string.clients_add_requires_building)
                                             ClientListScreen(
@@ -768,82 +806,43 @@ class MainActivity : ComponentActivity() {
                                             if (showFilterDialog) {
                                                 AlertDialog(
                                                     onDismissRequest = { showFilterDialog = false },
-                                                    title = {
-                                                        Text(
-                                                            stringResource(
-                                                                R.string.clients_filter_and_sort
-                                                            )
-                                                        )
-                                                    },
+                                                    title = { Text(stringResource(R.string.clients_filter_and_sort)) },
                                                     text = {
                                                         Column(
                                                             modifier = Modifier.fillMaxWidth(),
-                                                            verticalArrangement = Arrangement.spacedBy(
-                                                                8.dp
-                                                            )
+                                                            verticalArrangement = Arrangement.spacedBy(8.dp)
                                                         ) {
                                                             Text(
                                                                 stringResource(R.string.clients_filter_building_label),
                                                                 style = MaterialTheme.typography.labelMedium
                                                             )
-                                                            var buildingFilterExpanded by remember {
-                                                                mutableStateOf(
-                                                                    false
-                                                                )
-                                                            }
+                                                            var buildingFilterExpanded by remember { mutableStateOf(false) }
                                                             ExposedDropdownMenuBox(
                                                                 expanded = buildingFilterExpanded,
-                                                                onExpandedChange = {
-                                                                    buildingFilterExpanded =
-                                                                        !buildingFilterExpanded
-                                                                }
+                                                                onExpandedChange = { buildingFilterExpanded = !buildingFilterExpanded }
                                                             ) {
                                                                 OutlinedTextField(
                                                                     readOnly = true,
                                                                     value = selectedFilterBuildingId?.let { bid ->
                                                                         buildings.firstOrNull { it.id == bid }?.name
                                                                             ?: stringResource(R.string.clients_filter_all_buildings)
-                                                                    }
-                                                                        ?: stringResource(R.string.clients_filter_all_buildings),
+                                                                    } ?: stringResource(R.string.clients_filter_all_buildings),
                                                                     onValueChange = {},
-                                                                    trailingIcon = {
-                                                                        ExposedDropdownMenuDefaults.TrailingIcon(
-                                                                            expanded = buildingFilterExpanded
-                                                                        )
-                                                                    },
-                                                                    modifier = Modifier
-                                                                        .fillMaxWidth()
-                                                                        .menuAnchor()
+                                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = buildingFilterExpanded) },
+                                                                    modifier = Modifier.fillMaxWidth().menuAnchor()
                                                                 )
                                                                 ExposedDropdownMenu(
                                                                     expanded = buildingFilterExpanded,
-                                                                    onDismissRequest = {
-                                                                        buildingFilterExpanded =
-                                                                            false
-                                                                    }
+                                                                    onDismissRequest = { buildingFilterExpanded = false }
                                                                 ) {
                                                                     DropdownMenuItem(
-                                                                        text = {
-                                                                            Text(
-                                                                                stringResource(R.string.clients_filter_all_buildings)
-                                                                            )
-                                                                        },
-                                                                        onClick = {
-                                                                            selectedFilterBuildingId =
-                                                                                null
-                                                                            buildingFilterExpanded =
-                                                                                false
-                                                                        }
+                                                                        text = { Text(stringResource(R.string.clients_filter_all_buildings)) },
+                                                                        onClick = { selectedFilterBuildingId = null; buildingFilterExpanded = false }
                                                                     )
                                                                     buildings.forEach { b ->
                                                                         DropdownMenuItem(
                                                                             text = { Text(b.name) },
-                                                                            onClick = {
-                                                                                selectedFilterBuildingId =
-                                                                                    b.id
-                                                                                buildingFilterExpanded =
-                                                                                    false
-                                                                            }
+                                                                            onClick = { selectedFilterBuildingId = b.id; buildingFilterExpanded = false }
                                                                         )
                                                                     }
                                                                 }
@@ -853,87 +852,39 @@ class MainActivity : ComponentActivity() {
                                                                 stringResource(R.string.clients_filter_package_label),
                                                                 style = MaterialTheme.typography.labelMedium
                                                             )
-                                                            val packageTypes =
-                                                                clients.map { it.packageType }
-                                                                    .distinct()
-                                                                    .sorted()
-                                                            var packageFilterExpanded by remember {
-                                                                mutableStateOf(
-                                                                    false
-                                                                )
-                                                            }
+                                                            val packageTypes = clients.map { it.packageType }.distinct().sorted()
+                                                            var packageFilterExpanded by remember { mutableStateOf(false) }
                                                             ExposedDropdownMenuBox(
                                                                 expanded = packageFilterExpanded,
-                                                                onExpandedChange = {
-                                                                    packageFilterExpanded =
-                                                                        !packageFilterExpanded
-                                                                }
+                                                                onExpandedChange = { packageFilterExpanded = !packageFilterExpanded }
                                                             ) {
                                                                 OutlinedTextField(
                                                                     readOnly = true,
-                                                                    value = selectedFilterPackage
-                                                                        ?: stringResource(R.string.clients_filter_all_packages),
+                                                                    value = selectedFilterPackage ?: stringResource(R.string.clients_filter_all_packages),
                                                                     onValueChange = {},
-                                                                    trailingIcon = {
-                                                                        ExposedDropdownMenuDefaults.TrailingIcon(
-                                                                            expanded = packageFilterExpanded
-                                                                        )
-                                                                    },
-                                                                    modifier = Modifier
-                                                                        .fillMaxWidth()
-                                                                        .menuAnchor()
+                                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = packageFilterExpanded) },
+                                                                    modifier = Modifier.fillMaxWidth().menuAnchor()
                                                                 )
                                                                 ExposedDropdownMenu(
                                                                     expanded = packageFilterExpanded,
-                                                                    onDismissRequest = {
-                                                                        packageFilterExpanded =
-                                                                            false
-                                                                    }
+                                                                    onDismissRequest = { packageFilterExpanded = false }
                                                                 ) {
                                                                     DropdownMenuItem(
-                                                                        text = {
-                                                                            Text(
-                                                                                stringResource(R.string.clients_filter_all_packages)
-                                                                            )
-                                                                        },
-                                                                        onClick = {
-                                                                            selectedFilterPackage =
-                                                                                null
-                                                                            packageFilterExpanded =
-                                                                                false
-                                                                        }
+                                                                        text = { Text(stringResource(R.string.clients_filter_all_packages)) },
+                                                                        onClick = { selectedFilterPackage = null; packageFilterExpanded = false }
                                                                     )
                                                                     packageTypes.forEach { pkg ->
                                                                         DropdownMenuItem(
                                                                             text = { Text(pkg) },
-                                                                            onClick = {
-                                                                                selectedFilterPackage =
-                                                                                    pkg
-                                                                                packageFilterExpanded =
-                                                                                    false
-                                                                            }
+                                                                            onClick = { selectedFilterPackage = pkg; packageFilterExpanded = false }
                                                                         )
                                                                     }
                                                                 }
                                                             }
-
-                                                            Row(
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                            ) {
-                                                                Checkbox(
-                                                                    checked = sortByStartMonth,
-                                                                    onCheckedChange = {
-                                                                        sortByStartMonth = it
-                                                                    }
-                                                                )
-                                                                Text(stringResource(R.string.clients_filter_sort_by_start))
-                                                            }
                                                         }
                                                     },
                                                     confirmButton = {
-                                                        Button(onClick = {
-                                                            showFilterDialog = false
-                                                        }) {
+                                                        Button(onClick = { showFilterDialog = false }) {
                                                             Text(stringResource(R.string.clients_filter_apply))
                                                         }
                                                     },
@@ -941,7 +892,6 @@ class MainActivity : ComponentActivity() {
                                                         OutlinedButton(onClick = {
                                                             selectedFilterBuildingId = null
                                                             selectedFilterPackage = null
-                                                            sortByStartMonth = false
                                                             showFilterDialog = false
                                                         }) {
                                                             Text(stringResource(R.string.clients_filter_clear))

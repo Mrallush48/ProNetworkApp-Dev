@@ -78,6 +78,12 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.pronetwork.app.ui.components.SortOption
+import com.pronetwork.app.ui.components.ViewOptionsDialog
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.FilterList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +110,9 @@ fun BuildingDetailsScreen(
     var showDeleteClientDialog by remember { mutableStateOf(false) }
     var clientToDelete by remember { mutableStateOf<Client?>(null) }
     var showPaymentDialog by remember { mutableStateOf<Triple<Client, String, Double>?>(null) }
+
+    var selectedSortOption by remember { mutableStateOf(SortOption.NAME_ASC) }
+    var showViewOptionsDialog by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -267,18 +276,41 @@ fun BuildingDetailsScreen(
                 }
             }
 
-            // عنوان قسم العملاء
+            // عنوان قسم العملاء + زر الفرز
             item {
-                Text(
-                    text = stringResource(R.string.building_details_clients_in_month, selectedMonth),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.building_details_clients_in_month, selectedMonth),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    TextButton(onClick = { showViewOptionsDialog = true }) {
+                        Icon(Icons.Filled.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.view_options_button))
+                    }
+                }
             }
 
             // ===== قائمة العملاء بالتصميم الجديد =====
-            items(buildingClients) { client ->
-                val status by paymentViewModel.getClientMonthStatus(client.id, selectedMonth).observeAsState(initial = PaymentStatus.UNPAID)
+            items(
+                when (selectedSortOption) {
+                    SortOption.NAME_ASC -> buildingClients.sortedBy { it.name.lowercase() }
+                    SortOption.NAME_DESC -> buildingClients.sortedByDescending { it.name.lowercase() }
+                    SortOption.STATUS_UNPAID_FIRST -> buildingClients.sortedBy { if (it.isPaid) 3 else 0 }
+                    SortOption.STATUS_PAID_FIRST -> buildingClients.sortedByDescending { if (it.isPaid) 3 else 0 }
+                    SortOption.PRICE_HIGH -> buildingClients.sortedByDescending { it.price }
+                    SortOption.PRICE_LOW -> buildingClients.sortedBy { it.price }
+                    SortOption.BUILDING -> buildingClients.sortedBy { it.buildingId }
+                    SortOption.PACKAGE -> buildingClients.sortedBy { it.packageType.lowercase() }
+                    SortOption.START_MONTH -> buildingClients.sortedBy { it.startMonth }
+                }
+            ) { client ->
+            val status by paymentViewModel.getClientMonthStatus(client.id, selectedMonth).observeAsState(initial = PaymentStatus.UNPAID)
                 val payment by paymentViewModel.getPaymentLive(client.id, selectedMonth).observeAsState(null)
                 val monthAmount = payment?.amount ?: client.price
 
@@ -436,6 +468,18 @@ fun BuildingDetailsScreen(
                     }
                 }
             }
+        }
+
+        // حوار خيارات الفرز
+        if (showViewOptionsDialog) {
+            ViewOptionsDialog(
+                currentSort = selectedSortOption,
+                onSortSelected = { option ->
+                    selectedSortOption = option
+                    showViewOptionsDialog = false
+                },
+                onDismiss = { showViewOptionsDialog = false }
+            )
         }
 
         // حوار إضافة عميل
