@@ -425,10 +425,7 @@ class MainActivity : ComponentActivity() {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
                         ) {
-                            NavigationBarItem(
-                                selected = currentScreen == "clients",
-                                onClick = {
-                    // Dashboard Tab
+                                                // Dashboard Tab
                     NavigationBarItem(
                         selected = currentScreen == "dashboard",
                         onClick = {
@@ -440,14 +437,18 @@ class MainActivity : ComponentActivity() {
                         icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
                         label = { Text(stringResource(R.string.screen_dashboard)) }
                     )
-                                    currentScreen = "clients"
-                                    selectedBuilding = null
-                                    selectedClient = null
-                                    showDailyCollection = false
-                                },
-                                icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                                label = { Text(stringResource(R.string.screen_clients)) }
-                            )
+                    // Clients Tab
+                    NavigationBarItem(
+                        selected = currentScreen == "clients",
+                        onClick = {
+                            currentScreen = "clients"
+                            selectedBuilding = null
+                            selectedClient = null
+                            showDailyCollection = false
+                        },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                        label = { Text(stringResource(R.string.screen_clients)) }
+                    )
                             NavigationBarItem(
                                 selected = currentScreen == "buildings",
                                 onClick = {
@@ -509,6 +510,13 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
+                    // Load stats for Dashboard and Stats screens
+                    LaunchedEffect(selectedMonth, refreshTrigger) {
+                        paymentViewModel.setStatsMonth(selectedMonth)
+                    }
+                    val clientsCount by clientViewModel.clientsCount.observeAsState(0)
+                    val monthStats by paymentViewModel.monthStats.observeAsState(null)
+
                         when {
                         // ===== Dashboard =====
                         currentScreen == "dashboard" -> {
@@ -1352,12 +1360,6 @@ class MainActivity : ComponentActivity() {
 
                             // ===== stats =====
                             currentScreen == "stats" -> {
-                                LaunchedEffect(selectedMonth, refreshTrigger) {
-                                    paymentViewModel.setStatsMonth(selectedMonth)
-                                }
-
-                                val clientsCount by clientViewModel.clientsCount.observeAsState(0)
-                                val monthStats by paymentViewModel.monthStats.observeAsState(null)
                                 if (!showDailyCollection) {
                                     Scaffold(
                                         topBar = {
