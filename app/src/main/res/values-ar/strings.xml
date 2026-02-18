@@ -565,5 +565,13 @@
     <string name="daily_show_today_only">\uD83D\uDC65 عمليات اليوم فقط</string>
     <string name="daily_show_all_clients">\uD83D\uDCCB عرض كل العملاء</string>
 
+    <!-- Phase 2: Smart Colors -->
+    <string name="clients_remaining_amount">متبقي: %1$s</string>
+    <string name="clients_not_paid_yet">لم يدفع</string>
+
+    <string name="buildings_count_label">المباني: %1$d</string>
+
+
+
 
 </resources>

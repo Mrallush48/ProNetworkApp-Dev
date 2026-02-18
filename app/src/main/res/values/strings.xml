@@ -567,5 +567,13 @@
     <string name="daily_show_today_only">\uD83D\uDC65 Show Today\'s Transactions Only</string>
     <string name="daily_show_all_clients">\uD83D\uDCCB Show All Clients</string>
 
+    <!-- Phase 2: Smart Colors -->
+    <string name="clients_remaining_amount">Remaining: %1$s</string>
+    <string name="clients_not_paid_yet">Not paid</string>
+
+    <string name="buildings_count_label">Buildings: %1$d</string>
+
+
+
 
 </resources>
