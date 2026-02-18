@@ -549,6 +549,31 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         return result
     }
 
+    // ================== Dashboard/Sort: حالة الدفع لكل العملاء في شهر معين ==================
+    fun getAllClientStatusesForMonth(clientIds: List<Int>, month: String): LiveData<Map<Int, PaymentStatus>> {
+        val result = MutableLiveData<Map<Int, PaymentStatus>>()
+        viewModelScope.launch {
+            val statusMap = mutableMapOf<Int, PaymentStatus>()
+            for (clientId in clientIds) {
+                val payment = paymentRepository.getPayment(clientId, month)
+                if (payment == null) {
+                    statusMap[clientId] = PaymentStatus.UNPAID
+                    continue
+                }
+                val totalPaid = transactionRepository.getTotalPaidForPayment(payment.id)
+                val hasRefund = transactionRepository.hasNegativeTransaction(payment.id)
+                statusMap[clientId] = when {
+                    totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                    totalPaid < payment.amount && hasRefund -> PaymentStatus.SETTLED
+                    totalPaid < payment.amount -> PaymentStatus.PARTIAL
+                    else -> PaymentStatus.FULL
+                }
+            }
+            result.postValue(statusMap)
+        }
+        return result
+    }
+
 
     // ================== استعلامات أساسية ==================
 
@@ -985,8 +1010,8 @@ enum class DailyPerformanceLevel { EXCELLENT, GOOD, POOR }
 
 fun getDailyPerformance(totalAmount: Double): DailyPerformanceLevel {
     return when {
-        totalAmount >= 4000.0 -> DailyPerformanceLevel.EXCELLENT
-        totalAmount >= 3000.0 -> DailyPerformanceLevel.GOOD
+        totalAmount >= 2000.0 -> DailyPerformanceLevel.EXCELLENT
+        totalAmount >= 1000.0 -> DailyPerformanceLevel.GOOD
         else -> DailyPerformanceLevel.POOR
     }
 }
