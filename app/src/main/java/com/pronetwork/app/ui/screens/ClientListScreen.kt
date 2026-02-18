@@ -110,6 +110,9 @@ fun ClientListScreen(
             }
         } else {
             val listState = rememberLazyListState()
+            LaunchedEffect(sortOption) {
+                listState.animateScrollToItem(0)
+            }
             // جلب حالات الدفع لكل العملاء دفعة واحدة
             val clientIds = remember(clients) { clients.map { it.id } }
             val allStatuses by paymentViewModel
