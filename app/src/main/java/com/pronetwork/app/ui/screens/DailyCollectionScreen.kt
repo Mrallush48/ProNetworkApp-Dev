@@ -246,6 +246,81 @@ fun DailyCollectionScreen(
             }
         }
 
+        // بعد الـ Row الحالية للـ 3 كروت، أضف Row جديدة:
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Settled Amount Card
+                val settledAmount = allClients
+                    .filter { it.paymentStatus == "SETTLED" }
+                    .sumOf { it.totalPaid }
+                val refundAmount = allClients
+                    .flatMap { it.transactions }
+                    .filter { it.type == "Refund" }
+                    .sumOf { kotlin.math.abs(it.amount) }
+
+                if (settledAmount > 0.0) {
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE3F2FD)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.daily_settled_amount_label),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF1565C0)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = String.format("%.2f", settledAmount),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1565C0)
+                            )
+                        }
+                    }
+                }
+
+                if (refundAmount > 0.0) {
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.daily_refund_amount_label),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFE65100)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = String.format("%.2f", refundAmount),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFE65100)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // ===== NEW: Payment Status Breakdown =====
         if (allClients.isNotEmpty()) {
             item {
@@ -569,6 +644,23 @@ private fun BuildingDetailCard(
                     )
                 }
             }
+            val buildingPaid = building.clients.count { it.paymentStatus == "PAID" }
+            val buildingPartial = building.clients.count { it.paymentStatus == "PARTIAL" }
+            val buildingSettled = building.clients.count { it.paymentStatus == "SETTLED" }
+            val buildingUnpaid = building.clients.count { it.paymentStatus == "UNPAID" }
+
+            if (building.clients.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    MiniStatusChip("✅", buildingPaid, Color(0xFF2E7D32))
+                    MiniStatusChip("⚠️", buildingPartial, Color(0xFFF57F17))
+                    MiniStatusChip("⚡", buildingSettled, Color(0xFF1565C0))
+                    MiniStatusChip("❌", buildingUnpaid, Color(0xFFC62828))
+                }
+            }
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),
@@ -610,8 +702,10 @@ private fun BuildingDetailCard(
                         Text(String.format("%.2f", building.totalAmount), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         Text("", modifier = Modifier.weight(1f))
                     }
-                }
-            }
+
+                }  // ← نهاية Column الخاصة بـ AnimatedVisibility
+            }  // ← نهاية AnimatedVisibility
+
         }
     }
 }
@@ -695,6 +789,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 modifier = Modifier.weight(0.7f),
                 style = MaterialTheme.typography.bodySmall
             )
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -717,6 +812,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                     fontSize = 9.sp
                 )
             }
+
             Text(
                 text = client.transactionTime,
                 modifier = Modifier.weight(1f),
@@ -724,6 +820,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
         if (hasRefundToday) {
             client.transactions.filter { it.type == "Refund" }.forEach { refund ->
                 Row(
@@ -751,6 +848,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 }
             }
         }
+
         if (client.notes.isNotBlank()) {
             Text(
                 text = client.notes,
@@ -762,5 +860,20 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
+    }
+}
+@Composable
+private fun MiniStatusChip(emoji: String, count: Int, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(text = emoji, fontSize = 10.sp)
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
     }
 }

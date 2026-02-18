@@ -585,6 +585,11 @@
     <string name="sort_by_start_month">حسب تاريخ البداية</string>
     <string name="view_options_button">ترتيب</string>
 
+    <string name="daily_settled_amount_label">المبلغ المُسوَّى</string>
+    <string name="daily_refund_amount_label">المسترجعات</string>
+    <string name="daily_settled_waived">تم إعفاء: %1$s ريال</string>
+
+
 
 
 

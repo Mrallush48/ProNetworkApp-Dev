@@ -587,6 +587,11 @@
     <string name="sort_by_start_month">By start month</string>
     <string name="view_options_button">Sort</string>
 
+    <!-- Daily Collection SETTLED Enhancement -->
+    <string name="daily_settled_amount_label">Settled Amount</string>
+    <string name="daily_refund_amount_label">Refunds</string>
+    <string name="daily_settled_waived">Waived: %1$s SAR</string>
+
 
 
 
