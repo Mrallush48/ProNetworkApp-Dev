@@ -32,6 +32,8 @@ import com.pronetwork.app.viewmodel.PaymentViewModel
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 
 // ============ ألوان حالة الدفع ============
 private val PaidColor = Color(0xFF4CAF50)
@@ -104,11 +106,16 @@ fun ClientListScreen(
                 Text(text = stringResource(R.string.clients_no_clients_in_month))
             }
         } else {
+            val listState = rememberLazyListState()
+            LaunchedEffect(clients) {
+                listState.animateScrollToItem(0)
+            }
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(clients, key = { it.id }) { client ->
+            items(clients, key = { it.id }) { client ->
                     val buildingName =
                         buildings.firstOrNull { it.id == client.buildingId }?.name
                             ?: stringResource(R.string.clients_building_none)

@@ -84,6 +84,8 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,7 +184,12 @@ fun BuildingDetailsScreen(
             }
         }
     ) { padding ->
+        val listState = rememberLazyListState()
+        LaunchedEffect(selectedSortOption, selectedMonth) {
+            listState.animateScrollToItem(0)
+        }
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
@@ -301,8 +308,12 @@ fun BuildingDetailsScreen(
                 when (selectedSortOption) {
                     SortOption.NAME_ASC -> buildingClients.sortedBy { it.name.lowercase() }
                     SortOption.NAME_DESC -> buildingClients.sortedByDescending { it.name.lowercase() }
-                    SortOption.STATUS_UNPAID_FIRST -> buildingClients.sortedBy { if (it.isPaid) 3 else 0 }
-                    SortOption.STATUS_PAID_FIRST -> buildingClients.sortedByDescending { if (it.isPaid) 3 else 0 }
+                    SortOption.STATUS_UNPAID_FIRST -> buildingClients.sortedWith(
+                        compareBy<Client> { it.isPaid }.thenBy { it.name.lowercase() }
+                    )
+                    SortOption.STATUS_PAID_FIRST -> buildingClients.sortedWith(
+                        compareByDescending<Client> { it.isPaid }.thenBy { it.name.lowercase() }
+                    )
                     SortOption.PRICE_HIGH -> buildingClients.sortedByDescending { it.price }
                     SortOption.PRICE_LOW -> buildingClients.sortedBy { it.price }
                     SortOption.BUILDING -> buildingClients.sortedBy { it.buildingId }
@@ -310,6 +321,7 @@ fun BuildingDetailsScreen(
                     SortOption.START_MONTH -> buildingClients.sortedBy { it.startMonth }
                 }
             ) { client ->
+
             val status by paymentViewModel.getClientMonthStatus(client.id, selectedMonth).observeAsState(initial = PaymentStatus.UNPAID)
                 val payment by paymentViewModel.getPaymentLive(client.id, selectedMonth).observeAsState(null)
                 val monthAmount = payment?.amount ?: client.price
