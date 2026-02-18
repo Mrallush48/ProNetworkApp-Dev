@@ -34,6 +34,9 @@ import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
+import com.pronetwork.app.ui.components.SortOption
+import androidx.compose.runtime.mutableStateMapOf
+
 
 // ============ ألوان حالة الدفع ============
 private val PaidColor = Color(0xFF4CAF50)
@@ -56,6 +59,7 @@ fun ClientListScreen(
     buildings: List<Building>,
     selectedMonth: String,
     paymentViewModel: PaymentViewModel,
+    sortOption: SortOption,
     onAddClient: () -> Unit,
     onClientClick: (Client) -> Unit
 ) {
@@ -107,15 +111,43 @@ fun ClientListScreen(
             }
         } else {
             val listState = rememberLazyListState()
-            LaunchedEffect(clients) {
+            // تجميع حالة الدفع لكل عميل
+            val clientStatusMap = remember { mutableStateMapOf<Int, PaymentStatus>() }
+
+            val sortedClients = remember(clients, clientStatusMap.size, sortOption) {
+                when (sortOption) {
+                    SortOption.STATUS_UNPAID_FIRST -> clients.sortedBy { client ->
+                        when (clientStatusMap[client.id]) {
+                            PaymentStatus.UNPAID -> 0
+                            PaymentStatus.PARTIAL -> 1
+                            PaymentStatus.SETTLED -> 2
+                            PaymentStatus.FULL -> 3
+                            null -> 0
+                        }
+                    }
+                    SortOption.STATUS_PAID_FIRST -> clients.sortedBy { client ->
+                        when (clientStatusMap[client.id]) {
+                            PaymentStatus.FULL -> 0
+                            PaymentStatus.SETTLED -> 1
+                            PaymentStatus.PARTIAL -> 2
+                            PaymentStatus.UNPAID -> 3
+                            null -> 3
+                        }
+                    }
+                    else -> clients
+                }
+            }
+
+            LaunchedEffect(sortedClients) {
                 listState.animateScrollToItem(0)
             }
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-            items(clients, key = { it.id }) { client ->
+                items(sortedClients, key = { it.id }) { client ->
                     val buildingName =
                         buildings.firstOrNull { it.id == client.buildingId }?.name
                             ?: stringResource(R.string.clients_building_none)
@@ -123,6 +155,11 @@ fun ClientListScreen(
                     val status by paymentViewModel
                         .getClientMonthStatus(client.id, selectedMonth)
                         .observeAsState(initial = PaymentStatus.UNPAID)
+
+                    // تحديث خريطة الحالات
+                    LaunchedEffect(status) {
+                        clientStatusMap[client.id] = status
+                    }
 
                     val payment by paymentViewModel
                         .getPaymentLive(client.id, selectedMonth)

@@ -308,12 +308,8 @@ fun BuildingDetailsScreen(
                 when (selectedSortOption) {
                     SortOption.NAME_ASC -> buildingClients.sortedBy { it.name.lowercase() }
                     SortOption.NAME_DESC -> buildingClients.sortedByDescending { it.name.lowercase() }
-                    SortOption.STATUS_UNPAID_FIRST -> buildingClients.sortedWith(
-                        compareBy<Client> { it.isPaid }.thenBy { it.name.lowercase() }
-                    )
-                    SortOption.STATUS_PAID_FIRST -> buildingClients.sortedWith(
-                        compareByDescending<Client> { it.isPaid }.thenBy { it.name.lowercase() }
-                    )
+                    SortOption.STATUS_UNPAID_FIRST -> buildingClients
+                    SortOption.STATUS_PAID_FIRST -> buildingClients
                     SortOption.PRICE_HIGH -> buildingClients.sortedByDescending { it.price }
                     SortOption.PRICE_LOW -> buildingClients.sortedBy { it.price }
                     SortOption.BUILDING -> buildingClients.sortedBy { it.buildingId }

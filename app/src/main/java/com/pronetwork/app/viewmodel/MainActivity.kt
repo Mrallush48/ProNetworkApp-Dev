@@ -227,12 +227,8 @@ class MainActivity : ComponentActivity() {
         return when (sortOption) {
             SortOption.NAME_ASC -> packageFilteredClients.sortedBy { it.name.lowercase() }
             SortOption.NAME_DESC -> packageFilteredClients.sortedByDescending { it.name.lowercase() }
-            SortOption.STATUS_UNPAID_FIRST -> packageFilteredClients.sortedWith(
-                compareBy<Client> { it.isPaid }.thenBy { it.name.lowercase() }
-            )
-            SortOption.STATUS_PAID_FIRST -> packageFilteredClients.sortedWith(
-                compareByDescending<Client> { it.isPaid }.thenBy { it.name.lowercase() }
-            )
+            SortOption.STATUS_UNPAID_FIRST -> packageFilteredClients
+            SortOption.STATUS_PAID_FIRST -> packageFilteredClients
             SortOption.PRICE_HIGH -> packageFilteredClients.sortedByDescending { it.price }
             SortOption.PRICE_LOW -> packageFilteredClients.sortedBy { it.price }
             SortOption.BUILDING -> packageFilteredClients.sortedBy { it.buildingId }
@@ -789,8 +785,9 @@ class MainActivity : ComponentActivity() {
                                                 buildings = buildings,
                                                 selectedMonth = selectedMonth,
                                                 paymentViewModel = paymentViewModel,
+                                                sortOption = selectedSortOption,
                                                 onAddClient = {
-                                                    if (buildings.isNotEmpty()) {
+                                                if (buildings.isNotEmpty()) {
                                                         showClientDialog = true
                                                     } else {
                                                         scope.launch {
