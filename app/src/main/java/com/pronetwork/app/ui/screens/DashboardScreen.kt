@@ -67,13 +67,12 @@ fun DashboardScreen(
         maximumFractionDigits = 0
     }
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             // ===== Welcome Card with Date =====
             item {
@@ -158,13 +157,12 @@ fun DashboardScreen(
             }
         }
     }
-}
 
 // =============== Welcome Card ===============
 @Composable
 private fun WelcomeCard() {
     val today = Date()
-    val gregorianFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("ar"))
+    val gregorianFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault())
     val gregorianDate = gregorianFormat.format(today)
 
     // Hijri date calculation

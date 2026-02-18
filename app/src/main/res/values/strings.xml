@@ -562,4 +562,10 @@
     <string name="status_settled">Settled</string>
     <string name="status_unpaid">Unpaid</string>
 
+    <!-- Daily Collection - missing keys -->
+    <string name="daily_payment_status">Payment Status</string>
+    <string name="daily_show_today_only">\uD83D\uDC65 Show Today\'s Transactions Only</string>
+    <string name="daily_show_all_clients">\uD83D\uDCCB Show All Clients</string>
+
+
 </resources>

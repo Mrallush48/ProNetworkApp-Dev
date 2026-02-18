@@ -257,8 +257,7 @@ fun DailyCollectionScreen(
                     elevation = CardDefaults.cardElevation(1.dp)
                 ) {
                     Column(Modifier.padding(12.dp)) {
-                        Text(
-                            text = "Payment Status",
+                        Text(text = stringResource(R.string.daily_payment_status),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
@@ -269,28 +268,28 @@ fun DailyCollectionScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             StatusBadge(
-                                label = "Paid",
+                                label = stringResource(R.string.status_paid),
                                 count = paidCount,
                                 color = Color(0xFF2E7D32),
                                 bgColor = Color(0xFFE8F5E9),
                                 modifier = Modifier.weight(1f)
                             )
                             StatusBadge(
-                                label = "Partial",
+                                label = stringResource(R.string.status_partial),
                                 count = partialCount,
                                 color = Color(0xFFF57F17),
                                 bgColor = Color(0xFFFFF8E1),
                                 modifier = Modifier.weight(1f)
                             )
                             StatusBadge(
-                                label = "Settled",
+                                label = stringResource(R.string.status_settled),
                                 count = settledCount,
                                 color = Color(0xFF1565C0),
                                 bgColor = Color(0xFFE3F2FD),
                                 modifier = Modifier.weight(1f)
                             )
                             StatusBadge(
-                                label = "Unpaid",
+                                label = stringResource(R.string.status_unpaid),
                                 count = unpaidCount,
                                 color = Color(0xFFC62828),
                                 bgColor = Color(0xFFFFEBEE),
@@ -670,11 +669,15 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                         fontSize = 10.sp
                     )
                     if (client.paymentStatus.isNotEmpty()) {
+                        val paidLabel = stringResource(R.string.status_paid)
+                        val settledLabel = stringResource(R.string.status_settled)
+                        val partialLabel = stringResource(R.string.status_partial)
+                        val unpaidLabel = stringResource(R.string.status_unpaid)
                         val (statusText, statusColor) = when (client.paymentStatus) {
-                            "PAID" -> "Paid" to Color(0xFF2E7D32)
-                            "SETTLED" -> "Settled" to Color(0xFF1565C0)
-                            "PARTIAL" -> "Partial" to Color(0xFFF57F17)
-                            else -> "Unpaid" to Color(0xFFC62828)
+                            "PAID" -> paidLabel to Color(0xFF2E7D32)
+                            "SETTLED" -> settledLabel to Color(0xFF1565C0)
+                            "PARTIAL" -> partialLabel to Color(0xFFF57F17)
+                            else -> unpaidLabel to Color(0xFFC62828)
                         }
                         Text(
                             text = statusText,
@@ -686,6 +689,7 @@ private fun ClientRow(client: DailyClientCollection, isEven: Boolean) {
                     }
                 }
             }
+
             Text(
                 text = client.roomNumber ?: "-",
                 modifier = Modifier.weight(0.7f),

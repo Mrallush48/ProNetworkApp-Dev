@@ -560,4 +560,10 @@
     <string name="status_settled">مُسوَّى</string>
     <string name="status_unpaid">غير مدفوع</string>
 
+    <!-- Daily Collection -->
+    <string name="daily_payment_status">حالة الدفع</string>
+    <string name="daily_show_today_only">\uD83D\uDC65 عمليات اليوم فقط</string>
+    <string name="daily_show_all_clients">\uD83D\uDCCB عرض كل العملاء</string>
+
+
 </resources>
