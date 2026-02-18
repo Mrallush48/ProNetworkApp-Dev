@@ -339,17 +339,28 @@ fun BuildingDetailsScreen(
 
                             Spacer(Modifier.height(8.dp))
 
-                            // رقم الاشتراك + الهاتف
+                            // رقم الاشتراك + رقم الغرفة
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Column(Modifier.weight(1f)) {
                                     Text(text = stringResource(R.string.building_details_client_subscription_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                                     Text(text = client.subscriptionNumber, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                                 Column(Modifier.weight(1f)) {
-                                    Text(text = stringResource(R.string.building_details_client_phone_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                                    Text(text = client.phone, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(text = stringResource(R.string.room), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                    Text(text = client.roomNumber ?: "-", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
+
+                            Spacer(Modifier.height(4.dp))
+
+                            // الباقة
+                            Row(Modifier.fillMaxWidth()) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(text = stringResource(R.string.clients_item_package_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                    Text(text = client.packageType, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+
 
                             Spacer(Modifier.height(8.dp))
 
