@@ -16,6 +16,8 @@ import com.pronetwork.app.repository.PaymentRepository
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import kotlinx.coroutines.launch
 import com.pronetwork.app.data.DailyTransactionItem
+import androidx.lifecycle.switchMap
+import com.pronetwork.app.data.PaymentTransactionDao
 
 // enum جديد لحالة الدفع
 enum class PaymentStatus {
@@ -443,10 +445,110 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    // ================== إحصائيات الشهر السابق (للمقارنة في Dashboard) ==================
+    val previousMonthStats: LiveData<MonthStats> = _selectedStatsMonth.switchMap { month ->
+        val previousMonth = calculatePreviousMonth(month)
+        val paymentsLive = paymentRepository.getPaymentsByMonth(previousMonth)
+        MediatorLiveData<MonthStats>().apply {
+            var payments: List<Payment>? = null
+            fun update() {
+                val ps = payments ?: return
+                viewModelScope.launch {
+                    val ids = ps.map { it.id }
+                    val totalsMap = transactionRepository.getTotalsForPayments(ids)
+                    val refundIds = transactionRepository.getPaymentIdsWithRefunds(ids).toSet()
+
+                    var fullPaidCount = 0
+                    var partialPaidCount = 0
+                    var settledCount = 0
+                    var unpaidCount = 0
+                    var totalRemaining = 0.0
+                    var totalPaidAmount = 0.0
+                    var settledAmount = 0.0
+
+                    ps.forEach { p ->
+                        val paidForThis = totalsMap[p.id] ?: 0.0
+                        val remainingForThis = (p.amount - paidForThis).coerceAtLeast(0.0)
+                        totalPaidAmount += paidForThis
+                        val hasRefund = refundIds.contains(p.id)
+                        when {
+                            paidForThis <= 0.0 -> {
+                                unpaidCount += 1
+                                totalRemaining += p.amount
+                            }
+                            paidForThis < p.amount && hasRefund -> {
+                                settledCount += 1
+                                settledAmount += paidForThis
+                            }
+                            paidForThis < p.amount -> {
+                                partialPaidCount += 1
+                                totalRemaining += remainingForThis
+                            }
+                            else -> {
+                                fullPaidCount += 1
+                            }
+                        }
+                    }
+                    postValue(
+                        MonthStats(
+                            month = previousMonth,
+                            paidCount = fullPaidCount,
+                            partiallyPaidCount = partialPaidCount,
+                            settledCount = settledCount,
+                            unpaidCount = unpaidCount,
+                            totalPaidAmount = totalPaidAmount,
+                            totalUnpaidAmount = totalRemaining,
+                            settledAmount = settledAmount
+                        )
+                    )
+                }
+            }
+            addSource(paymentsLive) {
+                payments = it ?: emptyList()
+                update()
+            }
+        }
+    }
+
+    private fun calculatePreviousMonth(month: String): String {
+        return try {
+            val parts = month.split("-")
+            val year = parts[0].toInt()
+            val m = parts[1].toInt()
+            if (m == 1) {
+                String.format("%04d-%02d", year - 1, 12)
+            } else {
+                String.format("%04d-%02d", year, m - 1)
+            }
+        } catch (e: Exception) {
+            month
+        }
+    }
 
     fun setStatsMonth(month: String) {
         _selectedStatsMonth.value = month
     }
+
+    // ================== Dashboard: آخر الحركات ==================
+    fun getRecentTransactions(limit: Int = 10): LiveData<List<PaymentTransactionDao.DashboardRecentTransaction>> {
+        val result = MutableLiveData<List<PaymentTransactionDao.DashboardRecentTransaction>>()
+        viewModelScope.launch {
+            val list = transactionRepository.getRecentTransactions(limit)
+            result.postValue(list)
+        }
+        return result
+    }
+
+    // ================== Dashboard: العملاء الأكثر تأخراً ==================
+    fun getTopUnpaidClients(month: String, limit: Int = 5): LiveData<List<PaymentTransactionDao.DashboardUnpaidClient>> {
+        val result = MutableLiveData<List<PaymentTransactionDao.DashboardUnpaidClient>>()
+        viewModelScope.launch {
+            val list = transactionRepository.getTopUnpaidClientsForMonth(month, limit)
+            result.postValue(list)
+        }
+        return result
+    }
+
 
     // ================== استعلامات أساسية ==================
 

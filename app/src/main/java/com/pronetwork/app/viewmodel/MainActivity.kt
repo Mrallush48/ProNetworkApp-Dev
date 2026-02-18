@@ -518,35 +518,68 @@ class MainActivity : ComponentActivity() {
                     val monthStats by paymentViewModel.monthStats.observeAsState(null)
 
                         when {
-                        // ===== Dashboard =====
-                        currentScreen == "dashboard" -> {
-                            DashboardScreen(
-                                currentMonthStats = monthStats,
-                                previousMonthStats = null, // TODO: Add previous month stats
-                                totalClients = clients.size,
-                                totalBuildings = buildings.size,
-                                recentTransactions = emptyList(), // TODO: Implement
-                                topUnpaidClients = emptyList(), // TODO: Implement
-                                onNavigateToDaily = {
-                                    currentScreen = "stats"
-                                    showDailyCollection = true
-                                    loadDailyCollectionFor(selectedDailyDateMillis)
-                                },
-                                onNavigateToClients = {
-                                    currentScreen = "clients"
-                                },
-                                onNavigateToStats = {
-                                    currentScreen = "stats"
-                                },
-                                onClientClick = { clientId ->
-                                    val client = clients.find { it.id == clientId }
-                                    if (client != null) {
-                                        selectedClient = client
-                                        currentScreen = "clients"
+                            // ===== Dashboard =====
+                            currentScreen == "dashboard" -> {
+                                val previousMonthStatsState by paymentViewModel.previousMonthStats.observeAsState(null)
+
+                                // آخر الحركات
+                                val recentTxRaw by paymentViewModel.getRecentTransactions(10).observeAsState(emptyList())
+                                val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+                                val dashboardRecentTransactions = remember(recentTxRaw) {
+                                    recentTxRaw.map { tx ->
+                                        RecentTransaction(
+                                            clientName = tx.clientName,
+                                            amount = tx.transactionAmount,
+                                            type = if (tx.transactionAmount < 0) "Refund" else "Payment",
+                                            time = timeFormat.format(Date(tx.transactionDate)),
+                                            buildingName = tx.buildingName
+                                        )
                                     }
                                 }
-                            )
-                        }
+
+                                // العملاء المتأخرين
+                                val unpaidRaw by paymentViewModel.getTopUnpaidClients(selectedMonth, 5).observeAsState(emptyList())
+                                val dashboardUnpaidClients = remember(unpaidRaw) {
+                                    unpaidRaw.map { client ->
+                                        UnpaidClientInfo(
+                                            clientId = client.clientId,
+                                            clientName = client.clientName,
+                                            buildingName = client.buildingName,
+                                            monthlyAmount = client.monthlyAmount,
+                                            totalPaid = client.totalPaid,
+                                            remaining = client.remaining
+                                        )
+                                    }
+                                }
+
+                                DashboardScreen(
+                                    currentMonthStats = monthStats,
+                                    previousMonthStats = previousMonthStatsState,
+                                    totalClients = filteredClients.size,
+                                    totalBuildings = buildings.size,
+                                    recentTransactions = dashboardRecentTransactions,
+                                    topUnpaidClients = dashboardUnpaidClients,
+                                    onNavigateToDaily = {
+                                        currentScreen = "stats"
+                                        showDailyCollection = true
+                                        loadDailyCollectionFor(selectedDailyDateMillis)
+                                    },
+                                    onNavigateToClients = {
+                                        currentScreen = "clients"
+                                    },
+                                    onNavigateToStats = {
+                                        currentScreen = "stats"
+                                    },
+                                    onClientClick = { clientId ->
+                                        val client = clients.find { it.id == clientId }
+                                        if (client != null) {
+                                            selectedClient = client
+                                            currentScreen = "clients"
+                                        }
+                                    }
+                                )
+                            }
+
                             // ===== clients =====
                             currentScreen == "clients" && selectedBuilding == null -> {
                                 if (selectedClient == null) {

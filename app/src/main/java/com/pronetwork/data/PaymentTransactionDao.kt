@@ -210,5 +210,62 @@ interface PaymentTransactionDao {
         val buildingName: String
     )
 
+    // ================== Dashboard: آخر الحركات ==================
+    @Query("""
+        SELECT 
+            pt.id AS transactionId,
+            pt.amount AS transactionAmount,
+            pt.date AS transactionDate,
+            pt.notes AS transactionNotes,
+            c.name AS clientName,
+            COALESCE(b.name, 'Unknown') AS buildingName
+        FROM payment_transactions AS pt
+        INNER JOIN payments AS p ON p.id = pt.paymentId
+        INNER JOIN clients AS c ON c.id = p.clientId
+        LEFT JOIN buildings AS b ON b.id = c.buildingId
+        ORDER BY pt.date DESC
+        LIMIT :limit
+    """)
+    suspend fun getRecentTransactions(limit: Int = 10): List<DashboardRecentTransaction>
+
+    data class DashboardRecentTransaction(
+        val transactionId: Int,
+        val transactionAmount: Double,
+        val transactionDate: Long,
+        val transactionNotes: String,
+        val clientName: String,
+        val buildingName: String
+    )
+
+    // ================== Dashboard: أكبر العملاء المتبقي عليهم ==================
+    @Query("""
+        SELECT 
+            p.clientId AS clientId,
+            c.name AS clientName,
+            COALESCE(b.name, 'Unknown') AS buildingName,
+            p.amount AS monthlyAmount,
+            COALESCE(SUM(pt.amount), 0) AS totalPaid,
+            (p.amount - COALESCE(SUM(pt.amount), 0)) AS remaining
+        FROM payments AS p
+        INNER JOIN clients AS c ON c.id = p.clientId
+        LEFT JOIN buildings AS b ON b.id = c.buildingId
+        LEFT JOIN payment_transactions AS pt ON pt.paymentId = p.id
+        WHERE p.month = :month
+        GROUP BY p.id
+        HAVING remaining > 0
+        ORDER BY remaining DESC
+        LIMIT :limit
+    """)
+    suspend fun getTopUnpaidClientsForMonth(month: String, limit: Int = 5): List<DashboardUnpaidClient>
+
+    data class DashboardUnpaidClient(
+        val clientId: Int,
+        val clientName: String,
+        val buildingName: String,
+        val monthlyAmount: Double,
+        val totalPaid: Double,
+        val remaining: Double
+    )
+
 
 }

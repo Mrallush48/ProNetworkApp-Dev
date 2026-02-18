@@ -97,5 +97,14 @@ class PaymentTransactionRepository(
         return transactionDao.getPaymentIdsWithRefunds(paymentIds)
     }
 
+    // ================== Dashboard ==================
+    suspend fun getRecentTransactions(limit: Int = 10): List<PaymentTransactionDao.DashboardRecentTransaction> {
+        return transactionDao.getRecentTransactions(limit)
+    }
+
+    suspend fun getTopUnpaidClientsForMonth(month: String, limit: Int = 5): List<PaymentTransactionDao.DashboardUnpaidClient> {
+        return transactionDao.getTopUnpaidClientsForMonth(month, limit)
+    }
+
 
 }
