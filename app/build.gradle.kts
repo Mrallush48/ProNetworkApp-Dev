@@ -1,16 +1,16 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.kapt") // ضروري لتشغيل kapt مع Room أو أي مكتبة تستخدم annotation processing
+    id("org.jetbrains.kotlin.kapt")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
-    namespace = "com.pronetwork.app" // غيرها إذا عندك اسم مختلف في مشروعك
+    namespace = "com.pronetwork.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.pronetwork.app" // غيرها إذا عندك اسم مختلف في مشروعك
+        applicationId = "com.pronetwork.app"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -34,7 +34,6 @@ android {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
-    // حل مشكلة اختلاف إصدار الجافا بين kapt و javac
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -50,7 +49,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.4")
 
-    // Compose BOM (لتوحيد النسخ)
+    // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
 
     // Compose UI & Foundation
@@ -75,7 +74,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.4")
     implementation("androidx.compose.runtime:runtime-livedata")
 
     // rememberSaveable
@@ -87,10 +85,18 @@ dependencies {
     // Room
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
+
+    // === Phase 5: Network + Auth ===
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
     kapt("androidx.room:room-compiler:2.6.1")
 }
 
-// يمكنك حذف هذا إذا لا تستخدم Dagger Hilt أو kapt في مكتبات أخرى
 kapt {
     correctErrorTypes = true
 }
