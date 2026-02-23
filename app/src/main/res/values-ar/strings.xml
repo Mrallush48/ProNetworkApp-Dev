@@ -589,6 +589,25 @@
     <string name="daily_refund_amount_label">المسترجعات</string>
     <string name="daily_settled_waived">تم إعفاء: %1$s ريال</string>
 
+    <!-- Login Screen -->
+    <string name="login_welcome">مرحباً بعودتك</string>
+    <string name="login_subtitle">سجّل دخولك لإدارة شبكتك</string>
+    <string name="login_username">اسم المستخدم</string>
+    <string name="login_password">كلمة المرور</string>
+    <string name="login_button">تسجيل الدخول</string>
+    <string name="login_loading">جاري الدخول…</string>
+    <string name="login_secured">اتصال آمن • تشفير من طرف لطرف</string>
+    <string name="login_version">ProNetwork Spot v2.0</string>
+    <string name="login_error_username_required">الرجاء إدخال اسم المستخدم</string>
+    <string name="login_error_password_required">الرجاء إدخال كلمة المرور</string>
+    <string name="login_error_invalid_credentials">اسم المستخدم أو كلمة المرور غير صحيحة</string>
+    <string name="login_error_account_disabled">تم تعطيل حسابك</string>
+    <string name="login_error_user_not_found">المستخدم غير موجود</string>
+    <string name="login_error_server">خطأ في السيرفر. حاول لاحقاً</string>
+    <string name="login_error_no_connection">لا يمكن الاتصال بالسيرفر. تحقق من الإنترنت</string>
+    <string name="login_error_timeout">انتهت مهلة الاتصال. حاول مرة أخرى</string>
+    <string name="login_error_network">خطأ في الشبكة. حاول مرة أخرى</string>
+
 
 
 

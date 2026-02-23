@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
     tableName = "payment_transactions",
     foreignKeys = [
         ForeignKey(
+
             entity = Payment::class,
             parentColumns = ["id"],
             childColumns = ["paymentId"],

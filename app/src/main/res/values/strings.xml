@@ -592,6 +592,25 @@
     <string name="daily_refund_amount_label">Refunds</string>
     <string name="daily_settled_waived">Waived: %1$s SAR</string>
 
+    <!-- Login Screen -->
+    <string name="login_welcome">Welcome Back</string>
+    <string name="login_subtitle">Sign in to manage your network</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">SIGN IN</string>
+    <string name="login_loading">Signing in…</string>
+    <string name="login_secured">Secured connection • End-to-end encrypted</string>
+    <string name="login_version">ProNetwork Spot v2.0</string>
+    <string name="login_error_username_required">Please enter your username</string>
+    <string name="login_error_password_required">Please enter your password</string>
+    <string name="login_error_invalid_credentials">Invalid username or password</string>
+    <string name="login_error_account_disabled">Your account has been disabled</string>
+    <string name="login_error_user_not_found">User not found</string>
+    <string name="login_error_server">Server error. Please try again later</string>
+    <string name="login_error_no_connection">Cannot connect to server. Check your internet</string>
+    <string name="login_error_timeout">Connection timed out. Try again</string>
+    <string name="login_error_network">Network error. Please try again</string>
+
 
 
 

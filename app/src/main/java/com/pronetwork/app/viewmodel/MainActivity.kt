@@ -104,6 +104,9 @@ import androidx.activity.compose.BackHandler
 import com.pronetwork.app.ui.components.SortOption
 import com.pronetwork.app.ui.components.ViewOptionsDialog
 import androidx.compose.foundation.layout.size
+import com.pronetwork.app.ui.screens.LoginScreen
+import com.pronetwork.app.viewmodel.LoginViewModel
+import androidx.compose.runtime.collectAsState
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -112,6 +115,8 @@ class MainActivity : ComponentActivity() {
     private val clientViewModel: ClientViewModel by viewModels()
     private val buildingViewModel: BuildingViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
+
+    private val loginViewModel: LoginViewModel by viewModels()
 
     private lateinit var exportManager: ClientsExportManager
 
@@ -270,9 +275,26 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            ProNetworkSpotTheme(darkTheme = false) {
-                var refreshTrigger by remember { mutableStateOf(0) }
-                var showExitDialog by remember { mutableStateOf(false) }
+            setContent {
+                ProNetworkSpotTheme(darkTheme = false) {
+                    val loginState by loginViewModel.uiState.collectAsState()
+
+                    if (!loginState.loginSuccess) {
+                        // ===== LOGIN SCREEN =====
+                        LoginScreen(
+                            uiState = loginState,
+                            onUsernameChange = { loginViewModel.onUsernameChange(it) },
+                            onPasswordChange = { loginViewModel.onPasswordChange(it) },
+                            onTogglePassword = { loginViewModel.togglePasswordVisibility() },
+                            onLogin = { loginViewModel.login() },
+                            onClearError = { loginViewModel.clearError() }
+                        )
+                        return@ProNetworkSpotTheme
+                    }
+
+                    // ===== MAIN APP (after login) =====
+                    var refreshTrigger by remember { mutableStateOf(0) }
+                    var showExitDialog by remember { mutableStateOf(false) }
                 var showExportDialogClients by remember { mutableStateOf(false) }
                 var showExportDialogBuildings by remember { mutableStateOf(false) }
                 var showExportDialogStats by remember { mutableStateOf(false) }
@@ -1646,4 +1668,5 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 }
