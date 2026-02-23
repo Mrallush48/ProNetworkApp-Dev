@@ -219,7 +219,7 @@ fun RequestCard(
                                 .background(MaterialTheme.colorScheme.errorContainer)
                         ) {
                             Icon(Icons.Default.Close, contentDescription = "رفض", tint = MaterialTheme.colorScheme.error)
-                    Phase 5.4: Add ApprovalRequestsScreen.kt    }
+                    tint = MaterialTheme.colorScheme.error)    }
                         IconButton(
                             onClick = onApprove,
                             modifier = Modifier
