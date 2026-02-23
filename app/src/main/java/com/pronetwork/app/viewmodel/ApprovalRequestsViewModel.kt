@@ -34,7 +34,7 @@ class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(app
     }
 
     private fun checkRole() {
-        val role = authManager.getUserRole()
+        val role = authManager.getRole()
         _uiState.value = _uiState.value.copy(isAdmin = role == "ADMIN")
     }
 
