@@ -656,4 +656,30 @@
 
 
 
+
+    <!-- Approval Requests Screen -->
+    <string name="screen_approval_requests">طلبات الموافقة</string>
+    <string name="approval_tab_label">الطلبات</string>
+    <string name="approval_filter_all">الكل</string>
+    <string name="approval_filter_pending">قيد الانتظار</string>
+    <string name="approval_filter_approved">مقبول</string>
+    <string name="approval_filter_rejected">مرفوض</string>
+    <string name="approval_no_requests">لا توجد طلبات حالياً</string>
+    <string name="approval_type_delete_client">حذف مشترك</string>
+    <string name="approval_type_delete_building">حذف مبنى</string>
+    <string name="approval_type_export_report">تصدير تقرير</string>
+    <string name="approval_type_disconnect">فصل خدمة</string>
+    <string name="approval_status_pending">قيد الانتظار</string>
+    <string name="approval_status_approved">تمت الموافقة</string>
+    <string name="approval_status_rejected">مرفوض</string>
+    <string name="approval_reason_label">السبب:</string>
+    <string name="approval_target_label">الهدف:</string>
+    <string name="approval_btn_approve">موافقة</string>
+    <string name="approval_btn_reject">رفض</string>
+    <string name="approval_confirm_reject_title">تأكيد الرفض</string>
+    <string name="approval_confirm_reject_msg">هل أنت متأكد من رفض هذا الطلب؟</string>
+    <string name="approval_success_approved">تمت الموافقة على الطلب بنجاح</string>
+    <string name="approval_success_rejected">تم رفض الطلب</string>
+    <string name="approval_error_not_found">الطلب غير موجود</string>
+    <string name="approval_error_already_reviewed">تمت مراجعة هذا الطلب مسبقاً</string>
 </resources>
