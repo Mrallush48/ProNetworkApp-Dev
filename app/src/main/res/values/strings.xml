@@ -658,4 +658,30 @@
     <string name="logged_in_as">Logged in as: %1$s</string>
 
 
+
+    <!-- Approval Requests Screen -->
+    <string name="screen_approval_requests">Approval Requests</string>
+    <string name="approval_tab_label">Requests</string>
+    <string name="approval_filter_all">All</string>
+    <string name="approval_filter_pending">Pending</string>
+    <string name="approval_filter_approved">Approved</string>
+    <string name="approval_filter_rejected">Rejected</string>
+    <string name="approval_no_requests">No requests found</string>
+    <string name="approval_type_delete_client">Delete Client</string>
+    <string name="approval_type_delete_building">Delete Building</string>
+    <string name="approval_type_export_report">Export Report</string>
+    <string name="approval_type_disconnect">Disconnect Client</string>
+    <string name="approval_status_pending">Pending</string>
+    <string name="approval_status_approved">Approved</string>
+    <string name="approval_status_rejected">Rejected</string>
+    <string name="approval_reason_label">Reason:</string>
+    <string name="approval_target_label">Target:</string>
+    <string name="approval_btn_approve">Approve</string>
+    <string name="approval_btn_reject">Reject</string>
+    <string name="approval_confirm_reject_title">Confirm Rejection</string>
+    <string name="approval_confirm_reject_msg">Are you sure you want to reject this request?</string>
+    <string name="approval_success_approved">Request approved successfully</string>
+    <string name="approval_success_rejected">Request rejected</string>
+    <string name="approval_error_not_found">Request not found</string>
+    <string name="approval_error_already_reviewed">This request has already been reviewed</string>
 </resources>
