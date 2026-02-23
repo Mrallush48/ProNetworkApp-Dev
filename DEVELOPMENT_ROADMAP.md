@@ -222,10 +222,10 @@ CREATE TABLE approval_requests (
 - [✅] إضافة شاشة تسجيل الدخول (`LoginScreen.kt`)
 - [✅] دمج تدفق المصادقة في `MainActivity.kt`
 - [x] حفظ JWT Token في `EncryptedSharedPreferences` (AuthManager.kt جاهز)
-- [ ] إضافة شاشة إدارة المستخدمين (`UserManagementScreen.kt` - Admin فقط) ← 🔄 التالي
+- [x] إضافة شاشة إدارة المستخدمين (`UserManagementScreen.kt` - Admin فقط) ✅
 - [ ] إضافة شاشة الطلبات (`ApprovalRequestsScreen.kt`)
 - [ ] تعديل أزرار الحذف/التصدير/الفصل لترسل طلب بدل التنفيذ المباشر (للـ User)
-- [ ] إضافة tab إدارة في NavigationBar (للـ Admin)
+- [x] إضافة tab إدارة في NavigationBar (للـ Admin) ✅
 
 ---
 
