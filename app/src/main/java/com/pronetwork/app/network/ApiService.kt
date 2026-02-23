@@ -7,6 +7,7 @@ import retrofit2.http.*
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
+import okhttp3.ConnectionPool
 
 // === Data Models (تطابق السيرفر) ===
 data class LoginRequest(val username: String, val password: String)
@@ -140,7 +141,7 @@ interface ApiService {
 
 // === Retrofit Instance ===
 object ApiClient {
-    // غيّر هذا للـ IP/Domain الخاص بسيرفرك
+    // غيّر هذا الـ IP/Domain الخاص بسيرفرك
     private const val BASE_URL = "https://pronetwork-spot.duckdns.org/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -149,9 +150,11 @@ object ApiClient {
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
         .build()
 
     val api: ApiService by lazy {

@@ -84,7 +84,7 @@
     <string name="building_details_status_unpaid">غير مدفوع</string>
     <string name="building_details_status_partial">مدفوع جزئيًا</string>
     <string name="building_details_status_full">مدفوع</string>
-    <string name="clients_status_settled">مُسوَّى</string>
+    <string name="building_details_status_settled">مُسوَّى</string>
     <string name="building_details_status_label">الحالة:</string>
 
     <string name="building_details_confirm_payment">تأكيد</string>
@@ -682,4 +682,8 @@
     <string name="approval_success_rejected">تم رفض الطلب</string>
     <string name="approval_error_not_found">الطلب غير موجود</string>
     <string name="approval_error_already_reviewed">تمت مراجعة هذا الطلب مسبقاً</string>
+    <string name="approval_refresh">تحديث</string>
+    <string name="approval_target_unknown">غير محدد</string>
+    <string name="approval_reject_request">رفض الطلب</string>
+
 </resources>

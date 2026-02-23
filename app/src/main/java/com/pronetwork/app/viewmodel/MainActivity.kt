@@ -128,11 +128,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var paymentsExportManager: PaymentsExportManager
     private lateinit var dailyExportManager: DailyCollectionExportManager
     private lateinit var importManager: ClientsImportManager
+    private val approvalRequestsViewModel: ApprovalRequestsViewModel by viewModels()
     private val importFileLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
-            private val approvalRequestsViewModel: ApprovalRequestsViewModel by viewModels()
     ) { uri ->
-        uri?.let { selectedUri ->
+    uri?.let { selectedUri ->
             lifecycleScope.launch {
                 val result = importManager.importFromFile(
                     uri = selectedUri,
@@ -277,8 +277,7 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            setContent {
-                ProNetworkSpotTheme(darkTheme = false) {
+        ProNetworkSpotTheme(darkTheme = false) {
                     val loginState by loginViewModel.uiState.collectAsState()
 
                     if (!loginState.loginSuccess) {
@@ -1693,7 +1692,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-
+                        }
                         // حوارات edit العامة
                         if (showEditBuildingDialog && selectedBuilding != null) {
                             BuildingEditDialog(
@@ -1797,5 +1796,4 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
 }

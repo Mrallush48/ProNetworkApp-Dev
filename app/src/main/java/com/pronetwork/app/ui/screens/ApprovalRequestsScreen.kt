@@ -35,11 +35,14 @@ fun ApprovalRequestsScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val approvedMsg = stringResource(R.string.approval_success_approved)
+    val rejectedMsg = stringResource(R.string.approval_success_rejected)
+
     LaunchedEffect(uiState.successMessage) {
         uiState.successMessage?.let { msg ->
             val text = when (msg) {
-                "REQUEST_APPROVED" -> "تمت الموافقة على الطلب بنجاح"
-                "REQUEST_REJECTED" -> "تم رفض الطلب"
+                "REQUEST_APPROVED" -> approvedMsg
+                "REQUEST_REJECTED" -> rejectedMsg
                 else -> msg
             }
             snackbarHostState.showSnackbar(text)
@@ -60,10 +63,12 @@ fun ApprovalRequestsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.screen_approval_requests)) },
+                title = {
+                    Text(stringResource(R.string.screen_approval_requests))
+                },
                 actions = {
                     IconButton(onClick = onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "تحديث")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.approval_refresh))
                     }
                 }
             )
@@ -90,10 +95,10 @@ fun ApprovalRequestsScreen(
                         label = {
                             Text(
                                 when (filter) {
-                                    "ALL" -> "الكل"
-                                    "PENDING" -> "قيد الانتظار"
-                                    "APPROVED" -> "مقبول"
-                                    "REJECTED" -> "مرفوض"
+                                    "ALL" -> stringResource(R.string.approval_filter_all)
+                                    "PENDING" -> stringResource(R.string.approval_filter_pending)
+                                    "APPROVED" -> stringResource(R.string.approval_filter_approved)
+                                    "REJECTED" -> stringResource(R.string.approval_filter_rejected)
                                     else -> filter
                                 }
                             )
@@ -108,7 +113,10 @@ fun ApprovalRequestsScreen(
                 }
             } else if (uiState.requests.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("لا توجد طلبات حالياً", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.approval_no_requests),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             } else {
                 LazyColumn(
@@ -131,25 +139,24 @@ fun ApprovalRequestsScreen(
     if (uiState.showRejectDialog && uiState.selectedRequestId != null) {
         AlertDialog(
             onDismissRequest = onDismissReject,
-            title = { Text("تأكيد الرفض") },
-            text = { Text("هل أنت متأكد من رفض هذا الطلب؟") },
+            title = { Text(stringResource(R.string.approval_confirm_reject_title)) },
+            text = { Text(stringResource(R.string.approval_confirm_reject_msg)) },
             confirmButton = {
                 Button(
                     onClick = { onConfirmReject(uiState.selectedRequestId) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("رفض الطلب")
+                    Text(stringResource(R.string.approval_reject_request))
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = onDismissReject) {
-                    Text("إلغاء")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
     }
 }
-
 @Composable
 fun RequestCard(
     request: ApprovalRequestResponse,
@@ -171,17 +178,17 @@ fun RequestCard(
                 Column {
                     Text(
                         text = when (request.request_type) {
-                            "DELETE_CLIENT" -> "حذف مشترك"
-                            "DELETE_BUILDING" -> "حذف مبنى"
-                            "EXPORT_REPORT" -> "تصدير تقرير"
-                            "DISCONNECT_CLIENT" -> "فصل خدمة"
+                            "DELETE_CLIENT" -> stringResource(R.string.approval_type_delete_client)
+                            "DELETE_BUILDING" -> stringResource(R.string.approval_type_delete_building)
+                            "EXPORT_REPORT" -> stringResource(R.string.approval_type_export_report)
+                            "DISCONNECT_CLIENT" -> stringResource(R.string.approval_type_disconnect)
                             else -> request.request_type
                         },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "الهدف: ${request.target_name ?: "غير محدد"}",
+                        text = stringResource(R.string.approval_target_label) + " " + (request.target_name ?: stringResource(R.string.approval_target_unknown)),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -192,13 +199,14 @@ fun RequestCard(
             if (!request.reason.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "السبب: ${request.reason}",
+                    text = stringResource(R.string.approval_reason_label) + " " + request.reason,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Spacer(Modifier.height(12.dp))
+
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -218,15 +226,24 @@ fun RequestCard(
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.errorContainer)
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "رفض", tint = MaterialTheme.colorScheme.error)
-                    tint = MaterialTheme.colorScheme.error)    }
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.approval_btn_reject),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+
                         IconButton(
                             onClick = onApprove,
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .background(Color(0xFF4CAF50).copy(alpha = 0.2f))
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = "موافقة", tint = Color(0xFF4CAF50))
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = stringResource(R.string.approval_btn_approve),
+                                tint = Color(0xFF4CAF50)
+                            )
                         }
                     }
                 }
@@ -238,9 +255,9 @@ fun RequestCard(
 @Composable
 fun StatusBadge(status: String) {
     val (color, text) = when (status) {
-        "PENDING" -> MaterialTheme.colorScheme.primary to "قيد الانتظار"
-        "APPROVED" -> Color(0xFF4CAF50) to "تمت الموافقة"
-        "REJECTED" -> MaterialTheme.colorScheme.error to "مرفوض"
+        "PENDING" -> MaterialTheme.colorScheme.primary to stringResource(R.string.approval_status_pending)
+        "APPROVED" -> Color(0xFF4CAF50) to stringResource(R.string.approval_status_approved)
+        "REJECTED" -> MaterialTheme.colorScheme.error to stringResource(R.string.approval_status_rejected)
         else -> MaterialTheme.colorScheme.onSurface to status
     }
 

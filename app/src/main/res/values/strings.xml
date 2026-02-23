@@ -684,4 +684,8 @@
     <string name="approval_success_rejected">Request rejected</string>
     <string name="approval_error_not_found">Request not found</string>
     <string name="approval_error_already_reviewed">This request has already been reviewed</string>
+    <string name="approval_refresh">Refresh</string>
+    <string name="approval_target_unknown">Unknown</string>
+    <string name="approval_reject_request">Reject Request</string>
+
 </resources>
