@@ -50,8 +50,52 @@ data class ApprovalRequestResponse(
     val reviewed_at: String?
 )
 
+data class CreateUserRequest(
+    val username: String,
+    val password: String,
+    val display_name: String,
+    val role: String = "USER"
+)
+
+data class UpdateUserRequest(
+    val display_name: String? = null,
+    val password: String? = null,
+    val role: String? = null
+)
+
 // === API Interface ===
 interface ApiService {
+
+    // === Admin - User Management ===
+    @POST("admin/users")
+    suspend fun createUser(
+        @Header("Authorization") token: String,
+        @Body request: CreateUserRequest
+    ): Response<UserResponse>
+
+    @GET("admin/users")
+    suspend fun getUsers(
+        @Header("Authorization") token: String
+    ): Response<List<UserResponse>>
+
+    @PUT("admin/users/{id}")
+    suspend fun updateUser(
+        @Header("Authorization") token: String,
+        @Path("id") userId: Int,
+        @Body request: UpdateUserRequest
+    ): Response<UserResponse>
+
+    @DELETE("admin/users/{id}")
+    suspend fun deleteUser(
+        @Header("Authorization") token: String,
+        @Path("id") userId: Int
+    ): Response<Unit>
+
+    @PUT("admin/users/{id}/toggle")
+    suspend fun toggleUser(
+        @Header("Authorization") token: String,
+        @Path("id") userId: Int
+    ): Response<UserResponse>
 
     // Auth
     @POST("auth/login")

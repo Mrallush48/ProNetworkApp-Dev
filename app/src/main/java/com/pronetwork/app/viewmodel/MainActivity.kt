@@ -65,7 +65,7 @@ import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.export.ClientsExportManager
 import com.pronetwork.app.export.DailyCollectionExportManager
-    import com.pronetwork.app.ui.components.DailyReportMode
+import com.pronetwork.app.ui.components.DailyReportMode
 import com.pronetwork.app.export.PaymentsExportManager
 import com.pronetwork.app.repository.PaymentTransactionRepository
 import com.pronetwork.app.ui.components.DailyExportDialog
@@ -107,6 +107,9 @@ import androidx.compose.foundation.layout.size
 import com.pronetwork.app.ui.screens.LoginScreen
 import com.pronetwork.app.viewmodel.LoginViewModel
 import androidx.compose.runtime.collectAsState
+import com.pronetwork.app.ui.screens.UserManagementScreen
+import com.pronetwork.app.viewmodel.UserManagementViewModel
+import androidx.compose.material.icons.filled.AdminPanelSettings
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -115,18 +118,12 @@ class MainActivity : ComponentActivity() {
     private val clientViewModel: ClientViewModel by viewModels()
     private val buildingViewModel: BuildingViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
-
     private val loginViewModel: LoginViewModel by viewModels()
-
+    private val userManagementViewModel: UserManagementViewModel by viewModels()
     private lateinit var exportManager: ClientsExportManager
-
     private lateinit var paymentsExportManager: PaymentsExportManager
-
     private lateinit var dailyExportManager: DailyCollectionExportManager
-
-
     private lateinit var importManager: ClientsImportManager
-
     private val importFileLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -504,6 +501,27 @@ class MainActivity : ComponentActivity() {
                                 },
                                 label = { Text(stringResource(R.string.screen_stats)) }
                             )
+
+                            // Admin Tab - يظهر فقط للـ Admin
+                            if (loginState.role == "ADMIN") {
+                                NavigationBarItem(
+                                    selected = currentScreen == "admin",
+                                    onClick = {
+                                        currentScreen = "admin"
+                                        selectedBuilding = null
+                                        selectedClient = null
+                                        showDailyCollection = false
+                                    },
+                                    icon = {
+                                        Icon(
+                                            Icons.Filled.AdminPanelSettings,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    label = { Text(stringResource(R.string.screen_admin)) }
+                                )
+                            }
+
                         }
                     },
                     floatingActionButton = {
@@ -1562,6 +1580,28 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                 }
+                            }
+
+                            // ===== admin (User Management) =====
+                            currentScreen == "admin" && loginState.role == "ADMIN" -> {
+                                val userMgmtState by userManagementViewModel.uiState.collectAsState()
+
+                                UserManagementScreen(
+                                    uiState = userMgmtState,
+                                    onRefresh = { userManagementViewModel.loadUsers() },
+                                    onCreateClick = { userManagementViewModel.showCreateDialog() },
+                                    onEditClick = { user -> userManagementViewModel.showEditDialog(user) },
+                                    onToggleClick = { userId -> userManagementViewModel.toggleUser(userId) },
+                                    onDeleteClick = { userId -> userManagementViewModel.deleteUser(userId) },
+                                    onDismissDialog = { userManagementViewModel.dismissDialog() },
+                                    onCreateUser = { userManagementViewModel.createUser() },
+                                    onUpdateUser = { userManagementViewModel.updateUser() },
+                                    onFormUsernameChange = { userManagementViewModel.onFormUsernameChange(it) },
+                                    onFormPasswordChange = { userManagementViewModel.onFormPasswordChange(it) },
+                                    onFormDisplayNameChange = { userManagementViewModel.onFormDisplayNameChange(it) },
+                                    onFormRoleChange = { userManagementViewModel.onFormRoleChange(it) },
+                                    onClearMessages = { userManagementViewModel.clearMessages() }
+                                )
                             }
                         }
 

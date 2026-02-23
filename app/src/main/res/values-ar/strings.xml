@@ -608,8 +608,46 @@
     <string name="login_error_timeout">انتهت مهلة الاتصال. حاول مرة أخرى</string>
     <string name="login_error_network">خطأ في الشبكة. حاول مرة أخرى</string>
 
-
-
+    <!-- User Management screen -->
+    <string name="screen_admin">الإدارة</string>
+    <string name="user_mgmt_title">إدارة المستخدمين (%1$d)</string>
+    <string name="user_mgmt_refresh">تحديث</string>
+    <string name="user_mgmt_add_user">إضافة مستخدم</string>
+    <string name="user_mgmt_no_users">لا يوجد مستخدمين</string>
+    <string name="user_mgmt_role_admin">مدير</string>
+    <string name="user_mgmt_role_user">عامل</string>
+    <string name="user_mgmt_active">نشط</string>
+    <string name="user_mgmt_disabled">معطّل</string>
+    <string name="user_mgmt_last_login">آخر دخول: %1$s</string>
+    <string name="user_mgmt_toggle_disable">تعطيل</string>
+    <string name="user_mgmt_toggle_enable">تفعيل</string>
+    <string name="user_mgmt_create_title">إنشاء مستخدم جديد</string>
+    <string name="user_mgmt_edit_title">تعديل المستخدم</string>
+    <string name="user_mgmt_username">اسم المستخدم</string>
+    <string name="user_mgmt_password">كلمة المرور</string>
+    <string name="user_mgmt_password_hint_edit">اتركه فارغاً للإبقاء على الحالي</string>
+    <string name="user_mgmt_display_name">اسم العرض</string>
+    <string name="user_mgmt_role">الصلاحية</string>
+    <string name="user_mgmt_create_btn">إنشاء</string>
+    <string name="user_mgmt_save_btn">حفظ</string>
+    <string name="user_mgmt_delete_confirm_title">تأكيد الحذف</string>
+    <string name="user_mgmt_delete_confirm_msg">هل أنت متأكد من حذف المستخدم \"%1$s\"?\nهذا الإجراء لا يمكن التراجع عنه.</string>
+    <string name="user_mgmt_success_created">تم إنشاء المستخدم بنجاح</string>
+    <string name="user_mgmt_success_updated">تم تعديل المستخدم بنجاح</string>
+    <string name="user_mgmt_success_deleted">تم حذف المستخدم</string>
+    <string name="user_mgmt_success_toggled">تم تغيير حالة المستخدم</string>
+    <string name="user_mgmt_error_fields_required">جميع الحقول مطلوبة</string>
+    <string name="user_mgmt_error_username_exists">اسم المستخدم موجود مسبقاً</string>
+    <string name="user_mgmt_error_not_admin">يتطلب صلاحيات مدير</string>
+    <string name="user_mgmt_error_session_expired">انتهت الجلسة. سجّل دخول مجدداً</string>
+    <string name="user_mgmt_error_load_failed">فشل تحميل المستخدمين</string>
+    <string name="user_mgmt_error_create_failed">فشل إنشاء المستخدم</string>
+    <string name="user_mgmt_error_update_failed">فشل تعديل المستخدم</string>
+    <string name="user_mgmt_error_delete_failed">فشل حذف المستخدم</string>
+    <string name="user_mgmt_error_toggle_failed">فشل تغيير حالة المستخدم</string>
+    <string name="user_mgmt_error_cannot_delete_self">لا يمكن حذف حسابك الشخصي</string>
+    <string name="user_mgmt_error_no_connection">لا يمكن الاتصال بالسيرفر</string>
+    <string name="user_mgmt_error_network">خطأ في الشبكة. حاول مجدداً</string>
 
 
 

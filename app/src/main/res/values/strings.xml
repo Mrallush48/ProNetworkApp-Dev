@@ -611,6 +611,48 @@
     <string name="login_error_timeout">Connection timed out. Try again</string>
     <string name="login_error_network">Network error. Please try again</string>
 
+    <!-- User Management screen -->
+    <string name="screen_admin">Admin</string>
+    <string name="user_mgmt_title">User Management (%1$d)</string>
+    <string name="user_mgmt_refresh">Refresh</string>
+    <string name="user_mgmt_add_user">Add user</string>
+    <string name="user_mgmt_no_users">No users found</string>
+    <string name="user_mgmt_role_admin">Admin</string>
+    <string name="user_mgmt_role_user">Worker</string>
+    <string name="user_mgmt_active">Active</string>
+    <string name="user_mgmt_disabled">Disabled</string>
+    <string name="user_mgmt_last_login">Last login: %1$s</string>
+    <string name="user_mgmt_toggle_disable">Disable</string>
+    <string name="user_mgmt_toggle_enable">Enable</string>
+    <string name="user_mgmt_create_title">Create New User</string>
+    <string name="user_mgmt_edit_title">Edit User</string>
+    <string name="user_mgmt_username">Username</string>
+    <string name="user_mgmt_password">Password</string>
+    <string name="user_mgmt_password_hint_edit">Leave empty to keep current</string>
+    <string name="user_mgmt_display_name">Display Name</string>
+    <string name="user_mgmt_role">Role</string>
+    <string name="user_mgmt_create_btn">Create</string>
+    <string name="user_mgmt_save_btn">Save</string>
+    <string name="user_mgmt_delete_confirm_title">Confirm Deletion</string>
+    <string name="user_mgmt_delete_confirm_msg">Are you sure you want to delete user \"%1$s\"?\nThis action cannot be undone.</string>
+    <string name="user_mgmt_success_created">User created successfully</string>
+    <string name="user_mgmt_success_updated">User updated successfully</string>
+    <string name="user_mgmt_success_deleted">User deleted</string>
+    <string name="user_mgmt_success_toggled">User status changed</string>
+    <string name="user_mgmt_error_fields_required">All fields are required</string>
+    <string name="user_mgmt_error_username_exists">Username already exists</string>
+    <string name="user_mgmt_error_not_admin">Admin access required</string>
+    <string name="user_mgmt_error_session_expired">Session expired. Please login again</string>
+    <string name="user_mgmt_error_load_failed">Failed to load users</string>
+    <string name="user_mgmt_error_create_failed">Failed to create user</string>
+    <string name="user_mgmt_error_update_failed">Failed to update user</string>
+    <string name="user_mgmt_error_delete_failed">Failed to delete user</string>
+    <string name="user_mgmt_error_toggle_failed">Failed to change user status</string>
+    <string name="user_mgmt_error_cannot_delete_self">Cannot delete your own account</string>
+    <string name="user_mgmt_error_no_connection">Cannot connect to server</string>
+    <string name="user_mgmt_error_network">Network error. Please try again</string>
+
+
 
 
 
