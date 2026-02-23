@@ -652,9 +652,10 @@
     <string name="user_mgmt_error_no_connection">Cannot connect to server</string>
     <string name="user_mgmt_error_network">Network error. Please try again</string>
 
-
-
-
+    <string name="logout">Logout</string>
+    <string name="logout_confirm_title">Confirm Logout</string>
+    <string name="logout_confirm_msg">Are you sure you want to logout?</string>
+    <string name="logged_in_as">Logged in as: %1$s</string>
 
 
 </resources>

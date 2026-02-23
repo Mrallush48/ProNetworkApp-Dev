@@ -30,6 +30,9 @@ import com.pronetwork.app.viewmodel.PaymentViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.ui.res.stringResource
+
 
 // =============== Data Classes ===============
 data class RecentTransaction(
@@ -52,6 +55,9 @@ data class UnpaidClientInfo(
 // =============== Dashboard Screen ===============
 @Composable
 fun DashboardScreen(
+    userName: String = "",
+    userRole: String = "",
+    onLogout: () -> Unit = {},
     currentMonthStats: PaymentViewModel.MonthStats?,
     previousMonthStats: PaymentViewModel.MonthStats?,
     totalClients: Int,
@@ -75,11 +81,14 @@ fun DashboardScreen(
         contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             // ===== Welcome Card with Date =====
-            item {
-                WelcomeCard()
-            }
+        item {
+            WelcomeCard(
+                userName = userName,
+                onLogout = onLogout
+            )
+        }
 
-            // ===== KPI Cards Row =====
+        // ===== KPI Cards Row =====
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -160,7 +169,10 @@ fun DashboardScreen(
 
 // =============== Welcome Card ===============
 @Composable
-private fun WelcomeCard() {
+private fun WelcomeCard(
+    userName: String = "",
+    onLogout: () -> Unit = {}
+) {
     val today = Date()
     val gregorianFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault())
     val gregorianDate = gregorianFormat.format(today)
@@ -191,12 +203,34 @@ private fun WelcomeCard() {
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            Text(
-                text = stringResource(R.string.dashboard_welcome),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.dashboard_welcome),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    if (userName.isNotBlank()) {
+                        Text(
+                            text = stringResource(R.string.logged_in_as, userName),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+                IconButton(onClick = onLogout) {
+                    Icon(
+                        Icons.Filled.Logout,
+                        contentDescription = stringResource(R.string.logout),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = gregorianDate,

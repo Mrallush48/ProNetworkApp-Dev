@@ -649,6 +649,11 @@
     <string name="user_mgmt_error_no_connection">لا يمكن الاتصال بالسيرفر</string>
     <string name="user_mgmt_error_network">خطأ في الشبكة. حاول مجدداً</string>
 
+    <string name="logout">تسجيل خروج</string>
+    <string name="logout_confirm_title">تأكيد تسجيل الخروج</string>
+    <string name="logout_confirm_msg">هل أنت متأكد من تسجيل الخروج؟</string>
+    <string name="logged_in_as">مسجّل كـ: %1$s</string>
+
 
 
 </resources>

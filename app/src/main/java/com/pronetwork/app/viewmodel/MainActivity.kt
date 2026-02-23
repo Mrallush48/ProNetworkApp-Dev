@@ -110,6 +110,8 @@ import androidx.compose.runtime.collectAsState
 import com.pronetwork.app.ui.screens.UserManagementScreen
 import com.pronetwork.app.viewmodel.UserManagementViewModel
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material3.ButtonDefaults
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -598,7 +600,39 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
+                                // Logout Confirmation Dialog
+                                var showLogoutDialog by remember { mutableStateOf(false) }
+
+                                if (showLogoutDialog) {
+                                    AlertDialog(
+                                        onDismissRequest = { showLogoutDialog = false },
+                                        title = { Text(stringResource(R.string.logout_confirm_title)) },
+                                        text = { Text(stringResource(R.string.logout_confirm_msg)) },
+                                        confirmButton = {
+                                            Button(
+                                                onClick = {
+                                                    showLogoutDialog = false
+                                                    loginViewModel.logout()
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.error
+                                                )
+                                            ) {
+                                                Text(stringResource(R.string.logout))
+                                            }
+                                        },
+                                        dismissButton = {
+                                            OutlinedButton(onClick = { showLogoutDialog = false }) {
+                                                Text(stringResource(R.string.action_cancel))
+                                            }
+                                        }
+                                    )
+                                }
+
                                 DashboardScreen(
+                                    userName = loginState.displayName,
+                                    userRole = loginState.role,
+                                    onLogout = { showLogoutDialog = true },
                                     currentMonthStats = monthStats,
                                     previousMonthStats = previousMonthStatsState,
                                     totalClients = filteredClients.size,
