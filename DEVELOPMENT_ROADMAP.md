@@ -226,6 +226,7 @@ CREATE TABLE approval_requests (
 - [ ] إضافة شاشة الطلبات (`ApprovalRequestsScreen.kt`)
 - [ ] تعديل أزرار الحذف/التصدير/الفصل لترسل طلب بدل التنفيذ المباشر (للـ User)
 - [x] إضافة tab إدارة في NavigationBar (للـ Admin) ✅
+- [x] إضافة زر Logout في Dashboard ✅
 
 ---
 
