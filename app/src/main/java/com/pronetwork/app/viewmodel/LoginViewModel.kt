@@ -82,12 +82,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             try {
-                val response = ApiClient.api.login(
-                    LoginRequest(
-                        username = state.username.trim(),
-                        password = state.password
+                val response = ApiClient.safeCall { api ->
+                    api.login(
+                        LoginRequest(
+                            username = state.username.trim(),
+                            password = state.password
+                        )
                     )
-                )
+                }
 
                 if (response.isSuccessful && response.body() != null) {
                     val tokenResponse = response.body()!!

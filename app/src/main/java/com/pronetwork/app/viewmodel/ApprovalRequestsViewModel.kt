@@ -46,14 +46,18 @@ class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(app
                 val statusFilter = if (filter == "ALL") null else filter
 
                 val response = if (_uiState.value.isAdmin) {
-                    ApiClient.api.getRequests(
-                        token = authManager.getBearerToken(),
-                        statusFilter = statusFilter
-                    )
+                    ApiClient.safeCall { api ->
+                        api.getRequests(
+                            token = authManager.getBearerToken(),
+                            statusFilter = statusFilter
+                        )
+                    }
                 } else {
-                    ApiClient.api.getMyRequests(
-                        token = authManager.getBearerToken()
-                    )
+                    ApiClient.safeCall { api ->
+                        api.getMyRequests(
+                            token = authManager.getBearerToken()
+                        )
+                    }
                 }
 
                 if (response.isSuccessful && response.body() != null) {
@@ -94,10 +98,12 @@ class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(app
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val response = ApiClient.api.approveRequest(
-                    token = authManager.getBearerToken(),
-                    requestId = requestId
-                )
+                val response = ApiClient.safeCall { api ->
+                    api.approveRequest(
+                        token = authManager.getBearerToken(),
+                        requestId = requestId
+                    )
+                }
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -127,10 +133,12 @@ class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(app
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val response = ApiClient.api.rejectRequest(
-                    token = authManager.getBearerToken(),
-                    requestId = requestId
-                )
+                val response = ApiClient.safeCall { api ->
+                    api.rejectRequest(
+                        token = authManager.getBearerToken(),
+                        requestId = requestId
+                    )
+                }
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,

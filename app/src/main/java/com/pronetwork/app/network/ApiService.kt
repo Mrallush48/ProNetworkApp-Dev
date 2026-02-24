@@ -184,6 +184,23 @@ class RetryInterceptor(private val maxRetries: Int = 2) : okhttp3.Interceptor {
     }
 }
 
+// === Connection Logger - logs which server is being used ===
+class ConnectionLoggerInterceptor : okhttp3.Interceptor {
+    override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
+        val request = chain.request()
+        val host = request.url.host
+        val path = request.url.encodedPath
+        android.util.Log.i("ProNetwork-API", ">>> REQUEST: $host$path")
+
+        val startTime = System.currentTimeMillis()
+        val response = chain.proceed(request)
+        val duration = System.currentTimeMillis() - startTime
+
+        android.util.Log.i("ProNetwork-API", "<<< RESPONSE: $host | ${response.code} | ${duration}ms")
+        return response
+    }
+}
+
 // === Retrofit Instance with Failover ===
 object ApiClient {
     private const val PRIMARY_URL = "https://pronetwork.dpdns.org/"
@@ -198,6 +215,7 @@ object ApiClient {
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(RetryInterceptor(maxRetries = 2))
+        .addInterceptor(ConnectionLoggerInterceptor())
         .addInterceptor(loggingInterceptor)
         .dns(CachingDnsSelector())
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -224,24 +242,32 @@ object ApiClient {
         get() = if (currentBaseUrl == PRIMARY_URL) primaryApi else fallbackApi
 
     suspend fun <T> safeCall(block: suspend (ApiService) -> Response<T>): Response<T> {
-        return try {
+        // Try PRIMARY first
+        try {
             val response = block(primaryApi)
-            if (currentBaseUrl != PRIMARY_URL) {
-                currentBaseUrl = PRIMARY_URL
-                android.util.Log.i("ApiClient", "Switched back to PRIMARY: $PRIMARY_URL")
+            if (response.isSuccessful || response.code() in 400..499) {
+                // Real response (success or client error) — PRIMARY works
+                if (currentBaseUrl != PRIMARY_URL) {
+                    currentBaseUrl = PRIMARY_URL
+                    android.util.Log.i("ProNetwork-API", "SWITCHED BACK to PRIMARY: $PRIMARY_URL")
+                }
+                return response
             }
-            response
+            // Server error (5xx) — try fallback
+            android.util.Log.w("ProNetwork-API", "PRIMARY returned ${response.code()}, trying FALLBACK")
         } catch (e: Exception) {
-            android.util.Log.w("ApiClient", "PRIMARY failed: ${e.message}, trying FALLBACK")
-            try {
-                val response = block(fallbackApi)
-                currentBaseUrl = FALLBACK_URL
-                android.util.Log.i("ApiClient", "Using FALLBACK: $FALLBACK_URL")
-                response
-            } catch (fallbackError: Exception) {
-                android.util.Log.e("ApiClient", "Both PRIMARY and FALLBACK failed")
-                throw fallbackError
-            }
+            android.util.Log.w("ProNetwork-API", "PRIMARY failed: ${e.message}, trying FALLBACK")
+        }
+
+        // Try FALLBACK
+        try {
+            val response = block(fallbackApi)
+            currentBaseUrl = FALLBACK_URL
+            android.util.Log.i("ProNetwork-API", "Using FALLBACK: $FALLBACK_URL")
+            return response
+        } catch (fallbackError: Exception) {
+            android.util.Log.e("ProNetwork-API", "Both PRIMARY and FALLBACK failed")
+            throw fallbackError
         }
     }
 }

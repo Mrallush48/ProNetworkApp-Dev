@@ -42,7 +42,9 @@ class UserManagementViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val response = ApiClient.api.getUsers(authManager.getBearerToken())
+                val response = ApiClient.safeCall { api ->
+                    api.getUsers(authManager.getBearerToken())
+                }
                 if (response.isSuccessful && response.body() != null) {
                     _uiState.value = _uiState.value.copy(
                         users = response.body()!!,
@@ -82,15 +84,17 @@ class UserManagementViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val response = ApiClient.api.createUser(
-                    token = authManager.getBearerToken(),
-                    request = CreateUserRequest(
-                        username = state.formUsername.trim(),
-                        password = state.formPassword,
-                        display_name = state.formDisplayName.trim(),
-                        role = state.formRole
+                val response = ApiClient.safeCall { api ->
+                    api.createUser(
+                        token = authManager.getBearerToken(),
+                        request = CreateUserRequest(
+                            username = state.formUsername.trim(),
+                            password = state.formPassword,
+                            display_name = state.formDisplayName.trim(),
+                            role = state.formRole
+                        )
                     )
-                )
+                }
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -127,15 +131,17 @@ class UserManagementViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val response = ApiClient.api.updateUser(
-                    token = authManager.getBearerToken(),
-                    userId = user.id,
-                    request = UpdateUserRequest(
-                        display_name = state.formDisplayName.trim().ifBlank { null },
-                        password = state.formPassword.ifBlank { null },
-                        role = state.formRole
+                val response = ApiClient.safeCall { api ->
+                    api.updateUser(
+                        token = authManager.getBearerToken(),
+                        userId = user.id,
+                        request = UpdateUserRequest(
+                            display_name = state.formDisplayName.trim().ifBlank { null },
+                            password = state.formPassword.ifBlank { null },
+                            role = state.formRole
+                        )
                     )
-                )
+                }
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -167,10 +173,12 @@ class UserManagementViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val response = ApiClient.api.toggleUser(
-                    token = authManager.getBearerToken(),
-                    userId = userId
-                )
+                val response = ApiClient.safeCall { api ->
+                    api.toggleUser(
+                        token = authManager.getBearerToken(),
+                        userId = userId
+                    )
+                }
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -196,10 +204,12 @@ class UserManagementViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val response = ApiClient.api.deleteUser(
-                    token = authManager.getBearerToken(),
-                    userId = userId
-                )
+                val response = ApiClient.safeCall { api ->
+                    api.deleteUser(
+                        token = authManager.getBearerToken(),
+                        userId = userId
+                    )
+                }
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
