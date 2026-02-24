@@ -112,6 +112,12 @@ import com.pronetwork.app.viewmodel.UserManagementViewModel
 import com.pronetwork.app.viewmodel.ApprovalRequestsViewModel
 import com.pronetwork.app.ui.screens.ApprovalRequestsScreen
 import com.pronetwork.app.ui.screens.MyRequestsScreen
+import com.pronetwork.app.network.NotificationHelper
+import com.pronetwork.app.network.RequestPollingWorker
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.ButtonDefaults
@@ -280,6 +286,22 @@ class MainActivity : ComponentActivity() {
             secondaryContainer = Color(0xFFD1C4E9),
             onSecondaryContainer = Color(0xFF512DA8)
         )
+
+        // Setup notification channels
+        NotificationHelper.createChannels(this)
+
+        // Request notification permission (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+                    .launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Start background polling for approval request updates
+        RequestPollingWorker.schedule(this)
 
         setContent {
         ProNetworkSpotTheme(darkTheme = false) {
@@ -511,25 +533,36 @@ class MainActivity : ComponentActivity() {
                                 label = { Text(stringResource(R.string.screen_stats)) }
                             )
 
-                            // Admin Tab - يظهر فقط للـ Admin
-                            if (loginState.role == "ADMIN") {
-                                NavigationBarItem(
-                                    selected = currentScreen == "admin",
-                                    onClick = {
-                                        currentScreen = "admin"
-                                        selectedBuilding = null
-                                        selectedClient = null
-                                        showDailyCollection = false
-                                    },
-                                    icon = {
+                            // Admin Tab (Admin) / My Requests Tab (User)
+                            NavigationBarItem(
+                                selected = currentScreen == "admin",
+                                onClick = {
+                                    currentScreen = "admin"
+                                    selectedBuilding = null
+                                    selectedClient = null
+                                    showDailyCollection = false
+                                },
+                                icon = {
+                                    if (loginState.role == "ADMIN") {
                                         Icon(
                                             Icons.Filled.AdminPanelSettings,
                                             contentDescription = null
                                         )
-                                    },
-                                    label = { Text(stringResource(R.string.screen_admin)) }
-                                )
-                            }
+                                    } else {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.List,
+                                            contentDescription = null
+                                        )
+                                    }
+                                },
+                                label = {
+                                    if (loginState.role == "ADMIN") {
+                                        Text(stringResource(R.string.screen_admin))
+                                    } else {
+                                        Text(stringResource(R.string.my_requests_title))
+                                    }
+                                }
+                            )
 
                         }
                     },
@@ -619,6 +652,7 @@ class MainActivity : ComponentActivity() {
                                             Button(
                                                 onClick = {
                                                     showLogoutDialog = false
+                                                    RequestPollingWorker.cancel(this@MainActivity)
                                                     loginViewModel.logout()
                                                 },
                                                 colors = ButtonDefaults.buttonColors(

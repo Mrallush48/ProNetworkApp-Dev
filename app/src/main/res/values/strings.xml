@@ -673,6 +673,20 @@
     <string name="my_requests_title">My Requests</string>
     <string name="my_requests_empty">You haven\'t sent any requests yet</string>
     <string name="my_requests_reviewed_at">Reviewed:</string>
+    <!-- Notification Channels -->
+    <string name="notif_channel_admin_name">Approval Requests</string>
+    <string name="notif_channel_admin_desc">Notifications for new approval requests</string>
+    <string name="notif_channel_user_name">My Requests Updates</string>
+    <string name="notif_channel_user_desc">Notifications when your request status changes</string>
+
+    <!-- Notification Messages -->
+    <string name="notif_admin_title">New Approval Request</string>
+    <string name="notif_admin_single">New request for: %1$s</string>
+    <string name="notif_admin_multiple">%1$d new requests waiting for approval</string>
+    <string name="notif_user_title">Request Update</string>
+    <string name="notif_user_body">Your request for \"%1$s\" has been %2$s</string>
+    <string name="notif_status_approved">approved ✓</string>
+    <string name="notif_status_rejected">rejected ✗</string>
     <string name="approval_type_delete_client">Delete Client</string>
     <string name="approval_type_delete_building">Delete Building</string>
     <string name="approval_type_export_report">Export Report</string>

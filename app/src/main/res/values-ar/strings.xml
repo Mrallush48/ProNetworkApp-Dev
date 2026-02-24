@@ -671,6 +671,20 @@
     <string name="my_requests_title">طلباتي</string>
     <string name="my_requests_empty">لم ترسل أي طلبات بعد</string>
     <string name="my_requests_reviewed_at">تمت المراجعة:</string>
+    <!-- Notification Channels -->
+    <string name="notif_channel_admin_name">طلبات الموافقة</string>
+    <string name="notif_channel_admin_desc">إشعارات عند وصول طلبات موافقة جديدة</string>
+    <string name="notif_channel_user_name">تحديثات طلباتي</string>
+    <string name="notif_channel_user_desc">إشعارات عند تغيّر حالة طلبك</string>
+
+    <!-- Notification Messages -->
+    <string name="notif_admin_title">طلب موافقة جديد</string>
+    <string name="notif_admin_single">طلب جديد لـ: %1$s</string>
+    <string name="notif_admin_multiple">%1$d طلبات جديدة بانتظار الموافقة</string>
+    <string name="notif_user_title">تحديث طلبك</string>
+    <string name="notif_user_body">طلبك الخاص بـ \"%1$s\" تم %2$s</string>
+    <string name="notif_status_approved">قبوله ✓</string>
+    <string name="notif_status_rejected">رفضه ✗</string>
     <string name="approval_type_delete_client">حذف مشترك</string>
     <string name="approval_type_delete_building">حذف مبنى</string>
     <string name="approval_type_export_report">تصدير تقرير</string>
