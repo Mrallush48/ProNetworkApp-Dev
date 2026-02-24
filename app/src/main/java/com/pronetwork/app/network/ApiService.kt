@@ -184,9 +184,13 @@ class RetryInterceptor(private val maxRetries: Int = 2) : okhttp3.Interceptor {
     }
 }
 
-// === Retrofit Instance ===
+// === Retrofit Instance with Failover ===
 object ApiClient {
-    private const val BASE_URL = "https://pronetwork-spot.duckdns.org/"
+    private const val PRIMARY_URL = "https://pronetwork.dpdns.org/"
+    private const val FALLBACK_URL = "https://pronetwork-spot.duckdns.org/"
+
+    @Volatile
+    private var currentBaseUrl: String = PRIMARY_URL
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -196,20 +200,48 @@ object ApiClient {
         .addInterceptor(RetryInterceptor(maxRetries = 2))
         .addInterceptor(loggingInterceptor)
         .dns(CachingDnsSelector())
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .connectionPool(ConnectionPool(5, 10, TimeUnit.MINUTES))
         .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
         .build()
 
-    val api: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
+    private fun buildApi(baseUrl: String): ApiService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
+    }
+
+    private var primaryApi: ApiService = buildApi(PRIMARY_URL)
+    private var fallbackApi: ApiService = buildApi(FALLBACK_URL)
+
+    val api: ApiService
+        get() = if (currentBaseUrl == PRIMARY_URL) primaryApi else fallbackApi
+
+    suspend fun <T> safeCall(block: suspend (ApiService) -> Response<T>): Response<T> {
+        return try {
+            val response = block(primaryApi)
+            if (currentBaseUrl != PRIMARY_URL) {
+                currentBaseUrl = PRIMARY_URL
+                android.util.Log.i("ApiClient", "Switched back to PRIMARY: $PRIMARY_URL")
+            }
+            response
+        } catch (e: Exception) {
+            android.util.Log.w("ApiClient", "PRIMARY failed: ${e.message}, trying FALLBACK")
+            try {
+                val response = block(fallbackApi)
+                currentBaseUrl = FALLBACK_URL
+                android.util.Log.i("ApiClient", "Using FALLBACK: $FALLBACK_URL")
+                response
+            } catch (fallbackError: Exception) {
+                android.util.Log.e("ApiClient", "Both PRIMARY and FALLBACK failed")
+                throw fallbackError
+            }
+        }
     }
 }
