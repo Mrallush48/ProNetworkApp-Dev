@@ -86,6 +86,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
+import android.widget.Toast
+import com.pronetwork.app.network.ApprovalHelper
+import com.pronetwork.app.network.AuthManager
+import androidx.compose.ui.platform.LocalContext
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -549,56 +554,206 @@ fun BuildingDetailsScreen(
 
     // ===== حوار حذف المبنى =====
     if (showDeleteBuildingDialog) {
+        val context = LocalContext.current
+        val authManager = remember { AuthManager(context) }
+        val scope = rememberCoroutineScope()
+
         AlertDialog(
             onDismissRequest = { showDeleteBuildingDialog = false },
             title = { Text(stringResource(R.string.building_details_delete_building_title)) },
             text = {
                 Column {
-                    Text(text = stringResource(R.string.building_details_delete_building_text, building.name))
-                    if (allClients.any { it.buildingId == building.id }) {
+                    if (authManager.isAdmin()) {
+                        Text(text = stringResource(R.string.building_details_delete_building_text, building.name))
+                        if (allClients.any { it.buildingId == building.id }) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.building_details_delete_building_warning),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(R.string.approval_delete_building_warning, building.name)
+                        )
+                        if (allClients.any { it.buildingId == building.id }) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.building_details_delete_building_warning),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
-                        Text(text = stringResource(R.string.building_details_delete_building_warning), color = MaterialTheme.colorScheme.error)
+                        Text(
+                            text = stringResource(R.string.approval_request_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             },
             confirmButton = {
-                Button(onClick = { onDeleteBuilding(building); showDeleteBuildingDialog = false; onBack() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                    Text(text = stringResource(R.string.building_details_delete_building_confirm), color = MaterialTheme.colorScheme.onError)
+                Button(
+                    onClick = {
+                        ApprovalHelper.executeOrRequest(
+                            context = context,
+                            authManager = authManager,
+                            scope = scope,
+                            requestType = "DELETE_BUILDING",
+                            targetId = building.id,
+                            targetName = building.name,
+                            onAdminDirect = {
+                                onDeleteBuilding(building)
+                                showDeleteBuildingDialog = false
+                                onBack()
+                            },
+                            onRequestSent = {
+                                showDeleteBuildingDialog = false
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.approval_request_sent),
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            onError = { error ->
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.approval_request_sent),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(
+                        text = if (authManager.isAdmin())
+                            stringResource(R.string.building_details_delete_building_confirm)
+                        else
+                            stringResource(R.string.approval_send_request),
+                        color = MaterialTheme.colorScheme.onError
+                    )
                 }
             },
-            dismissButton = { OutlinedButton(onClick = { showDeleteBuildingDialog = false }) { Text(stringResource(R.string.action_cancel)) } }
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteBuildingDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
         )
     }
 
     // ===== حوار حذف العميل =====
     if (showDeleteClientDialog && clientToDelete != null) {
+        val context = LocalContext.current
+        val authManager = remember { AuthManager(context) }
+        val scope = rememberCoroutineScope()
+
         AlertDialog(
             onDismissRequest = { showDeleteClientDialog = false; clientToDelete = null },
             title = { Text(stringResource(R.string.building_details_delete_client_title)) },
             text = {
                 Column {
                     val c = clientToDelete!!
-                    if (selectedMonth == c.startMonth) {
-                        Text(text = stringResource(R.string.building_details_delete_client_full_text, c.name))
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = stringResource(R.string.building_details_delete_client_full_warning), color = MaterialTheme.colorScheme.error)
+                    if (authManager.isAdmin()) {
+                        if (selectedMonth == c.startMonth) {
+                            Text(text = stringResource(R.string.building_details_delete_client_full_text, c.name))
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.building_details_delete_client_full_warning),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Text(text = stringResource(R.string.building_details_delete_client_stop_text, c.name, selectedMonth))
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.building_details_delete_client_stop_info, selectedMonth),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     } else {
-                        Text(text = stringResource(R.string.building_details_delete_client_stop_text, c.name, selectedMonth))
+                        Text(
+                            text = stringResource(R.string.approval_delete_client_warning, c.name)
+                        )
                         Spacer(Modifier.height(8.dp))
-                        Text(text = stringResource(R.string.building_details_delete_client_stop_info, selectedMonth), color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            text = stringResource(R.string.approval_request_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    val c = clientToDelete!!
-                    if (selectedMonth == c.startMonth) onDeleteClient(c) else onUpdateClient(c.copy(endMonth = selectedMonth))
-                    showDeleteClientDialog = false; clientToDelete = null
-                }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                    Text(text = stringResource(R.string.building_details_delete_client_confirm), color = MaterialTheme.colorScheme.onError)
+                Button(
+                    onClick = {
+                        val c = clientToDelete!!
+                        ApprovalHelper.executeOrRequest(
+                            context = context,
+                            authManager = authManager,
+                            scope = scope,
+                            requestType = "DELETE_CLIENT",
+                            targetId = c.id,
+                            targetName = c.name,
+                            reason = if (selectedMonth != c.startMonth)
+                                "Stop service from $selectedMonth"
+                            else null,
+                            onAdminDirect = {
+                                if (selectedMonth == c.startMonth)
+                                    onDeleteClient(c)
+                                else
+                                    onUpdateClient(c.copy(endMonth = selectedMonth))
+                                showDeleteClientDialog = false
+                                clientToDelete = null
+                            },
+                            onRequestSent = {
+                                showDeleteClientDialog = false
+                                clientToDelete = null
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.approval_request_sent),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            },
+                            onError = { error ->
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.approval_request_sent),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(
+                        text = if (authManager.isAdmin())
+                            stringResource(R.string.building_details_delete_client_confirm)
+                        else
+                            stringResource(R.string.approval_send_request),
+                        color = MaterialTheme.colorScheme.onError
+                    )
                 }
             },
-            dismissButton = { OutlinedButton(onClick = { showDeleteClientDialog = false; clientToDelete = null }) { Text(stringResource(R.string.action_cancel)) } }
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteClientDialog = false; clientToDelete = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
         )
     }
 }

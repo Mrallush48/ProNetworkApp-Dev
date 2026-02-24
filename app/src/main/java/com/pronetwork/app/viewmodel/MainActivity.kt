@@ -114,6 +114,8 @@ import com.pronetwork.app.ui.screens.ApprovalRequestsScreen
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.ButtonDefaults
+import com.pronetwork.app.network.ApprovalHelper
+import com.pronetwork.app.network.AuthManager
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -246,6 +248,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val authManager = AuthManager(this)
 
         exportManager = ClientsExportManager(this)
 
@@ -676,8 +680,34 @@ class MainActivity : ComponentActivity() {
                                                 ),
                                                 onOptionClick = { option ->
                                                     when (option) {
-                                                        ExportOption.EXPORT -> showExportDialogClients =
-                                                            true
+                                                        ExportOption.EXPORT -> {
+                                                            if (authManager.isAdmin()) {
+                                                                showExportDialogClients = true
+                                                            } else {
+                                                                ApprovalHelper.executeOrRequest(
+                                                                    context = this@MainActivity,
+                                                                    authManager = authManager,
+                                                                    scope = scope,
+                                                                    requestType = "EXPORT_REPORT",
+                                                                    targetName = "Clients Export",
+                                                                    onAdminDirect = { },
+                                                                    onRequestSent = {
+                                                                        android.widget.Toast.makeText(
+                                                                            this@MainActivity,
+                                                                            getString(R.string.approval_export_request_sent),
+                                                                            android.widget.Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    },
+                                                                    onError = { error ->
+                                                                        android.widget.Toast.makeText(
+                                                                            this@MainActivity,
+                                                                            getString(R.string.approval_request_error, error),
+                                                                            android.widget.Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
 
                                                         ExportOption.IMPORT_EXCEL -> {
                                                             importFileLauncher.launch(
@@ -1425,8 +1455,34 @@ class MainActivity : ComponentActivity() {
                                                 options = listOf(ExportOption.EXPORT),
                                                 onOptionClick = { option ->
                                                     when (option) {
-                                                        ExportOption.EXPORT -> showExportDialogStats =
-                                                            true
+                                                        ExportOption.EXPORT -> {
+                                                            if (authManager.isAdmin()) {
+                                                                showExportDialogStats = true
+                                                            } else {
+                                                                ApprovalHelper.executeOrRequest(
+                                                                    context = this@MainActivity,
+                                                                    authManager = authManager,
+                                                                    scope = scope,
+                                                                    requestType = "EXPORT_REPORT",
+                                                                    targetName = "Statistics Export",
+                                                                    onAdminDirect = { },
+                                                                    onRequestSent = {
+                                                                        android.widget.Toast.makeText(
+                                                                            this@MainActivity,
+                                                                            getString(R.string.approval_export_request_sent),
+                                                                            android.widget.Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    },
+                                                                    onError = { error ->
+                                                                        android.widget.Toast.makeText(
+                                                                            this@MainActivity,
+                                                                            getString(R.string.approval_request_error, error),
+                                                                            android.widget.Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
 
                                                         else -> {}
                                                     }
@@ -1475,8 +1531,34 @@ class MainActivity : ComponentActivity() {
                                                 options = listOf(ExportOption.EXPORT),
                                                 onOptionClick = { option ->
                                                     when (option) {
-                                                        ExportOption.EXPORT -> showExportDialogDaily =
-                                                            true
+                                                        ExportOption.EXPORT -> {
+                                                            if (authManager.isAdmin()) {
+                                                                showExportDialogDaily = true
+                                                            } else {
+                                                                ApprovalHelper.executeOrRequest(
+                                                                    context = this@MainActivity,
+                                                                    authManager = authManager,
+                                                                    scope = scope,
+                                                                    requestType = "EXPORT_REPORT",
+                                                                    targetName = "Daily Collection Export",
+                                                                    onAdminDirect = { },
+                                                                    onRequestSent = {
+                                                                        android.widget.Toast.makeText(
+                                                                            this@MainActivity,
+                                                                            getString(R.string.approval_export_request_sent),
+                                                                            android.widget.Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    },
+                                                                    onError = { error ->
+                                                                        android.widget.Toast.makeText(
+                                                                            this@MainActivity,
+                                                                            getString(R.string.approval_request_error, error),
+                                                                            android.widget.Toast.LENGTH_LONG
+                                                                        ).show()
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
 
                                                         else -> {}
                                                     }

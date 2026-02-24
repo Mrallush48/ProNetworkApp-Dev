@@ -125,6 +125,7 @@
     <string name="building_details_delete_building_warning">
         Warning: all clients linked to this building will be deleted.
     </string>
+    <string name="approval_delete_building_warning">Are you sure you want to request deletion of building \"%1$s\"? All clients and payment records in this building will be deleted. This action cannot be undone.</string>
     <string name="building_details_delete_building_confirm">
         Yes, delete
     </string>
@@ -334,6 +335,8 @@
     <string name="client_details_delete_client_text">
         Are you sure you want to delete the client "%1$s"? All payment records related to this client will be deleted. This action cannot be undone.
     </string>
+    <string name="approval_delete_client_warning">Are you sure you want to request deletion of client \"%1$s\"? All payment records related to this client will be deleted. This action cannot be undone.</string>
+
     <string name="client_details_delete_client_yes">
         Yes, delete
     </string>
@@ -687,5 +690,14 @@
     <string name="approval_refresh">Refresh</string>
     <string name="approval_target_unknown">Unknown</string>
     <string name="approval_reject_request">Reject Request</string>
+
+    <!-- ===== Approval Request System ===== -->
+    <string name="approval_request_note">This action requires admin approval. A request will be sent to the admin.</string>
+    <string name="approval_request_sent">Request sent to admin for approval</string>
+    <string name="approval_request_error">Failed to send request: %1$s</string>
+    <string name="approval_send_request">Send Request</string>
+    <string name="approval_export_blocked">Export requires admin approval</string>
+    <string name="approval_export_request_sent">Export request sent to admin for approval</string>
+
 
 </resources>

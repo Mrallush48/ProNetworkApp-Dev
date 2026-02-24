@@ -26,6 +26,10 @@ import com.pronetwork.app.viewmodel.ClientMonthPaymentUi
 import com.pronetwork.app.viewmodel.PaymentStatus
 import java.text.SimpleDateFormat
 import java.util.*
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.pronetwork.app.network.ApprovalHelper
+import com.pronetwork.app.network.AuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +47,10 @@ fun ClientDetailsScreen(
     onAddReverseTransaction: (month: String, monthAmount: Double, refundAmount: Double, reason: String) -> Unit,
     onBack: () -> Unit
 ) {
+
+    val context = LocalContext.current
+    val authManager = remember { AuthManager(context) }
+    val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     var partialPaymentMonth by remember { mutableStateOf<String?>(null) }
@@ -868,35 +876,76 @@ fun ClientDetailsScreen(
                 },
                 title = {
                     Text(
-                        text = stringResource(
-                            R.string.client_details_delete_client_title
-                        ),
+                        text = stringResource(R.string.client_details_delete_client_title),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    Text(
-                        text = stringResource(
-                            R.string.client_details_delete_client_text,
-                            client.name
-                        )
-                    )
+                    Column {
+                        if (authManager.isAdmin()) {
+                            Text(
+                                text = stringResource(
+                                    R.string.client_details_delete_client_text,
+                                    client.name
+                                )
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(
+                                    R.string.approval_delete_client_warning,
+                                    client.name
+                                )
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.approval_request_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            onDelete(client)
-                            showDeleteDialog = false
-                            onBack()
+                            ApprovalHelper.executeOrRequest(
+                                context = context,
+                                authManager = authManager,
+                                scope = scope,
+                                requestType = "DELETE_CLIENT",
+                                targetId = client.id,
+                                targetName = client.name,
+                                onAdminDirect = {
+                                    onDelete(client)
+                                    showDeleteDialog = false
+                                    onBack()
+                                },
+                                onRequestSent = {
+                                    showDeleteDialog = false
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.approval_request_sent),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                },
+                                onError = { error ->
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.approval_request_error, error),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
                         Text(
-                            stringResource(
-                                R.string.client_details_delete_client_yes
-                            )
+                            if (authManager.isAdmin())
+                                stringResource(R.string.client_details_delete_client_yes)
+                            else
+                                stringResource(R.string.approval_send_request)
                         )
                     }
                 },
