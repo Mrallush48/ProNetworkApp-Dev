@@ -13,6 +13,7 @@ import com.pronetwork.data.DailySummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.core.content.FileProvider
+import android.os.Build
 
 class DailyCollectionExportManager(private val context: Context) {
 
@@ -396,17 +397,30 @@ class DailyCollectionExportManager(private val context: Context) {
         withContext(Dispatchers.IO) {
             val xml = buildExcelXml(date, ui, summary)
             val fileName = "daily_collection_${date}.xls"
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "application/vnd.ms-excel")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { os ->
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/vnd.ms-excel")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                uri?.let {
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(xml.toByteArray(Charsets.UTF_8))
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val file = java.io.File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                java.io.FileOutputStream(file).use { os ->
                     os.write(xml.toByteArray(Charsets.UTF_8))
                 }
             }
+
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Saved to Downloads: $fileName", Toast.LENGTH_LONG).show()
             }
@@ -417,17 +431,32 @@ class DailyCollectionExportManager(private val context: Context) {
         withContext(Dispatchers.IO) {
             val pdfBytes = buildPdf(date, ui, summary)
             val fileName = "daily_collection_${date}.pdf"
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { os ->
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // API 29+ — نفس الكود القديم بالضبط
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                uri?.let {
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(pdfBytes)
+                    }
+                }
+            } else {
+                // API 24-28 — fallback
+                @Suppress("DEPRECATION")
+                val file = java.io.File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                java.io.FileOutputStream(file).use { os ->
                     os.write(pdfBytes)
                 }
             }
+
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Saved to Downloads: $fileName", Toast.LENGTH_LONG).show()
             }
