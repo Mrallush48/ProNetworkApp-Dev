@@ -50,6 +50,7 @@ fun ClientDetailsScreen(
 
     val context = LocalContext.current
     val authManager = remember { AuthManager(context) }
+    val appContext = remember { context.applicationContext }
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -923,15 +924,15 @@ fun ClientDetailsScreen(
                                 onRequestSent = {
                                     showDeleteDialog = false
                                     Toast.makeText(
-                                        context,
-                                        context.getString(R.string.approval_request_sent),
+                                        appContext,
+                                        appContext.getString(R.string.approval_request_sent),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 },
                                 onError = { error ->
                                     Toast.makeText(
-                                        context,
-                                        context.getString(R.string.approval_request_error, error),
+                                        appContext,
+                                        appContext.getString(R.string.approval_request_error, error),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
