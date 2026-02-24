@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 import com.pronetwork.app.network.ApprovalRequestResponse
 import com.pronetwork.app.viewmodel.ApprovalRequestsUiState
+import com.pronetwork.app.network.TimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -213,7 +214,7 @@ fun RequestCard(
                 verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = request.created_at.take(16).replace("T", " "),
+                    text = TimeUtils.utcToLocal(request.created_at),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 import com.pronetwork.app.network.UserResponse
 import com.pronetwork.app.viewmodel.UserManagementUiState
+import com.pronetwork.app.network.TimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -555,18 +556,5 @@ private fun UserFormDialog(
 }
 
 private fun formatDateTime(isoDate: String): String {
-    return try {
-        val inputFormat = java.text.SimpleDateFormat(
-            "yyyy-MM-dd'T'HH:mm:ss",
-            java.util.Locale.getDefault()
-        )
-        val outputFormat = java.text.SimpleDateFormat(
-            "yyyy-MM-dd HH:mm",
-            java.util.Locale.getDefault()
-        )
-        val date = inputFormat.parse(isoDate)
-        date?.let { outputFormat.format(it) } ?: isoDate.take(16)
-    } catch (e: Exception) {
-        isoDate.take(16)
-    }
+    return TimeUtils.utcToLocal(isoDate)
 }

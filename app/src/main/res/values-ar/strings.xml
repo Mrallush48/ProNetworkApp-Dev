@@ -613,6 +613,8 @@
 
     <!-- User Management screen -->
     <string name="screen_admin">الإدارة</string>
+    <string name="admin_tab_users">إدارة المستخدمين</string>
+    <string name="admin_tab_requests">طلبات الموافقة</string>
     <string name="user_mgmt_title">إدارة المستخدمين (%1$d)</string>
     <string name="user_mgmt_refresh">تحديث</string>
     <string name="user_mgmt_add_user">إضافة مستخدم</string>

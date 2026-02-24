@@ -616,6 +616,8 @@
 
     <!-- User Management screen -->
     <string name="screen_admin">Admin</string>
+    <string name="admin_tab_users">User Management</string>
+    <string name="admin_tab_requests">Approval Requests</string>
     <string name="user_mgmt_title">User Management (%1$d)</string>
     <string name="user_mgmt_refresh">Refresh</string>
     <string name="user_mgmt_add_user">Add user</string>

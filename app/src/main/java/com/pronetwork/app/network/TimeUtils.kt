@@ -13,12 +13,12 @@ object TimeUtils {
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
-    private val localDateTimeFormat = SimpleDateFormat("yyyy-MM-dd  HH:mm", Locale.US).apply {
-        timeZone = TimeZone.getDefault()
+    private val localDateTimeFormat = SimpleDateFormat("yyyy-MM-dd  hh:mm a", Locale.US).apply {
+    timeZone = TimeZone.getDefault()
     }
 
-    private val localTimeOnlyFormat = SimpleDateFormat("HH:mm", Locale.US).apply {
-        timeZone = TimeZone.getDefault()
+    private val localTimeOnlyFormat = SimpleDateFormat("hh:mm a", Locale.US).apply {
+    timeZone = TimeZone.getDefault()
     }
 
     private val localDateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {

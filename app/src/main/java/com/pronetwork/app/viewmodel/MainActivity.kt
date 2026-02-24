@@ -1767,7 +1767,7 @@ class MainActivity : ComponentActivity() {
                                         androidx.compose.material3.Tab(
                                             selected = adminTab == "users",
                                             onClick = { adminTab = "users" },
-                                            text = { Text("\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645\u064a\u0646") },
+                                            text = { Text(stringResource(R.string.admin_tab_users)) },
                                             icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) }
                                         )
                                         androidx.compose.material3.Tab(
@@ -1776,7 +1776,7 @@ class MainActivity : ComponentActivity() {
                                                 adminTab = "requests"
                                                 approvalRequestsViewModel.loadRequests()
                                             },
-                                            text = { Text("\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629") },
+                                            text = { Text(stringResource(R.string.admin_tab_requests)) },
                                             icon = {
                                                 val pendingCount = approvalState.requests.count { it.status == "PENDING" }
                                                 if (pendingCount > 0) {
