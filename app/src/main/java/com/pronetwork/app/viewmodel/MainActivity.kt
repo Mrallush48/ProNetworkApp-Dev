@@ -123,6 +123,8 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.ButtonDefaults
 import com.pronetwork.app.network.ApprovalHelper
 import com.pronetwork.app.network.AuthManager
+import com.pronetwork.app.network.ConnectivityObserver
+import androidx.compose.ui.platform.LocalContext
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -141,7 +143,7 @@ class MainActivity : ComponentActivity() {
     private val importFileLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
-    uri?.let { selectedUri ->
+        uri?.let { selectedUri ->
             lifecycleScope.launch {
                 val result = importManager.importFromFile(
                     uri = selectedUri,
@@ -217,8 +219,12 @@ class MainActivity : ComponentActivity() {
                     if (client.endMonth != null) {
                         val endDate = dateFormat.parse(client.endMonth)
                         endDate != null && viewDate.time < endDate.time
-                    } else { true }
-                } else { false }
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
             } catch (e: Exception) {
                 client.startMonth == selectedMonth
             }
@@ -307,25 +313,25 @@ class MainActivity : ComponentActivity() {
         approvalRequestsViewModel.loadRequests()
 
         setContent {
-        ProNetworkSpotTheme(darkTheme = false) {
-                    val loginState by loginViewModel.uiState.collectAsState()
+            ProNetworkSpotTheme(darkTheme = false) {
+                val loginState by loginViewModel.uiState.collectAsState()
 
-                    if (!loginState.loginSuccess) {
-                        // ===== LOGIN SCREEN =====
-                        LoginScreen(
-                            uiState = loginState,
-                            onUsernameChange = { loginViewModel.onUsernameChange(it) },
-                            onPasswordChange = { loginViewModel.onPasswordChange(it) },
-                            onTogglePassword = { loginViewModel.togglePasswordVisibility() },
-                            onLogin = { loginViewModel.login() },
-                            onClearError = { loginViewModel.clearError() }
-                        )
-                        return@ProNetworkSpotTheme
-                    }
+                if (!loginState.loginSuccess) {
+                    // ===== LOGIN SCREEN =====
+                    LoginScreen(
+                        uiState = loginState,
+                        onUsernameChange = { loginViewModel.onUsernameChange(it) },
+                        onPasswordChange = { loginViewModel.onPasswordChange(it) },
+                        onTogglePassword = { loginViewModel.togglePasswordVisibility() },
+                        onLogin = { loginViewModel.login() },
+                        onClearError = { loginViewModel.clearError() }
+                    )
+                    return@ProNetworkSpotTheme
+                }
 
-                    // ===== MAIN APP (after login) =====
-                    var refreshTrigger by remember { mutableStateOf(0) }
-                    var showExitDialog by remember { mutableStateOf(false) }
+                // ===== MAIN APP (after login) =====
+                var refreshTrigger by remember { mutableStateOf(0) }
+                var showExitDialog by remember { mutableStateOf(false) }
                 var showExportDialogClients by remember { mutableStateOf(false) }
                 var showExportDialogBuildings by remember { mutableStateOf(false) }
                 var showExportDialogStats by remember { mutableStateOf(false) }
@@ -402,7 +408,8 @@ class MainActivity : ComponentActivity() {
                     calendar.add(Calendar.DAY_OF_MONTH, 1)
                     val dayEndMillis = calendar.timeInMillis
 
-                    val monthFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+                    val monthFormat =
+                        java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
                     val currentMonth = monthFormat.format(java.util.Date(dateMillis))
 
                     // جلب التحصيل التفصيلي (عميل بعميل)
@@ -429,12 +436,19 @@ class MainActivity : ComponentActivity() {
                             totalClientsCount = totalClients,
                             topBuilding = topBuilding,
                             lowBuilding = lowBuilding,
-                                                    paidClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "PAID" },
-                                                    partialClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "PARTIAL" },
-                                                    settledClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "SETTLED" },
-                                                    unpaidClientsCount = detailedBuildings.flatMap { it.clients }.count { it.paymentStatus == "UNPAID" },
-                                                    settledAmount = detailedBuildings.flatMap { it.clients }.filter { it.paymentStatus == "SETTLED" }.sumOf { it.totalPaid },
-                                                    refundAmount = detailedBuildings.flatMap { it.clients }.flatMap { it.transactions }.filter { it.type == "Refund" }.sumOf { kotlin.math.abs(it.amount) }
+                            paidClientsCount = detailedBuildings.flatMap { it.clients }
+                                .count { it.paymentStatus == "PAID" },
+                            partialClientsCount = detailedBuildings.flatMap { it.clients }
+                                .count { it.paymentStatus == "PARTIAL" },
+                            settledClientsCount = detailedBuildings.flatMap { it.clients }
+                                .count { it.paymentStatus == "SETTLED" },
+                            unpaidClientsCount = detailedBuildings.flatMap { it.clients }
+                                .count { it.paymentStatus == "UNPAID" },
+                            settledAmount = detailedBuildings.flatMap { it.clients }
+                                .filter { it.paymentStatus == "SETTLED" }.sumOf { it.totalPaid },
+                            refundAmount = detailedBuildings.flatMap { it.clients }
+                                .flatMap { it.transactions }.filter { it.type == "Refund" }
+                                .sumOf { kotlin.math.abs(it.amount) }
                         )
                     }
 
@@ -479,35 +493,41 @@ class MainActivity : ComponentActivity() {
                     stringResource(R.string.clients_add_requires_building)
                 val addActionLabel = stringResource(R.string.action_add)
 
+                // Sync status
+                val context = LocalContext.current
+                val app = context.applicationContext as com.pronetwork.app.ProNetworkApp
+                val connectivityStatus by app.connectivityObserver.observe()
+                    .collectAsState(initial = ConnectivityObserver.Status.UNAVAILABLE)
+
                 Scaffold(
                     bottomBar = {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
                         ) {
-                                                // Dashboard Tab
-                    NavigationBarItem(
-                        selected = currentScreen == "dashboard",
-                        onClick = {
-                            currentScreen = "dashboard"
-                            selectedBuilding = null
-                            selectedClient = null
-                            showDailyCollection = false
-                        },
-                        icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
-                        label = { Text(stringResource(R.string.screen_dashboard)) }
-                    )
-                    // Clients Tab
-                    NavigationBarItem(
-                        selected = currentScreen == "clients",
-                        onClick = {
-                            currentScreen = "clients"
-                            selectedBuilding = null
-                            selectedClient = null
-                            showDailyCollection = false
-                        },
-                        icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                        label = { Text(stringResource(R.string.screen_clients)) }
-                    )
+                            // Dashboard Tab
+                            NavigationBarItem(
+                                selected = currentScreen == "dashboard",
+                                onClick = {
+                                    currentScreen = "dashboard"
+                                    selectedBuilding = null
+                                    selectedClient = null
+                                    showDailyCollection = false
+                                },
+                                icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
+                                label = { Text(stringResource(R.string.screen_dashboard)) }
+                            )
+                            // Clients Tab
+                            NavigationBarItem(
+                                selected = currentScreen == "clients",
+                                onClick = {
+                                    currentScreen = "clients"
+                                    selectedBuilding = null
+                                    selectedClient = null
+                                    showDailyCollection = false
+                                },
+                                icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                                label = { Text(stringResource(R.string.screen_clients)) }
+                            )
                             NavigationBarItem(
                                 selected = currentScreen == "buildings",
                                 onClick = {
@@ -547,7 +567,8 @@ class MainActivity : ComponentActivity() {
                                 },
                                 icon = {
                                     val approvalState by approvalRequestsViewModel.uiState.collectAsState()
-                                    val pendingCount = approvalState.requests.count { it.status == "PENDING" }
+                                    val pendingCount =
+                                        approvalState.requests.count { it.status == "PENDING" }
 
                                     if (pendingCount > 0 && currentScreen != "admin") {
                                         androidx.compose.material3.BadgedBox(
@@ -558,16 +579,28 @@ class MainActivity : ComponentActivity() {
                                             }
                                         ) {
                                             if (loginState.role == "ADMIN") {
-                                                Icon(Icons.Filled.AdminPanelSettings, contentDescription = null)
+                                                Icon(
+                                                    Icons.Filled.AdminPanelSettings,
+                                                    contentDescription = null
+                                                )
                                             } else {
-                                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.List,
+                                                    contentDescription = null
+                                                )
                                             }
                                         }
                                     } else {
                                         if (loginState.role == "ADMIN") {
-                                            Icon(Icons.Filled.AdminPanelSettings, contentDescription = null)
+                                            Icon(
+                                                Icons.Filled.AdminPanelSettings,
+                                                contentDescription = null
+                                            )
                                         } else {
-                                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.List,
+                                                contentDescription = null
+                                            )
                                         }
                                     }
                                 },
@@ -615,21 +648,29 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                    // Load stats for Dashboard and Stats screens
-                    LaunchedEffect(selectedMonth, refreshTrigger) {
-                        paymentViewModel.setStatsMonth(selectedMonth)
-                    }
-                    val clientsCount by clientViewModel.clientsCount.observeAsState(0)
-                    val monthStats by paymentViewModel.monthStats.observeAsState(null)
+                        // Load stats for Dashboard and Stats screens
+                        LaunchedEffect(selectedMonth, refreshTrigger) {
+                            paymentViewModel.setStatsMonth(selectedMonth)
+                        }
+                        val clientsCount by clientViewModel.clientsCount.observeAsState(0)
+                        val monthStats by paymentViewModel.monthStats.observeAsState(null)
 
                         when {
                             // ===== Dashboard =====
                             currentScreen == "dashboard" -> {
-                                val previousMonthStatsState by paymentViewModel.previousMonthStats.observeAsState(null)
+                                val previousMonthStatsState by paymentViewModel.previousMonthStats.observeAsState(
+                                    null
+                                )
 
                                 // آخر الحركات
-                                val recentTxRaw by paymentViewModel.getRecentTransactions(10).observeAsState(emptyList())
-                                val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+                                val recentTxRaw by paymentViewModel.getRecentTransactions(10)
+                                    .observeAsState(emptyList())
+                                val timeFormat = remember {
+                                    SimpleDateFormat(
+                                        "hh:mm a",
+                                        Locale.getDefault()
+                                    )
+                                }
                                 val dashboardRecentTransactions = remember(recentTxRaw) {
                                     recentTxRaw.map { tx ->
                                         RecentTransaction(
@@ -643,7 +684,10 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 // العملاء المتأخرين
-                                val unpaidRaw by paymentViewModel.getTopUnpaidClients(selectedMonth, 5).observeAsState(emptyList())
+                                val unpaidRaw by paymentViewModel.getTopUnpaidClients(
+                                    selectedMonth,
+                                    5
+                                ).observeAsState(emptyList())
                                 val dashboardUnpaidClients = remember(unpaidRaw) {
                                     unpaidRaw.map { client ->
                                         UnpaidClientInfo(
@@ -680,7 +724,9 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         dismissButton = {
-                                            OutlinedButton(onClick = { showLogoutDialog = false }) {
+                                            OutlinedButton(onClick = {
+                                                showLogoutDialog = false
+                                            }) {
                                                 Text(stringResource(R.string.action_cancel))
                                             }
                                         }
@@ -753,7 +799,10 @@ class MainActivity : ComponentActivity() {
                                                                     onError = { error ->
                                                                         android.widget.Toast.makeText(
                                                                             this@MainActivity,
-                                                                            getString(R.string.approval_request_error, error),
+                                                                            getString(
+                                                                                R.string.approval_request_error,
+                                                                                error
+                                                                            ),
                                                                             android.widget.Toast.LENGTH_LONG
                                                                         ).show()
                                                                     }
@@ -858,7 +907,8 @@ class MainActivity : ComponentActivity() {
                                                                 text = { Text(month) },
                                                                 onClick = {
                                                                     selectedMonth = month
-                                                                    monthDropdownExpanded = false
+                                                                    monthDropdownExpanded =
+                                                                        false
                                                                 }
                                                             )
                                                         }
@@ -910,10 +960,14 @@ class MainActivity : ComponentActivity() {
 
                                             // زر خيارات الفرز
                                             Row(
-                                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 4.dp),
                                                 horizontalArrangement = Arrangement.End
                                             ) {
-                                                TextButton(onClick = { showViewOptionsDialog = true }) {
+                                                TextButton(onClick = {
+                                                    showViewOptionsDialog = true
+                                                }) {
                                                     Icon(
                                                         imageVector = Icons.Filled.FilterList,
                                                         contentDescription = null,
@@ -932,7 +986,9 @@ class MainActivity : ComponentActivity() {
                                                         selectedSortOption = option
                                                         showViewOptionsDialog = false
                                                     },
-                                                    onDismiss = { showViewOptionsDialog = false }
+                                                    onDismiss = {
+                                                        showViewOptionsDialog = false
+                                                    }
                                                 )
                                             }
 
@@ -945,7 +1001,7 @@ class MainActivity : ComponentActivity() {
                                                 paymentViewModel = paymentViewModel,
                                                 sortOption = selectedSortOption,
                                                 onAddClient = {
-                                                if (buildings.isNotEmpty()) {
+                                                    if (buildings.isNotEmpty()) {
                                                         showClientDialog = true
                                                     } else {
                                                         scope.launch {
@@ -960,44 +1016,77 @@ class MainActivity : ComponentActivity() {
 
                                             if (showFilterDialog) {
                                                 AlertDialog(
-                                                    onDismissRequest = { showFilterDialog = false },
+                                                    onDismissRequest = {
+                                                        showFilterDialog = false
+                                                    },
                                                     title = { Text(stringResource(R.string.clients_filter_and_sort)) },
                                                     text = {
                                                         Column(
                                                             modifier = Modifier.fillMaxWidth(),
-                                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                            verticalArrangement = Arrangement.spacedBy(
+                                                                8.dp
+                                                            )
                                                         ) {
                                                             Text(
                                                                 stringResource(R.string.clients_filter_building_label),
                                                                 style = MaterialTheme.typography.labelMedium
                                                             )
-                                                            var buildingFilterExpanded by remember { mutableStateOf(false) }
+                                                            var buildingFilterExpanded by remember {
+                                                                mutableStateOf(
+                                                                    false
+                                                                )
+                                                            }
                                                             ExposedDropdownMenuBox(
                                                                 expanded = buildingFilterExpanded,
-                                                                onExpandedChange = { buildingFilterExpanded = !buildingFilterExpanded }
+                                                                onExpandedChange = {
+                                                                    buildingFilterExpanded =
+                                                                        !buildingFilterExpanded
+                                                                }
                                                             ) {
                                                                 OutlinedTextField(
                                                                     readOnly = true,
                                                                     value = selectedFilterBuildingId?.let { bid ->
                                                                         buildings.firstOrNull { it.id == bid }?.name
                                                                             ?: stringResource(R.string.clients_filter_all_buildings)
-                                                                    } ?: stringResource(R.string.clients_filter_all_buildings),
+                                                                    }
+                                                                        ?: stringResource(R.string.clients_filter_all_buildings),
                                                                     onValueChange = {},
-                                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = buildingFilterExpanded) },
-                                                                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                                                                    trailingIcon = {
+                                                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                                                            expanded = buildingFilterExpanded
+                                                                        )
+                                                                    },
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .menuAnchor()
                                                                 )
                                                                 ExposedDropdownMenu(
                                                                     expanded = buildingFilterExpanded,
-                                                                    onDismissRequest = { buildingFilterExpanded = false }
+                                                                    onDismissRequest = {
+                                                                        buildingFilterExpanded =
+                                                                            false
+                                                                    }
                                                                 ) {
                                                                     DropdownMenuItem(
-                                                                        text = { Text(stringResource(R.string.clients_filter_all_buildings)) },
-                                                                        onClick = { selectedFilterBuildingId = null; buildingFilterExpanded = false }
+                                                                        text = {
+                                                                            Text(
+                                                                                stringResource(R.string.clients_filter_all_buildings)
+                                                                            )
+                                                                        },
+                                                                        onClick = {
+                                                                            selectedFilterBuildingId =
+                                                                                null; buildingFilterExpanded =
+                                                                            false
+                                                                        }
                                                                     )
                                                                     buildings.forEach { b ->
                                                                         DropdownMenuItem(
                                                                             text = { Text(b.name) },
-                                                                            onClick = { selectedFilterBuildingId = b.id; buildingFilterExpanded = false }
+                                                                            onClick = {
+                                                                                selectedFilterBuildingId =
+                                                                                    b.id; buildingFilterExpanded =
+                                                                                false
+                                                                            }
                                                                         )
                                                                     }
                                                                 }
@@ -1007,31 +1096,62 @@ class MainActivity : ComponentActivity() {
                                                                 stringResource(R.string.clients_filter_package_label),
                                                                 style = MaterialTheme.typography.labelMedium
                                                             )
-                                                            val packageTypes = clients.map { it.packageType }.distinct().sorted()
-                                                            var packageFilterExpanded by remember { mutableStateOf(false) }
+                                                            val packageTypes =
+                                                                clients.map { it.packageType }
+                                                                    .distinct().sorted()
+                                                            var packageFilterExpanded by remember {
+                                                                mutableStateOf(
+                                                                    false
+                                                                )
+                                                            }
                                                             ExposedDropdownMenuBox(
                                                                 expanded = packageFilterExpanded,
-                                                                onExpandedChange = { packageFilterExpanded = !packageFilterExpanded }
+                                                                onExpandedChange = {
+                                                                    packageFilterExpanded =
+                                                                        !packageFilterExpanded
+                                                                }
                                                             ) {
                                                                 OutlinedTextField(
                                                                     readOnly = true,
-                                                                    value = selectedFilterPackage ?: stringResource(R.string.clients_filter_all_packages),
+                                                                    value = selectedFilterPackage
+                                                                        ?: stringResource(R.string.clients_filter_all_packages),
                                                                     onValueChange = {},
-                                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = packageFilterExpanded) },
-                                                                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                                                                    trailingIcon = {
+                                                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                                                            expanded = packageFilterExpanded
+                                                                        )
+                                                                    },
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .menuAnchor()
                                                                 )
                                                                 ExposedDropdownMenu(
                                                                     expanded = packageFilterExpanded,
-                                                                    onDismissRequest = { packageFilterExpanded = false }
+                                                                    onDismissRequest = {
+                                                                        packageFilterExpanded =
+                                                                            false
+                                                                    }
                                                                 ) {
                                                                     DropdownMenuItem(
-                                                                        text = { Text(stringResource(R.string.clients_filter_all_packages)) },
-                                                                        onClick = { selectedFilterPackage = null; packageFilterExpanded = false }
+                                                                        text = {
+                                                                            Text(
+                                                                                stringResource(R.string.clients_filter_all_packages)
+                                                                            )
+                                                                        },
+                                                                        onClick = {
+                                                                            selectedFilterPackage =
+                                                                                null; packageFilterExpanded =
+                                                                            false
+                                                                        }
                                                                     )
                                                                     packageTypes.forEach { pkg ->
                                                                         DropdownMenuItem(
                                                                             text = { Text(pkg) },
-                                                                            onClick = { selectedFilterPackage = pkg; packageFilterExpanded = false }
+                                                                            onClick = {
+                                                                                selectedFilterPackage =
+                                                                                    pkg; packageFilterExpanded =
+                                                                                false
+                                                                            }
                                                                         )
                                                                     }
                                                                 }
@@ -1039,7 +1159,9 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     },
                                                     confirmButton = {
-                                                        Button(onClick = { showFilterDialog = false }) {
+                                                        Button(onClick = {
+                                                            showFilterDialog = false
+                                                        }) {
                                                             Text(stringResource(R.string.clients_filter_apply))
                                                         }
                                                     },
@@ -1141,7 +1263,8 @@ class MainActivity : ComponentActivity() {
 
                                                 },
                                                 buildings = buildings.map { it.id to it.name },
-                                                packages = clients.map { it.packageType }.distinct()
+                                                packages = clients.map { it.packageType }
+                                                    .distinct()
                                                     .sorted()
                                             )
                                         }
@@ -1365,7 +1488,8 @@ class MainActivity : ComponentActivity() {
                                             initialSubscriptionNumber = selectedClient!!.subscriptionNumber,
                                             initialPrice = selectedClient!!.price.toString(),
                                             initialBuildingId = selectedClient!!.buildingId,
-                                            initialRoomNumber = selectedClient!!.roomNumber ?: "",
+                                            initialRoomNumber = selectedClient!!.roomNumber
+                                                ?: "",
                                             initialStartMonth = selectedClient!!.startMonth,
                                             initialStartDay = selectedClient!!.startDay,
                                             initialFirstMonthAmount = selectedClient!!.firstMonthAmount?.toString()
@@ -1528,7 +1652,10 @@ class MainActivity : ComponentActivity() {
                                                                     onError = { error ->
                                                                         android.widget.Toast.makeText(
                                                                             this@MainActivity,
-                                                                            getString(R.string.approval_request_error, error),
+                                                                            getString(
+                                                                                R.string.approval_request_error,
+                                                                                error
+                                                                            ),
                                                                             android.widget.Toast.LENGTH_LONG
                                                                         ).show()
                                                                     }
@@ -1551,7 +1678,9 @@ class MainActivity : ComponentActivity() {
                                             Button(
                                                 onClick = {
                                                     showDailyCollection = true
-                                                    loadDailyCollectionFor(selectedDailyDateMillis)
+                                                    loadDailyCollectionFor(
+                                                        selectedDailyDateMillis
+                                                    )
                                                 },
                                                 modifier = Modifier
                                                     .align(Alignment.CenterHorizontally)
@@ -1604,7 +1733,10 @@ class MainActivity : ComponentActivity() {
                                                                     onError = { error ->
                                                                         android.widget.Toast.makeText(
                                                                             this@MainActivity,
-                                                                            getString(R.string.approval_request_error, error),
+                                                                            getString(
+                                                                                R.string.approval_request_error,
+                                                                                error
+                                                                            ),
                                                                             android.widget.Toast.LENGTH_LONG
                                                                         ).show()
                                                                     }
@@ -1655,8 +1787,25 @@ class MainActivity : ComponentActivity() {
                                         dateLabel = dailyDateLabel,
                                         onDismiss = { showExportDialogDaily = false },
                                         onExport = { format, mode ->
-                                            val currentUi = if (mode == DailyReportMode.TRANSACTIONS_ONLY) dailyUi?.let { ui -> val filteredBuildings = ui.buildings.map { b -> b.copy(clients = b.clients.filter { it.todayPaid != 0.0 || it.transactions.isNotEmpty() }) }.filter { it.clients.isNotEmpty() }; ui.copy(buildings = filteredBuildings, totalClientsCount = filteredBuildings.sumOf { it.clientsCount }) } else dailyUi
-                                            val currentSummary = if (mode == DailyReportMode.TRANSACTIONS_ONLY && currentUi != null) { val txClients = currentUi.buildings.sumOf { it.clientsCount }; val txCount = currentUi.buildings.flatMap { it.clients }.sumOf { it.transactions.size }; dailySummary.copy(totalClients = txClients, totalTransactions = txCount) } else dailySummary
+                                            val currentUi =
+                                                if (mode == DailyReportMode.TRANSACTIONS_ONLY) dailyUi?.let { ui ->
+                                                    val filteredBuildings =
+                                                        ui.buildings.map { b -> b.copy(clients = b.clients.filter { it.todayPaid != 0.0 || it.transactions.isNotEmpty() }) }
+                                                            .filter { it.clients.isNotEmpty() }; ui.copy(
+                                                    buildings = filteredBuildings,
+                                                    totalClientsCount = filteredBuildings.sumOf { it.clientsCount })
+                                                } else dailyUi
+                                            val currentSummary =
+                                                if (mode == DailyReportMode.TRANSACTIONS_ONLY && currentUi != null) {
+                                                    val txClients =
+                                                        currentUi.buildings.sumOf { it.clientsCount };
+                                                    val txCount =
+                                                        currentUi.buildings.flatMap { it.clients }
+                                                            .sumOf { it.transactions.size }; dailySummary.copy(
+                                                        totalClients = txClients,
+                                                        totalTransactions = txCount
+                                                    )
+                                                } else dailySummary
                                             if (currentUi != null) {
                                                 lifecycleScope.launch {
                                                     when (format) {
@@ -1768,7 +1917,12 @@ class MainActivity : ComponentActivity() {
                                             selected = adminTab == "users",
                                             onClick = { adminTab = "users" },
                                             text = { Text(stringResource(R.string.admin_tab_users)) },
-                                            icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) }
+                                            icon = {
+                                                Icon(
+                                                    Icons.Filled.AdminPanelSettings,
+                                                    contentDescription = null
+                                                )
+                                            }
                                         )
                                         androidx.compose.material3.Tab(
                                             selected = adminTab == "requests",
@@ -1778,7 +1932,8 @@ class MainActivity : ComponentActivity() {
                                             },
                                             text = { Text(stringResource(R.string.admin_tab_requests)) },
                                             icon = {
-                                                val pendingCount = approvalState.requests.count { it.status == "PENDING" }
+                                                val pendingCount =
+                                                    approvalState.requests.count { it.status == "PENDING" }
                                                 if (pendingCount > 0) {
                                                     androidx.compose.material3.BadgedBox(
                                                         badge = {
@@ -1787,10 +1942,16 @@ class MainActivity : ComponentActivity() {
                                                             }
                                                         }
                                                     ) {
-                                                        Icon(Icons.Filled.Person, contentDescription = null)
+                                                        Icon(
+                                                            Icons.Filled.Person,
+                                                            contentDescription = null
+                                                        )
                                                     }
                                                 } else {
-                                                    Icon(Icons.Filled.Person, contentDescription = null)
+                                                    Icon(
+                                                        Icons.Filled.Person,
+                                                        contentDescription = null
+                                                    )
                                                 }
                                             }
                                         )
@@ -1801,26 +1962,71 @@ class MainActivity : ComponentActivity() {
                                             uiState = userMgmtState,
                                             onRefresh = { userManagementViewModel.loadUsers() },
                                             onCreateClick = { userManagementViewModel.showCreateDialog() },
-                                            onEditClick = { user -> userManagementViewModel.showEditDialog(user) },
-                                            onToggleClick = { userId -> userManagementViewModel.toggleUser(userId) },
-                                            onDeleteClick = { userId -> userManagementViewModel.deleteUser(userId) },
+                                            onEditClick = { user ->
+                                                userManagementViewModel.showEditDialog(
+                                                    user
+                                                )
+                                            },
+                                            onToggleClick = { userId ->
+                                                userManagementViewModel.toggleUser(
+                                                    userId
+                                                )
+                                            },
+                                            onDeleteClick = { userId ->
+                                                userManagementViewModel.deleteUser(
+                                                    userId
+                                                )
+                                            },
                                             onDismissDialog = { userManagementViewModel.dismissDialog() },
                                             onCreateUser = { userManagementViewModel.createUser() },
                                             onUpdateUser = { userManagementViewModel.updateUser() },
-                                            onFormUsernameChange = { userManagementViewModel.onFormUsernameChange(it) },
-                                            onFormPasswordChange = { userManagementViewModel.onFormPasswordChange(it) },
-                                            onFormDisplayNameChange = { userManagementViewModel.onFormDisplayNameChange(it) },
-                                            onFormRoleChange = { userManagementViewModel.onFormRoleChange(it) },
+                                            onFormUsernameChange = {
+                                                userManagementViewModel.onFormUsernameChange(
+                                                    it
+                                                )
+                                            },
+                                            onFormPasswordChange = {
+                                                userManagementViewModel.onFormPasswordChange(
+                                                    it
+                                                )
+                                            },
+                                            onFormDisplayNameChange = {
+                                                userManagementViewModel.onFormDisplayNameChange(
+                                                    it
+                                                )
+                                            },
+                                            onFormRoleChange = {
+                                                userManagementViewModel.onFormRoleChange(
+                                                    it
+                                                )
+                                            },
                                             onClearMessages = { userManagementViewModel.clearMessages() }
                                         )
+
                                         "requests" -> ApprovalRequestsScreen(
                                             uiState = approvalState,
                                             onRefresh = { approvalRequestsViewModel.loadRequests() },
-                                            onApprove = { id -> approvalRequestsViewModel.approveRequest(id) },
-                                            onRejectClick = { id -> approvalRequestsViewModel.showRejectDialog(id) },
+                                            onApprove = { id ->
+                                                approvalRequestsViewModel.approveRequest(
+                                                    id
+                                                )
+                                            },
+                                            onRejectClick = { id ->
+                                                approvalRequestsViewModel.showRejectDialog(
+                                                    id
+                                                )
+                                            },
                                             onDismissReject = { approvalRequestsViewModel.dismissRejectDialog() },
-                                            onConfirmReject = { id -> approvalRequestsViewModel.rejectRequest(id) },
-                                            onFilterChange = { filter -> approvalRequestsViewModel.setFilter(filter) },
+                                            onConfirmReject = { id ->
+                                                approvalRequestsViewModel.rejectRequest(
+                                                    id
+                                                )
+                                            },
+                                            onFilterChange = { filter ->
+                                                approvalRequestsViewModel.setFilter(
+                                                    filter
+                                                )
+                                            },
                                             onClearMessages = { approvalRequestsViewModel.clearMessages() }
                                         )
                                     }
@@ -1838,8 +2044,16 @@ class MainActivity : ComponentActivity() {
                                 MyRequestsScreen(
                                     uiState = approvalState,
                                     onRefresh = { approvalRequestsViewModel.loadRequests() },
-                                    onFilterChange = { filter -> approvalRequestsViewModel.setFilter(filter) },
-                                    onCancelRequest = { id -> approvalRequestsViewModel.cancelRequest(id) },
+                                    onFilterChange = { filter ->
+                                        approvalRequestsViewModel.setFilter(
+                                            filter
+                                        )
+                                    },
+                                    onCancelRequest = { id ->
+                                        approvalRequestsViewModel.cancelRequest(
+                                            id
+                                        )
+                                    },
                                     onClearMessages = { approvalRequestsViewModel.clearMessages() }
                                 )
                             }

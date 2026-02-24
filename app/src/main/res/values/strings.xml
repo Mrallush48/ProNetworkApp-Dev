@@ -723,5 +723,12 @@
     <string name="approval_export_blocked">Export requires admin approval</string>
     <string name="approval_export_request_sent">Export request sent to admin for approval</string>
 
+    <!-- ===== Sync Status ===== -->
+    <string name="sync_status_online">Online</string>
+    <string name="sync_status_offline">Offline</string>
+    <string name="sync_status_syncing">Syncing…</string>
+    <string name="sync_pending_count">%1$d pending</string>
+    <string name="sync_last_sync">Last sync: %1$s</string>
+
 
 </resources>

@@ -721,5 +721,12 @@
     <string name="approval_export_blocked">التصدير يحتاج موافقة المدير</string>
     <string name="approval_export_request_sent">تم إرسال طلب التصدير للمدير للموافقة</string>
 
+    <!-- ===== Sync Status ===== -->
+    <string name="sync_status_online">متصل</string>
+    <string name="sync_status_offline">غير متصل</string>
+    <string name="sync_status_syncing">جاري المزامنة…</string>
+    <string name="sync_pending_count">%1$d معلّقة</string>
+    <string name="sync_last_sync">آخر مزامنة: %1$s</string>
+
 
 </resources>
