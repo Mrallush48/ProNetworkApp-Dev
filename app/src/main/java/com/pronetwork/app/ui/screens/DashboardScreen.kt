@@ -32,6 +32,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.ui.res.stringResource
+import com.pronetwork.app.ui.components.ConnectionBadge
+
 
 
 // =============== Data Classes ===============
@@ -67,7 +69,9 @@ fun DashboardScreen(
     onNavigateToDaily: () -> Unit,
     onNavigateToClients: () -> Unit,
     onNavigateToStats: () -> Unit,
-    onClientClick: (Int) -> Unit
+    onClientClick: (Int) -> Unit,
+    connectivityStatus: com.pronetwork.app.network.ConnectivityObserver.Status =
+        com.pronetwork.app.network.ConnectivityObserver.Status.UNAVAILABLE
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "SA")).apply {
         maximumFractionDigits = 0
@@ -84,7 +88,8 @@ fun DashboardScreen(
         item {
             WelcomeCard(
                 userName = userName,
-                onLogout = onLogout
+                onLogout = onLogout,
+                connectivityStatus = connectivityStatus
             )
         }
 
@@ -171,7 +176,9 @@ fun DashboardScreen(
 @Composable
 private fun WelcomeCard(
     userName: String = "",
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    connectivityStatus: com.pronetwork.app.network.ConnectivityObserver.Status =
+        com.pronetwork.app.network.ConnectivityObserver.Status.UNAVAILABLE
 ) {
     val today = Date()
     val gregorianFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault())
@@ -222,9 +229,11 @@ private fun WelcomeCard(
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
                     }
+                    // Connection Status Badge
+                    ConnectionBadge(connectivityStatus = connectivityStatus)
                 }
                 IconButton(onClick = onLogout) {
-                    Icon(
+                Icon(
                         Icons.Filled.Logout,
                         contentDescription = stringResource(R.string.logout),
                         tint = MaterialTheme.colorScheme.error

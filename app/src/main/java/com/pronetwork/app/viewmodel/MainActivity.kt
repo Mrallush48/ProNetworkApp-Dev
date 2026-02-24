@@ -737,6 +737,7 @@ class MainActivity : ComponentActivity() {
                                     userName = loginState.displayName,
                                     userRole = loginState.role,
                                     onLogout = { showLogoutDialog = true },
+                                    connectivityStatus = connectivityStatus,
                                     currentMonthStats = monthStats,
                                     previousMonthStats = previousMonthStatsState,
                                     totalClients = filteredClients.size,
