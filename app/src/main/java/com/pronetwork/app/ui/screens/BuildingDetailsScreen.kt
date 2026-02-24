@@ -123,6 +123,8 @@ fun BuildingDetailsScreen(
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+        val context = LocalContext.current
+        val authManager = remember { AuthManager(context) }
     val currencyFormat = remember {
         NumberFormat.getCurrencyInstance(Locale("en", "SA")).apply {
             maximumFractionDigits = 0
@@ -554,10 +556,6 @@ fun BuildingDetailsScreen(
 
     // ===== حوار حذف المبنى =====
     if (showDeleteBuildingDialog) {
-        val context = LocalContext.current
-        val authManager = remember { AuthManager(context) }
-        val scope = rememberCoroutineScope()
-
         AlertDialog(
             onDismissRequest = { showDeleteBuildingDialog = false },
             title = { Text(stringResource(R.string.building_details_delete_building_title)) },
@@ -610,20 +608,14 @@ fun BuildingDetailsScreen(
                             onRequestSent = {
                                 showDeleteBuildingDialog = false
                                 android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
                                                 Toast.makeText(
                                                     context,
                                                     context.getString(R.string.approval_request_sent),
                                                     Toast.LENGTH_LONG
                                                 ).show()
                                             }
-                                        }
-                                    }
-                                }
-                            },
-                            onError = { error ->
+                                        },
+                    onError = { error ->
                                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                                     Toast.makeText(
                                         context,
@@ -655,10 +647,6 @@ fun BuildingDetailsScreen(
 
     // ===== حوار حذف العميل =====
     if (showDeleteClientDialog && clientToDelete != null) {
-        val context = LocalContext.current
-        val authManager = remember { AuthManager(context) }
-        val scope = rememberCoroutineScope()
-
         AlertDialog(
             onDismissRequest = { showDeleteClientDialog = false; clientToDelete = null },
             title = { Text(stringResource(R.string.building_details_delete_client_title)) },
