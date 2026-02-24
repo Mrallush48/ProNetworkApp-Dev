@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.os.Build
 
 class PaymentsExportManager(private val context: Context) {
 
@@ -1332,16 +1333,26 @@ class PaymentsExportManager(private val context: Context) {
             val xml = buildExcelXml(data)
             val fileName = "payment_report_${startMonth}_${period.name.lowercase()}.xls"
 
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "application/vnd.ms-excel")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-
-            val uri =
-                context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { os ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/vnd.ms-excel")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri =
+                    context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                uri?.let {
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(xml.toByteArray(Charsets.UTF_8))
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val file = java.io.File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                java.io.FileOutputStream(file).use { os ->
                     os.write(xml.toByteArray(Charsets.UTF_8))
                 }
             }
@@ -1467,16 +1478,26 @@ class PaymentsExportManager(private val context: Context) {
             val pdfBytes = buildPdf(data)
             val fileName = "payment_report_${startMonth}_${period.name.lowercase()}.pdf"
 
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-
-            val uri =
-                context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { os ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri =
+                    context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                uri?.let {
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(pdfBytes)
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val file = java.io.File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                java.io.FileOutputStream(file).use { os ->
                     os.write(pdfBytes)
                 }
             }

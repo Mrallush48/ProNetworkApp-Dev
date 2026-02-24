@@ -727,6 +727,7 @@
     <string name="sync_status_syncing">جاري المزامنة…</string>
     <string name="sync_pending_count">%1$d معلّقة</string>
     <string name="sync_last_sync">آخر مزامنة: %1$s</string>
+
     <string name="clients_status_settled">تمت التسوية</string>
 
 
