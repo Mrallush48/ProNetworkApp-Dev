@@ -668,6 +668,9 @@
     <string name="approval_filter_approved">مقبول</string>
     <string name="approval_filter_rejected">مرفوض</string>
     <string name="approval_no_requests">لا توجد طلبات حالياً</string>
+    <string name="my_requests_title">طلباتي</string>
+    <string name="my_requests_empty">لم ترسل أي طلبات بعد</string>
+    <string name="my_requests_reviewed_at">تمت المراجعة:</string>
     <string name="approval_type_delete_client">حذف مشترك</string>
     <string name="approval_type_delete_building">حذف مبنى</string>
     <string name="approval_type_export_report">تصدير تقرير</string>

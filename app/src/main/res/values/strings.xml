@@ -670,6 +670,9 @@
     <string name="approval_filter_approved">Approved</string>
     <string name="approval_filter_rejected">Rejected</string>
     <string name="approval_no_requests">No requests found</string>
+    <string name="my_requests_title">My Requests</string>
+    <string name="my_requests_empty">You haven\'t sent any requests yet</string>
+    <string name="my_requests_reviewed_at">Reviewed:</string>
     <string name="approval_type_delete_client">Delete Client</string>
     <string name="approval_type_delete_building">Delete Building</string>
     <string name="approval_type_export_report">Export Report</string>

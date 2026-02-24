@@ -111,6 +111,7 @@ import com.pronetwork.app.ui.screens.UserManagementScreen
 import com.pronetwork.app.viewmodel.UserManagementViewModel
 import com.pronetwork.app.viewmodel.ApprovalRequestsViewModel
 import com.pronetwork.app.ui.screens.ApprovalRequestsScreen
+import com.pronetwork.app.ui.screens.MyRequestsScreen
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.ButtonDefaults
@@ -1700,80 +1701,96 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            // ===== admin (User Management) =====
-                currentScreen == "admin" && loginState.role == "ADMIN" -> {
-                    var adminTab by remember { mutableStateOf("users") }
-                    val userMgmtState by userManagementViewModel.uiState.collectAsState()
-                    val approvalState by approvalRequestsViewModel.uiState.collectAsState()
+                            // ===== admin (User Management) / user (My Requests) =====
+                            currentScreen == "admin" && loginState.role == "ADMIN" -> {
+                                var adminTab by remember { mutableStateOf("users") }
+                                val userMgmtState by userManagementViewModel.uiState.collectAsState()
+                                val approvalState by approvalRequestsViewModel.uiState.collectAsState()
 
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Sub-tab row
-                        androidx.compose.material3.TabRow(
-                            selectedTabIndex = if (adminTab == "users") 0 else 1,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            androidx.compose.material3.Tab(
-                                selected = adminTab == "users",
-                                onClick = { adminTab = "users" },
-                                text = { Text("\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645\u064a\u0646") },
-                                icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) }
-                            )
-                            androidx.compose.material3.Tab(
-                                selected = adminTab == "requests",
-                                onClick = {
-                                    adminTab = "requests"
-                                    approvalRequestsViewModel.loadRequests()
-                                },
-                                text = { Text("\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629") },
-                                icon = {
-                                    val pendingCount = approvalState.requests.count { it.status == "PENDING" }
-                                    if (pendingCount > 0) {
-                                        androidx.compose.material3.BadgedBox(
-                                            badge = {
-                                                androidx.compose.material3.Badge {
-                                                    Text("$pendingCount")
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    // Sub-tab row
+                                    androidx.compose.material3.TabRow(
+                                        selectedTabIndex = if (adminTab == "users") 0 else 1,
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        androidx.compose.material3.Tab(
+                                            selected = adminTab == "users",
+                                            onClick = { adminTab = "users" },
+                                            text = { Text("\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645\u064a\u0646") },
+                                            icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) }
+                                        )
+                                        androidx.compose.material3.Tab(
+                                            selected = adminTab == "requests",
+                                            onClick = {
+                                                adminTab = "requests"
+                                                approvalRequestsViewModel.loadRequests()
+                                            },
+                                            text = { Text("\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629") },
+                                            icon = {
+                                                val pendingCount = approvalState.requests.count { it.status == "PENDING" }
+                                                if (pendingCount > 0) {
+                                                    androidx.compose.material3.BadgedBox(
+                                                        badge = {
+                                                            androidx.compose.material3.Badge {
+                                                                Text("$pendingCount")
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Icon(Icons.Filled.Person, contentDescription = null)
+                                                    }
+                                                } else {
+                                                    Icon(Icons.Filled.Person, contentDescription = null)
                                                 }
                                             }
-                                        ) {
-                                            Icon(Icons.Filled.Person, contentDescription = null)
-                                        }
-                                    } else {
-                                        Icon(Icons.Filled.Person, contentDescription = null)
+                                        )
+                                    }
+
+                                    when (adminTab) {
+                                        "users" -> UserManagementScreen(
+                                            uiState = userMgmtState,
+                                            onRefresh = { userManagementViewModel.loadUsers() },
+                                            onCreateClick = { userManagementViewModel.showCreateDialog() },
+                                            onEditClick = { user -> userManagementViewModel.showEditDialog(user) },
+                                            onToggleClick = { userId -> userManagementViewModel.toggleUser(userId) },
+                                            onDeleteClick = { userId -> userManagementViewModel.deleteUser(userId) },
+                                            onDismissDialog = { userManagementViewModel.dismissDialog() },
+                                            onCreateUser = { userManagementViewModel.createUser() },
+                                            onUpdateUser = { userManagementViewModel.updateUser() },
+                                            onFormUsernameChange = { userManagementViewModel.onFormUsernameChange(it) },
+                                            onFormPasswordChange = { userManagementViewModel.onFormPasswordChange(it) },
+                                            onFormDisplayNameChange = { userManagementViewModel.onFormDisplayNameChange(it) },
+                                            onFormRoleChange = { userManagementViewModel.onFormRoleChange(it) },
+                                            onClearMessages = { userManagementViewModel.clearMessages() }
+                                        )
+                                        "requests" -> ApprovalRequestsScreen(
+                                            uiState = approvalState,
+                                            onRefresh = { approvalRequestsViewModel.loadRequests() },
+                                            onApprove = { id -> approvalRequestsViewModel.approveRequest(id) },
+                                            onRejectClick = { id -> approvalRequestsViewModel.showRejectDialog(id) },
+                                            onDismissReject = { approvalRequestsViewModel.dismissRejectDialog() },
+                                            onConfirmReject = { id -> approvalRequestsViewModel.rejectRequest(id) },
+                                            onFilterChange = { filter -> approvalRequestsViewModel.setFilter(filter) },
+                                            onClearMessages = { approvalRequestsViewModel.clearMessages() }
+                                        )
                                     }
                                 }
-                            )
-                        }
+                            }
 
-                        when (adminTab) {
-                            "users" -> UserManagementScreen(
-                                uiState = userMgmtState,
-                                onRefresh = { userManagementViewModel.loadUsers() },
-                                onCreateClick = { userManagementViewModel.showCreateDialog() },
-                                onEditClick = { user -> userManagementViewModel.showEditDialog(user) },
-                                onToggleClick = { userId -> userManagementViewModel.toggleUser(userId) },
-                                onDeleteClick = { userId -> userManagementViewModel.deleteUser(userId) },
-                                onDismissDialog = { userManagementViewModel.dismissDialog() },
-                                onCreateUser = { userManagementViewModel.createUser() },
-                                onUpdateUser = { userManagementViewModel.updateUser() },
-                                onFormUsernameChange = { userManagementViewModel.onFormUsernameChange(it) },
-                                onFormPasswordChange = { userManagementViewModel.onFormPasswordChange(it) },
-                                onFormDisplayNameChange = { userManagementViewModel.onFormDisplayNameChange(it) },
-                                onFormRoleChange = { userManagementViewModel.onFormRoleChange(it) },
-                                onClearMessages = { userManagementViewModel.clearMessages() }
-                            )
-                            "requests" -> ApprovalRequestsScreen(
-                                uiState = approvalState,
-                                onRefresh = { approvalRequestsViewModel.loadRequests() },
-                                onApprove = { id -> approvalRequestsViewModel.approveRequest(id) },
-                                onRejectClick = { id -> approvalRequestsViewModel.showRejectDialog(id) },
-                                onDismissReject = { approvalRequestsViewModel.dismissRejectDialog() },
-                                onConfirmReject = { id -> approvalRequestsViewModel.rejectRequest(id) },
-                                onFilterChange = { filter -> approvalRequestsViewModel.setFilter(filter) },
-                                onClearMessages = { approvalRequestsViewModel.clearMessages() }
-                            )
-                        }
-                    }
-                }
+                            // ===== My Requests (User role only) =====
+                            currentScreen == "admin" && loginState.role != "ADMIN" -> {
+                                val approvalState by approvalRequestsViewModel.uiState.collectAsState()
+
+                                LaunchedEffect(Unit) {
+                                    approvalRequestsViewModel.loadRequests()
+                                }
+
+                                MyRequestsScreen(
+                                    uiState = approvalState,
+                                    onRefresh = { approvalRequestsViewModel.loadRequests() },
+                                    onFilterChange = { filter -> approvalRequestsViewModel.setFilter(filter) },
+                                    onClearMessages = { approvalRequestsViewModel.clearMessages() }
+                                )
+                            }
                         }
                         // حوارات edit العامة
                         if (showEditBuildingDialog && selectedBuilding != null) {
