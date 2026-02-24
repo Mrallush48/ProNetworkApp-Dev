@@ -30,8 +30,6 @@ private fun FixedLabel(text: String) {
         )
     )
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditDialog(
     buildingList: List<Building>,
