@@ -673,6 +673,11 @@
     <string name="my_requests_title">My Requests</string>
     <string name="my_requests_empty">You haven\'t sent any requests yet</string>
     <string name="my_requests_reviewed_at">Reviewed:</string>
+    <string name="my_requests_cancel_btn">Cancel Request</string>
+    <string name="my_requests_cancel_title">Cancel Request</string>
+    <string name="my_requests_cancel_confirm">Are you sure you want to cancel this request?</string>
+    <string name="my_requests_cancel_yes">Yes, Cancel</string>
+
     <!-- Notification Channels -->
     <string name="notif_channel_admin_name">Approval Requests</string>
     <string name="notif_channel_admin_desc">Notifications for new approval requests</string>

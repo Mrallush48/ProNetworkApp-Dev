@@ -303,6 +303,9 @@ class MainActivity : ComponentActivity() {
         // Start background polling for approval request updates
         RequestPollingWorker.schedule(this)
 
+        // Load requests on app start for badge count
+        approvalRequestsViewModel.loadRequests()
+
         setContent {
         ProNetworkSpotTheme(darkTheme = false) {
                     val loginState by loginViewModel.uiState.collectAsState()
@@ -543,16 +546,29 @@ class MainActivity : ComponentActivity() {
                                     showDailyCollection = false
                                 },
                                 icon = {
-                                    if (loginState.role == "ADMIN") {
-                                        Icon(
-                                            Icons.Filled.AdminPanelSettings,
-                                            contentDescription = null
-                                        )
+                                    val approvalState by approvalRequestsViewModel.uiState.collectAsState()
+                                    val pendingCount = approvalState.requests.count { it.status == "PENDING" }
+
+                                    if (pendingCount > 0 && currentScreen != "admin") {
+                                        androidx.compose.material3.BadgedBox(
+                                            badge = {
+                                                androidx.compose.material3.Badge {
+                                                    Text("$pendingCount")
+                                                }
+                                            }
+                                        ) {
+                                            if (loginState.role == "ADMIN") {
+                                                Icon(Icons.Filled.AdminPanelSettings, contentDescription = null)
+                                            } else {
+                                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                                            }
+                                        }
                                     } else {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.List,
-                                            contentDescription = null
-                                        )
+                                        if (loginState.role == "ADMIN") {
+                                            Icon(Icons.Filled.AdminPanelSettings, contentDescription = null)
+                                        } else {
+                                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                                        }
                                     }
                                 },
                                 label = {
@@ -563,6 +579,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+
 
                         }
                     },
@@ -1822,6 +1839,7 @@ class MainActivity : ComponentActivity() {
                                     uiState = approvalState,
                                     onRefresh = { approvalRequestsViewModel.loadRequests() },
                                     onFilterChange = { filter -> approvalRequestsViewModel.setFilter(filter) },
+                                    onCancelRequest = { id -> approvalRequestsViewModel.cancelRequest(id) },
                                     onClearMessages = { approvalRequestsViewModel.clearMessages() }
                                 )
                             }

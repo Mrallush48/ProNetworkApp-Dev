@@ -671,6 +671,11 @@
     <string name="my_requests_title">طلباتي</string>
     <string name="my_requests_empty">لم ترسل أي طلبات بعد</string>
     <string name="my_requests_reviewed_at">تمت المراجعة:</string>
+    <string name="my_requests_cancel_btn">إلغاء الطلب</string>
+    <string name="my_requests_cancel_title">إلغاء الطلب</string>
+    <string name="my_requests_cancel_confirm">هل أنت متأكد من إلغاء هذا الطلب؟</string>
+    <string name="my_requests_cancel_yes">نعم، إلغاء</string>
+
     <!-- Notification Channels -->
     <string name="notif_channel_admin_name">طلبات الموافقة</string>
     <string name="notif_channel_admin_desc">إشعارات عند وصول طلبات موافقة جديدة</string>

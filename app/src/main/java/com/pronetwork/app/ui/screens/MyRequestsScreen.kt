@@ -1,6 +1,5 @@
 package com.pronetwork.app.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pronetwork.app.R
 import com.pronetwork.app.network.ApprovalRequestResponse
+import com.pronetwork.app.network.TimeUtils
 import com.pronetwork.app.viewmodel.ApprovalRequestsUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,12 +25,20 @@ fun MyRequestsScreen(
     uiState: ApprovalRequestsUiState,
     onRefresh: () -> Unit,
     onFilterChange: (String) -> Unit,
+    onCancelRequest: (Int) -> Unit,
     onClearMessages: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            onClearMessages()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             onClearMessages()
         }
@@ -108,7 +116,10 @@ fun MyRequestsScreen(
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(uiState.requests, key = { it.id }) { request ->
-                        MyRequestCard(request = request)
+                        MyRequestCard(
+                            request = request,
+                            onCancel = { onCancelRequest(request.id) }
+                        )
                     }
                 }
             }
@@ -117,7 +128,12 @@ fun MyRequestsScreen(
 }
 
 @Composable
-fun MyRequestCard(request: ApprovalRequestResponse) {
+fun MyRequestCard(
+    request: ApprovalRequestResponse,
+    onCancel: () -> Unit
+) {
+    var showCancelDialog by remember { mutableStateOf(false) }
+
     val statusColor = when (request.status) {
         "PENDING" -> MaterialTheme.colorScheme.primary
         "APPROVED" -> Color(0xFF4CAF50)
@@ -130,6 +146,33 @@ fun MyRequestCard(request: ApprovalRequestResponse) {
         "APPROVED" -> Icons.Default.CheckCircle
         "REJECTED" -> Icons.Default.Cancel
         else -> Icons.Default.Info
+    }
+
+    // Cancel confirmation dialog
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text(stringResource(R.string.my_requests_cancel_title)) },
+            text = { Text(stringResource(R.string.my_requests_cancel_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCancelDialog = false
+                        onCancel()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(stringResource(R.string.my_requests_cancel_yes))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 
     Card(
@@ -188,7 +231,7 @@ fun MyRequestCard(request: ApprovalRequestResponse) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = request.created_at.take(16).replace("T", " "),
+                        text = TimeUtils.utcToLocal(request.created_at),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -200,10 +243,33 @@ fun MyRequestCard(request: ApprovalRequestResponse) {
                 if (request.reviewed_at != null) {
                     Text(
                         text = stringResource(R.string.my_requests_reviewed_at) + " " +
-                                request.reviewed_at.take(16).replace("T", " "),
+                                TimeUtils.utcToLocal(request.reviewed_at),
                         style = MaterialTheme.typography.labelSmall,
                         color = statusColor
                     )
+                }
+
+                // Cancel button — only for PENDING requests
+                if (request.status == "PENDING") {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { showCancelDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                            brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.my_requests_cancel_btn))
+                    }
                 }
             }
         }

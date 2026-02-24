@@ -39,6 +39,9 @@ class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun loadRequests() {
+        // Re-check role every time (in case user switched accounts)
+        checkRole()
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
@@ -187,5 +190,28 @@ class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(app
 
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
+    }
+    fun cancelRequest(requestId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = ApiClient.safeCall { api ->
+                    api.cancelRequest(token = authManager.getBearerToken(), requestId = requestId)
+                }
+                if (response.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "Request cancelled"
+                    )
+                    loadRequests()
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Cannot cancel: ${response.code()}"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Error: ${e.message}"
+                )
+            }
+        }
     }
 }

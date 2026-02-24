@@ -137,6 +137,13 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") requestId: Int
     ): Response<ApprovalRequestResponse>
+
+
+    @DELETE("requests/{id}")
+    suspend fun cancelRequest(
+        @Header("Authorization") token: String,
+        @Path("id") requestId: Int
+    ): Response<Unit>
 }
 
 // === Retrofit Instance ===
