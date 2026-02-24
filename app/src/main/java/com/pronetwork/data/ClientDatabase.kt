@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [Client::class, Payment::class, PaymentTransaction::class, Building::class],
-    version = 5,
+    entities = [Client::class, Payment::class, PaymentTransaction::class, Building::class, SyncQueueEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class ClientDatabase : RoomDatabase() {
@@ -18,6 +18,7 @@ abstract class ClientDatabase : RoomDatabase() {
     abstract fun paymentDao(): PaymentDao
     abstract fun paymentTransactionDao(): PaymentTransactionDao
     abstract fun buildingDao(): BuildingDao
+    abstract fun syncQueueDao(): SyncQueueDao
 
     companion object {
         @Volatile
@@ -34,9 +35,10 @@ abstract class ClientDatabase : RoomDatabase() {
                         MIGRATION_1_2,
                         MIGRATION_2_3,
                         MIGRATION_3_4,
-                        MIGRATION_4_5
+                        MIGRATION_4_5,
+                        MIGRATION_5_6
                     )
-                    .fallbackToDestructiveMigration() // للتطوير فقط، يمكن إزالته لاحقاً في الإنتاج
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
@@ -44,6 +46,123 @@ abstract class ClientDatabase : RoomDatabase() {
         }
 
         // Migration 1 → 2 (قديم - كما هو)
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+            }
+        }
+
+        // Migration 2 → 3: إنشاء جدول payments
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `payments` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `clientId` INTEGER NOT NULL,
+                        `month` TEXT NOT NULL,
+                        `isPaid` INTEGER NOT NULL DEFAULT 0,
+                        `paymentDate` INTEGER,
+                        `amount` REAL NOT NULL DEFAULT 0.0,
+                        `notes` TEXT NOT NULL DEFAULT '',
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`clientId`) REFERENCES `clients`(`id`) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_payments_clientId_month` 
+                    ON `payments` (`clientId`, `month`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO payments (clientId, month, isPaid, paymentDate, amount, createdAt)
+                    SELECT 
+                        id,
+                        startMonth,
+                        isPaid,
+                        paymentDate,
+                        price,
+                        COALESCE(paymentDate, ${System.currentTimeMillis()})
+                    FROM clients
+                    WHERE isPaid = 1
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // Migration 3 → 4: إضافة firstMonthAmount و startDay في clients
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    ALTER TABLE clients 
+                    ADD COLUMN firstMonthAmount REAL
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    ALTER TABLE clients 
+                    ADD COLUMN startDay INTEGER NOT NULL DEFAULT 1
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    UPDATE clients 
+                    SET firstMonthAmount = price 
+                    WHERE firstMonthAmount IS NULL
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // Migration 4 → 5: إنشاء جدول payment_transactions
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `payment_transactions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `paymentId` INTEGER NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `notes` TEXT NOT NULL DEFAULT '',
+                        FOREIGN KEY(`paymentId`) REFERENCES `payments`(`id`) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_payment_transactions_paymentId`
+                    ON `payment_transactions` (`paymentId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // Migration 5 → 6: إنشاء جدول sync_queue
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sync_queue` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `entityType` TEXT NOT NULL,
+                        `entityId` INTEGER NOT NULL,
+                        `action` TEXT NOT NULL,
+                        `payload` TEXT NOT NULL,
+                        `createdAt` TEXT NOT NULL,
+                        `retryCount` INTEGER NOT NULL DEFAULT 0,
+                        `lastError` TEXT
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
+    // Migration 1 → 2 (قديم - كما هو)
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Migration code for version 1 to 2 (لا يوجد شيء حالياً)
@@ -151,4 +270,3 @@ abstract class ClientDatabase : RoomDatabase() {
             }
         }
     }
-}

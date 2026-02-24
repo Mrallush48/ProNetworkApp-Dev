@@ -64,6 +64,39 @@ data class UpdateUserRequest(
     val role: String? = null
 )
 
+// === Sync Models ===
+data class SyncPushRequest(
+    val operations: List<SyncOperation>
+)
+
+data class SyncOperation(
+    val entity_type: String,
+    val entity_id: Int,
+    val action: String,
+    val payload: String,
+    val client_timestamp: String
+)
+
+data class SyncPushResponse(
+    val processed: Int,
+    val failed: Int,
+    val errors: List<String>? = null
+)
+
+data class SyncPullResponse(
+    val clients: List<SyncEntity>? = null,
+    val buildings: List<SyncEntity>? = null,
+    val payments: List<SyncEntity>? = null,
+    val payment_transactions: List<SyncEntity>? = null,
+    val server_timestamp: String
+)
+
+data class SyncEntity(
+    val id: Int,
+    val action: String,
+    val data: Map<String, Any?>? = null
+)
+
 // === API Interface ===
 interface ApiService {
 
@@ -144,6 +177,25 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") requestId: Int
     ): Response<Unit>
+
+    // === Sync ===
+    @POST("sync/push")
+    suspend fun syncPush(
+        @Header("Authorization") token: String,
+        @Body request: SyncPushRequest
+    ): Response<SyncPushResponse>
+
+    @GET("sync/pull")
+    suspend fun syncPull(
+        @Header("Authorization") token: String,
+        @Query("since") since: String? = null
+    ): Response<SyncPullResponse>
+
+    @GET("sync/status")
+    suspend fun syncStatus(
+        @Header("Authorization") token: String
+    ): Response<Map<String, Any>>
+
 }
 
 // === Retrofit Instance ===
