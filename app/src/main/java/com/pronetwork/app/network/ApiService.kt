@@ -140,8 +140,52 @@ interface ApiService {
 }
 
 // === Retrofit Instance ===
+// === DNS Cache to eliminate DNS lookup delays ===
+class CachingDnsSelector : okhttp3.Dns {
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, CachedResult>()
+
+    private data class CachedResult(
+        val addresses: List<java.net.InetAddress>,
+        val timestamp: Long
+    )
+
+    override fun lookup(hostname: String): List<java.net.InetAddress> {
+        val now = System.currentTimeMillis()
+        val cached = cache[hostname]
+
+        // Use cache for 10 minutes
+        if (cached != null && (now - cached.timestamp) < 600_000) {
+            return cached.addresses
+        }
+
+        // Resolve and cache
+        val addresses = okhttp3.Dns.SYSTEM.lookup(hostname)
+        cache[hostname] = CachedResult(addresses, now)
+        return addresses
+    }
+}
+
+// === Retry Interceptor for automatic retry ===
+class RetryInterceptor(private val maxRetries: Int = 2) : okhttp3.Interceptor {
+    override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
+        var lastException: Exception? = null
+        for (attempt in 0..maxRetries) {
+            try {
+                return chain.proceed(chain.request())
+            } catch (e: java.net.SocketTimeoutException) {
+                lastException = e
+                if (attempt < maxRetries) Thread.sleep(1000L * (attempt + 1))
+            } catch (e: java.net.ConnectException) {
+                lastException = e
+                if (attempt < maxRetries) Thread.sleep(1000L * (attempt + 1))
+            }
+        }
+        throw lastException ?: java.io.IOException("Request failed after $maxRetries retries")
+    }
+}
+
+// === Retrofit Instance ===
 object ApiClient {
-    // غيّر هذا الـ IP/Domain الخاص بسيرفرك
     private const val BASE_URL = "https://pronetwork-spot.duckdns.org/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -149,12 +193,15 @@ object ApiClient {
     }
 
     private val client = OkHttpClient.Builder()
+        .addInterceptor(RetryInterceptor(maxRetries = 2))
         .addInterceptor(loggingInterceptor)
+        .dns(CachingDnsSelector())
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
-        .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
+        .connectionPool(ConnectionPool(5, 10, TimeUnit.MINUTES))
+        .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
         .build()
 
     val api: ApiService by lazy {
