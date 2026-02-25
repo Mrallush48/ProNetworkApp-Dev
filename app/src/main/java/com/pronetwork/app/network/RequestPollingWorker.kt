@@ -106,6 +106,7 @@ class RequestPollingWorker(
 
     private suspend fun pollForUser(token: String) {
         val bearerToken = "Bearer $token"
+
         val response = ApiClient.safeCall { api ->
             api.getMyRequests(token = bearerToken)
         }
@@ -116,25 +117,25 @@ class RequestPollingWorker(
         val previousStatuses = getSavedUserStatuses()
         val executedIds = getExecutedIds()
 
-        if (previousStatuses.isNotEmpty()) {
-            for ((id, newStatus) in currentStatuses) {
-                val oldStatus = previousStatuses[id]
+        for ((id, newStatus) in currentStatuses) {
+            val oldStatus = previousStatuses[id]
 
-                if (oldStatus == "PENDING" && newStatus != "PENDING") {
-                    val request = requests.firstOrNull { it.id == id }
+            // === Notify on status change ===
+            if (oldStatus == "PENDING" && newStatus != "PENDING") {
+                val request = requests.firstOrNull { it.id == id }
+                NotificationHelper.notifyUserStatusChanged(
+                    applicationContext,
+                    request?.target_name,
+                    newStatus
+                )
+            }
 
-                    // Notify the user
-                    NotificationHelper.notifyUserStatusChanged(
-                        applicationContext,
-                        request?.target_name,
-                        newStatus
-                    )
-
-                    // === AUTO-EXECUTE approved deletions ===
-                    if (newStatus == "APPROVED" && request != null && id !in executedIds) {
-                        executeApprovedAction(request)
-                        markAsExecuted(id)
-                    }
+            // === AUTO-EXECUTE: approved deletions (regardless of previous state) ===
+            if (newStatus == "APPROVED" && id !in executedIds) {
+                val request = requests.firstOrNull { it.id == id }
+                if (request != null) {
+                    executeApprovedAction(request)
+                    markAsExecuted(id)
                 }
             }
         }
