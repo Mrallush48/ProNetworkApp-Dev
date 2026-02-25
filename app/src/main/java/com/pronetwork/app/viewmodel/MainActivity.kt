@@ -501,6 +501,10 @@ class MainActivity : ComponentActivity() {
                 val connectivityStatus by app.connectivityObserver.observe()
                     .collectAsState(initial = ConnectivityObserver.Status.UNAVAILABLE)
 
+                val syncEngine = remember { SyncEngine(context) }
+                val syncState by syncEngine.syncState.collectAsState()
+
+
                 Scaffold(
                     bottomBar = {
                         NavigationBar(
@@ -746,6 +750,8 @@ class MainActivity : ComponentActivity() {
                                     totalBuildings = buildings.size,
                                     recentTransactions = dashboardRecentTransactions,
                                     topUnpaidClients = dashboardUnpaidClients,
+                                    syncState = syncState,
+
                                     onNavigateToDaily = {
                                         currentScreen = "stats"
                                         showDailyCollection = true

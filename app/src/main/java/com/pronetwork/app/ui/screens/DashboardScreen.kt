@@ -31,8 +31,9 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.ui.res.stringResource
+import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.ui.components.ConnectionBadge
+import com.pronetwork.app.ui.components.SyncStatusBar
 
 
 
@@ -71,7 +72,8 @@ fun DashboardScreen(
     onNavigateToStats: () -> Unit,
     onClientClick: (Int) -> Unit,
     connectivityStatus: com.pronetwork.app.network.ConnectivityObserver.Status =
-        com.pronetwork.app.network.ConnectivityObserver.Status.UNAVAILABLE
+        com.pronetwork.app.network.ConnectivityObserver.Status.UNAVAILABLE,
+    syncState: SyncEngine.SyncState = SyncEngine.SyncState()
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "SA")).apply {
         maximumFractionDigits = 0
@@ -83,8 +85,8 @@ fun DashboardScreen(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
-            // ===== Welcome Card with Date =====
+    ) {
+        // ===== Welcome Card with Date =====
         item {
             WelcomeCard(
                 userName = userName,
@@ -93,84 +95,89 @@ fun DashboardScreen(
             )
         }
 
-        // ===== KPI Cards Row =====
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Total Collection This Month
-                    KpiCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.dashboard_total_collection),
-                        value = currencyFormat.format(currentMonthStats?.totalPaidAmount ?: 0.0),
-                        icon = Icons.Filled.AttachMoney,
-                        color = Color(0xFF4CAF50)
-                    )
-                    // Active Clients
-                    KpiCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.dashboard_active_clients),
-                        value = totalClients.toString(),
-                        icon = Icons.Filled.People,
-                        color = Color(0xFF2196F3)
-                    )
-                }
-            }
+        // ===== Sync Status =====
+        item {
+            SyncStatusBar(syncState = syncState)
+        }
 
-            // ===== Collection Rate Card =====
-            item {
-                CollectionRateCard(
-                    currentMonthStats = currentMonthStats,
-                    totalClients = totalClients
+        // ===== KPI Cards Row =====
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Total Collection This Month
+                KpiCard(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.dashboard_total_collection),
+                    value = currencyFormat.format(currentMonthStats?.totalPaidAmount ?: 0.0),
+                    icon = Icons.Filled.AttachMoney,
+                    color = Color(0xFF4CAF50)
+                )
+                // Active Clients
+                KpiCard(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.dashboard_active_clients),
+                    value = totalClients.toString(),
+                    icon = Icons.Filled.People,
+                    color = Color(0xFF2196F3)
                 )
             }
+        }
 
-            // ===== Month Comparison Card =====
+        // ===== Collection Rate Card =====
+        item {
+            CollectionRateCard(
+                currentMonthStats = currentMonthStats,
+                totalClients = totalClients
+            )
+        }
+
+        // ===== Month Comparison Card =====
+        item {
+            MonthComparisonCard(
+                currentMonthStats = currentMonthStats,
+                previousMonthStats = previousMonthStats,
+                currencyFormat = currencyFormat
+            )
+        }
+
+        // ===== Quick Actions =====
+        item {
+            QuickActionsCard(
+                onNavigateToDaily = onNavigateToDaily,
+                onNavigateToClients = onNavigateToClients
+            )
+        }
+
+        // ===== Needs Attention (Top Unpaid Clients) =====
+        if (topUnpaidClients.isNotEmpty()) {
             item {
-                MonthComparisonCard(
-                    currentMonthStats = currentMonthStats,
-                    previousMonthStats = previousMonthStats,
+                NeedsAttentionCard(
+                    topUnpaidClients = topUnpaidClients,
+                    currencyFormat = currencyFormat,
+                    onClientClick = onClientClick,
+                    onViewAll = onNavigateToStats
+                )
+            }
+        }
+
+        // ===== Recent Transactions =====
+        if (recentTransactions.isNotEmpty()) {
+            item {
+                RecentTransactionsCard(
+                    recentTransactions = recentTransactions,
                     currencyFormat = currencyFormat
                 )
             }
+        }
 
-            // ===== Quick Actions =====
-            item {
-                QuickActionsCard(
-                    onNavigateToDaily = onNavigateToDaily,
-                    onNavigateToClients = onNavigateToClients
-                )
-            }
-
-            // ===== Needs Attention (Top Unpaid Clients) =====
-            if (topUnpaidClients.isNotEmpty()) {
-                item {
-                    NeedsAttentionCard(
-                        topUnpaidClients = topUnpaidClients,
-                        currencyFormat = currencyFormat,
-                        onClientClick = onClientClick,
-                        onViewAll = onNavigateToStats
-                    )
-                }
-            }
-
-            // ===== Recent Transactions =====
-            if (recentTransactions.isNotEmpty()) {
-                item {
-                    RecentTransactionsCard(
-                        recentTransactions = recentTransactions,
-                        currencyFormat = currencyFormat
-                    )
-                }
-            }
-
-            // Bottom spacing
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
-            }
+        // Bottom spacing
+        item {
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
+}
 
 // =============== Welcome Card ===============
 @Composable
@@ -193,8 +200,8 @@ private fun WelcomeCard(
 
     val hijriMonthNames = arrayOf(
         "Muharram", "Safar", "Rabi al-Awwal", "Rabi al-Thani",
-        "Jumada al-Ula", "Jumada al-Akhirah", "Rajab", "Sha'ban",
-        "Ramadan", "Shawwal", "Dhul-Qi'dah", "Dhul-Hijjah"
+        "Jumada al-Ula", "Jumada al-Akhirah", "Rajab", "Sha\'ban",
+        "Ramadan", "Shawwal", "Dhul-Qi\'dah", "Dhul-Hijjah"
     )
     val hijriDate = "$hijriDay ${hijriMonthNames[hijriMonth]} $hijriYear H"
 
@@ -233,7 +240,7 @@ private fun WelcomeCard(
                     ConnectionBadge(connectivityStatus = connectivityStatus)
                 }
                 IconButton(onClick = onLogout) {
-                Icon(
+                    Icon(
                         Icons.Filled.Logout,
                         contentDescription = stringResource(R.string.logout),
                         tint = MaterialTheme.colorScheme.error
