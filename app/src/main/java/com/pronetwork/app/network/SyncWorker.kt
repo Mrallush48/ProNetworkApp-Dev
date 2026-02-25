@@ -116,7 +116,7 @@ class SyncWorker(
 
         // 2. Check if there's anything to sync
         val syncEngine = SyncEngine(applicationContext)
-        val pendingCount = syncEngine.syncState.value.pendingCount
+        val pendingCount = SyncEngine.syncState.value.pendingCount
 
         return try {
             // 3. Execute sync
