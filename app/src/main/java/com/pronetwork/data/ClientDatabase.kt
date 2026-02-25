@@ -113,7 +113,7 @@ abstract class ClientDatabase : RoomDatabase() {
                 db.execSQL("""
                     INSERT OR IGNORE INTO payments (clientId, month, isPaid, paymentDate, amount, createdAt)
                     SELECT id, startMonth, isPaid, paymentDate, price,
-                        COALESCE(paymentDate, ${System.currentTimeMillis()})
+                        COALESCE(paymentDate, strftime('%s','now') * 1000)
                     FROM clients WHERE isPaid = 1
                 """.trimIndent())
             }
