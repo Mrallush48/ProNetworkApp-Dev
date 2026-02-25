@@ -107,7 +107,7 @@ class SyncWorker(
 
         // 1. Check auth token
         val authManager = AuthManager(applicationContext)
-        val token = authManager.getValidToken()
+        val token = authManager.getAccessToken()
 
         if (token.isNullOrBlank()) {
             Log.w(TAG, "No valid auth token — skipping sync")

@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-import com.google.gson.Gson
 
 /**
  * Core sync engine that handles push (upload local changes) and pull (download server changes).
