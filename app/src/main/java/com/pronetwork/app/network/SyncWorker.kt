@@ -54,6 +54,11 @@ class SyncWorker(
         }
 
         /**
+         * Alias for enqueue() - backward compatibility
+         */
+        fun syncNow(context: Context) = enqueue(context, trigger = "syncNow")
+
+        /**
          * Schedule periodic sync every 15 minutes with network constraint.
          */
         fun schedulePeriodic(context: Context) {
