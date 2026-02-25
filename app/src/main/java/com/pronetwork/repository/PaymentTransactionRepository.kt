@@ -10,16 +10,18 @@ import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.network.SyncWorker
 import com.pronetwork.data.DailySummary
 import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-
-class PaymentTransactionRepository(
+@Singleton
+class PaymentTransactionRepository @Inject constructor(
     private val transactionDao: PaymentTransactionDao,
     private val clientDao: ClientDao,
-    private val syncEngine: SyncEngine? = null,
-    private val context: Context? = null
+    private val syncEngine: SyncEngine,
+    @ApplicationContext private val context: Context
 ) {
-
     private val gson = Gson()
 
     suspend fun insert(transaction: PaymentTransaction) {
@@ -78,9 +80,9 @@ class PaymentTransactionRepository(
      * الحصول على ملخص التحصيل اليومي
      *
      * @param date التاريخ بصيغة yyyy-MM-dd (مثال: "2026-02-12")
-     * @return Flow<DailySummary> يتحدث تلقائياً عند تغيير البيانات
+     * @return Flow يتحدث تلقائياً عند تغيير البيانات
      */
-    fun getDailySummary(date: String): Flow<DailySummary> {
+    fun getDailySummary(date: String): Flow<DailySummary?> {
         return transactionDao.getDailySummary(date)
     }
 
@@ -89,6 +91,7 @@ class PaymentTransactionRepository(
     }
 
     // ================== تحصيل يومي تفصيلي ==================
+
     suspend fun getDetailedDailyCollections(
         dayStartMillis: Long,
         dayEndMillis: Long
@@ -108,6 +111,7 @@ class PaymentTransactionRepository(
     }
 
     // ================== Dashboard ==================
+
     suspend fun getRecentTransactions(limit: Int = 10): List<PaymentTransactionDao.DashboardRecentTransaction> {
         return transactionDao.getRecentTransactions(limit)
     }
@@ -118,18 +122,23 @@ class PaymentTransactionRepository(
 
     // === مزامنة العمليات ===
 
+    /**
+     * إضافة العملية لقائمة المزامنة + تشغيل sync فوري
+     * يعمل بصمت — أي خطأ في الـ enqueue لا يؤثر على العملية الأساسية
+     */
     private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
         try {
-            syncEngine?.enqueue(
+            syncEngine.enqueue(
                 entityType = entityType,
                 entityId = entityId,
                 action = action,
                 payload = gson.toJson(entity)
             )
-            context?.let { SyncWorker.syncNow(it) }
+            // تشغيل مزامنة فورية في الخلفية
+            SyncWorker.syncNow(context)
         } catch (e: Exception) {
+            // لا نوقف العملية المحلية أبداً بسبب فشل الـ enqueue
             android.util.Log.w("PaymentTransactionRepo", "Sync enqueue failed: ${e.message}")
         }
     }
-
 }

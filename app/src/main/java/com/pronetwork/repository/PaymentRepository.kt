@@ -9,8 +9,9 @@ import com.pronetwork.app.data.Client
 import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.network.SyncWorker
 import com.google.gson.Gson
-
-
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 // توحيد صيغة الشهر إلى yyyy-MM
 private fun normalizeMonth(yearMonth: String): String {
@@ -24,13 +25,13 @@ private fun normalizeMonth(yearMonth: String): String {
     }
 }
 
-class PaymentRepository(
+@Singleton
+class PaymentRepository @Inject constructor(
     private val paymentDao: PaymentDao,
     private val clientDao: ClientDao,
-    private val syncEngine: SyncEngine? = null,
-    private val context: Context? = null
+    private val syncEngine: SyncEngine,
+    @ApplicationContext private val context: Context
 ) {
-
     private val gson = Gson()
 
     // === استعلامات القراءة ===
@@ -244,18 +245,23 @@ class PaymentRepository(
 
     // === مزامنة العمليات ===
 
+    /**
+     * إضافة العملية لقائمة المزامنة + تشغيل sync فوري
+     * يعمل بصمت — أي خطأ في الـ enqueue لا يؤثر على العملية الأساسية
+     */
     private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
         try {
-            syncEngine?.enqueue(
+            syncEngine.enqueue(
                 entityType = entityType,
                 entityId = entityId,
                 action = action,
                 payload = gson.toJson(entity)
             )
-            context?.let { SyncWorker.syncNow(it) }
+            // تشغيل مزامنة فورية في الخلفية
+            SyncWorker.syncNow(context)
         } catch (e: Exception) {
+            // لا نوقف العملية المحلية أبداً بسبب فشل الـ enqueue
             android.util.Log.w("PaymentRepository", "Sync enqueue failed: ${e.message}")
         }
     }
-
 }

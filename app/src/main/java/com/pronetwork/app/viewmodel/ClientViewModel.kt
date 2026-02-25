@@ -1,18 +1,22 @@
 package com.pronetwork.app.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.data.Client
-import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.repository.ClientRepository
-import com.pronetwork.app.network.SyncEngine
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import androidx.lifecycle.map
+import androidx.lifecycle.switchMap
 
-class ClientViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class ClientViewModel @Inject constructor(
     private val repository: ClientRepository
+) : ViewModel() {
+
     private val _searchQuery = MutableLiveData("")
     val clients: LiveData<List<Client>>
     val clientsCount: LiveData<Int>
@@ -20,9 +24,6 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     val unpaidClientsCount: LiveData<Int>
 
     init {
-        val clientDao = ClientDatabase.getDatabase(application).clientDao()
-        val syncEngine = SyncEngine(application)
-        repository = ClientRepository(clientDao, syncEngine, application)
         clients = _searchQuery.switchMap { query ->
             if (query.isEmpty()) repository.clients else repository.searchClients(query)
         }
@@ -36,10 +37,12 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun insert(client: Client) = viewModelScope.launch { repository.insert(client) }
+
     // دالة جديدة ترجع الـ ID مباشرة (تستخدم في الاستيراد)
     suspend fun insertAndGetId(client: Client): Long {
         return repository.insert(client)
     }
+
     fun update(client: Client) = viewModelScope.launch { repository.update(client) }
     fun delete(client: Client) = viewModelScope.launch { repository.delete(client) }
 }

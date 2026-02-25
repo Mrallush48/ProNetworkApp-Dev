@@ -1,17 +1,16 @@
 package com.pronetwork.app.viewmodel
 
-import android.app.Application
 import androidx.lifecycle.*
 import com.pronetwork.app.data.Building
-import com.pronetwork.app.data.BuildingDatabase
-import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.repository.BuildingRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import com.pronetwork.app.network.SyncEngine
+import javax.inject.Inject
 
-class BuildingViewModel(application: Application) : AndroidViewModel(application) {
-
+@HiltViewModel
+class BuildingViewModel @Inject constructor(
     private val repository: BuildingRepository
+) : ViewModel() {
 
     private val _searchQuery = MutableLiveData("")
     val searchQuery: LiveData<String> get() = _searchQuery
@@ -19,10 +18,6 @@ class BuildingViewModel(application: Application) : AndroidViewModel(application
     val buildings: LiveData<List<Building>>
 
     init {
-        val buildingDao = BuildingDatabase.getDatabase(application).buildingDao()
-        val clientDatabase = ClientDatabase.getDatabase(application)
-        val syncEngine = SyncEngine(application)
-        repository = BuildingRepository(buildingDao, clientDatabase, syncEngine, application)
         buildings = _searchQuery.switchMap { query ->
             if (query.isEmpty()) repository.buildings else repository.searchBuildings(query)
         }
@@ -33,8 +28,6 @@ class BuildingViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun insert(building: Building) = viewModelScope.launch { repository.insert(building) }
-
     fun update(building: Building) = viewModelScope.launch { repository.update(building) }
-
     fun delete(building: Building) = viewModelScope.launch { repository.delete(building) }
 }

@@ -7,11 +7,15 @@ import com.pronetwork.app.data.ClientDao
 import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.network.SyncWorker
 import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class ClientRepository(
+@Singleton
+class ClientRepository @Inject constructor(
     private val clientDao: ClientDao,
-    private val syncEngine: SyncEngine? = null,
-    private val context: Context? = null
+    private val syncEngine: SyncEngine,
+    @ApplicationContext private val context: Context
 ) {
     private val gson = Gson()
 
@@ -41,14 +45,14 @@ class ClientRepository(
      */
     private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
         try {
-            syncEngine?.enqueue(
+            syncEngine.enqueue(
                 entityType = entityType,
                 entityId = entityId,
                 action = action,
                 payload = gson.toJson(entity)
             )
             // تشغيل مزامنة فورية في الخلفية
-            context?.let { SyncWorker.syncNow(it) }
+            SyncWorker.syncNow(context)
         } catch (e: Exception) {
             // لا نوقف العملية المحلية أبداً بسبب فشل الـ enqueue
             android.util.Log.w("ClientRepository", "Sync enqueue failed: ${e.message}")

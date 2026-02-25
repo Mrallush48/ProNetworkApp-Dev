@@ -8,12 +8,16 @@ import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.network.SyncWorker
 import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class BuildingRepository(
+@Singleton
+class BuildingRepository @Inject constructor(
     private val buildingDao: BuildingDao,
-    private val clientDatabase: ClientDatabase? = null,
-    private val syncEngine: SyncEngine? = null,
-    private val context: Context? = null
+    private val clientDatabase: ClientDatabase,
+    private val syncEngine: SyncEngine,
+    @ApplicationContext private val context: Context
 ) {
     private val gson = Gson()
 
@@ -26,7 +30,7 @@ class BuildingRepository(
         // تزامن تلقائي إلى client_database
         try {
             val syncedBuilding = building.copy(id = insertedRowId.toInt())
-            clientDatabase?.buildingDao()?.insert(syncedBuilding)
+            clientDatabase.buildingDao().insert(syncedBuilding)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -38,7 +42,7 @@ class BuildingRepository(
     suspend fun update(building: Building) {
         buildingDao.update(building)
         try {
-            clientDatabase?.buildingDao()?.update(building)
+            clientDatabase.buildingDao().update(building)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -48,22 +52,27 @@ class BuildingRepository(
     suspend fun delete(building: Building) {
         buildingDao.delete(building)
         try {
-            clientDatabase?.buildingDao()?.delete(building)
+            clientDatabase.buildingDao().delete(building)
         } catch (e: Exception) {
             e.printStackTrace()
         }
         enqueueSync("building", building.id, "DELETE", building)
     }
 
+    /**
+     * إضافة العملية لقائمة المزامنة + تشغيل sync فوري
+     * يعمل بصمت — أي خطأ في الـ enqueue لا يؤثر على العملية الأساسية
+     */
     private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
         try {
-            syncEngine?.enqueue(
+            syncEngine.enqueue(
                 entityType = entityType,
                 entityId = entityId,
                 action = action,
                 payload = gson.toJson(entity)
             )
-            context?.let { SyncWorker.syncNow(it) }
+            // تشغيل مزامنة فورية في الخلفية
+            SyncWorker.syncNow(context)
         } catch (e: Exception) {
             android.util.Log.w("BuildingRepository", "Sync enqueue failed: ${e.message}")
         }
