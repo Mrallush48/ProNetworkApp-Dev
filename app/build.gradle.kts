@@ -15,6 +15,13 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        // إضافة جديدة: مسار تصدير Room Schema
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += mapOf("room.schemaLocation" to "$projectDir/schemas")
+            }
+        }
     }
 
     buildTypes {
