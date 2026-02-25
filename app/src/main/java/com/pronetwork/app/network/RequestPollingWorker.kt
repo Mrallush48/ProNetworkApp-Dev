@@ -3,8 +3,14 @@ package com.pronetwork.app.network
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import com.pronetwork.app.data.ClientDatabase
 import java.util.concurrent.TimeUnit
 
+/**
+ * Polls for approval request status changes.
+ * - Admin: notified of new pending requests
+ * - User: notified when request status changes + auto-executes approved deletions
+ */
 class RequestPollingWorker(
     context: Context,
     params: WorkerParameters
@@ -16,6 +22,7 @@ class RequestPollingWorker(
         private const val PREF_NAME = "polling_cache"
         private const val KEY_ADMIN_PENDING_IDS = "admin_pending_ids"
         private const val KEY_USER_STATUSES = "user_statuses"
+        private const val KEY_EXECUTED_IDS = "executed_approval_ids"
 
         fun schedule(context: Context) {
             val constraints = Constraints.Builder()
@@ -107,22 +114,78 @@ class RequestPollingWorker(
         val requests: List<ApprovalRequestResponse> = response.body() ?: emptyList()
         val currentStatuses: Map<Int, String> = requests.associate { it.id to it.status }
         val previousStatuses = getSavedUserStatuses()
+        val executedIds = getExecutedIds()
 
         if (previousStatuses.isNotEmpty()) {
             for ((id, newStatus) in currentStatuses) {
                 val oldStatus = previousStatuses[id]
+
                 if (oldStatus == "PENDING" && newStatus != "PENDING") {
                     val request = requests.firstOrNull { it.id == id }
+
+                    // Notify the user
                     NotificationHelper.notifyUserStatusChanged(
                         applicationContext,
                         request?.target_name,
                         newStatus
                     )
+
+                    // === AUTO-EXECUTE approved deletions ===
+                    if (newStatus == "APPROVED" && request != null && id !in executedIds) {
+                        executeApprovedAction(request)
+                        markAsExecuted(id)
+                    }
                 }
             }
         }
 
         saveUserStatuses(currentStatuses)
+    }
+
+    /**
+     * Execute the approved action (delete client/building from local Room DB).
+     * Also enqueues a sync operation so the deletion propagates to the server.
+     */
+    private suspend fun executeApprovedAction(request: ApprovalRequestResponse) {
+        val db = ClientDatabase.getDatabase(applicationContext)
+        val syncEngine = SyncEngine(applicationContext)
+        val targetId = request.target_id ?: return
+
+        try {
+            when (request.request_type) {
+                "DELETE_CLIENT" -> {
+                    val client = db.clientDao().getClientById(targetId)
+                    if (client != null) {
+                        db.clientDao().delete(client)
+                        syncEngine.enqueue("client", targetId, "DELETE", "{}")
+                        Log.i(TAG, "AUTO-DELETE client #$targetId (${request.target_name}) - approved request #${request.id}")
+                    } else {
+                        Log.w(TAG, "Client #$targetId not found for approved deletion")
+                    }
+                }
+
+                "DELETE_BUILDING" -> {
+                    val building = db.buildingDao().getBuildingById(targetId)
+                    if (building != null) {
+                        db.buildingDao().delete(building)
+                        syncEngine.enqueue("building", targetId, "DELETE", "{}")
+                        Log.i(TAG, "AUTO-DELETE building #$targetId (${request.target_name}) - approved request #${request.id}")
+                    } else {
+                        Log.w(TAG, "Building #$targetId not found for approved deletion")
+                    }
+                }
+
+                else -> {
+                    Log.d(TAG, "Approved request #${request.id} type=${request.request_type} - no auto-action needed")
+                }
+            }
+
+            // Trigger sync to push the deletion to server
+            SyncWorker.enqueue(applicationContext, trigger = "approval_delete")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to execute approved action for request #${request.id}: ${e.message}")
+        }
     }
 
     // --- SharedPreferences cache ---
@@ -155,5 +218,18 @@ class RequestPollingWorker(
             .edit()
             .putStringSet(KEY_USER_STATUSES, set)
             .apply()
+    }
+
+    private fun getExecutedIds(): Set<Int> {
+        val prefs = applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(KEY_EXECUTED_IDS, emptySet())
+            ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
+
+    private fun markAsExecuted(requestId: Int) {
+        val prefs = applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val existing = prefs.getStringSet(KEY_EXECUTED_IDS, emptySet())?.toMutableSet() ?: mutableSetOf()
+        existing.add(requestId.toString())
+        prefs.edit().putStringSet(KEY_EXECUTED_IDS, existing).apply()
     }
 }
