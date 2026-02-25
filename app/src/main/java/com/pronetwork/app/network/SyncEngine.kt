@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import com.google.gson.Gson
 
 /**
  * Core sync engine that handles push (upload local changes) and pull (download server changes).
@@ -197,19 +198,113 @@ class SyncEngine(private val context: Context) {
 
     /**
      * Apply changes received from the server to the local Room database.
-     * Server wins in case of conflicts.
+     * Server wins in case of conflicts (Last-Write-Wins strategy).
      */
     private suspend fun applyServerChanges(data: SyncPullResponse) {
-        // TODO: Phase 6.2 — Apply each entity type to local Room DB
-        // This will be implemented when we build the server-side sync endpoints.
-        // For now, log what we received.
+        val gson = com.google.gson.Gson()
+
+        // === Clients ===
+        data.clients?.forEach { entity ->
+            try {
+                when (entity.action.uppercase()) {
+                    "CREATE", "UPDATE" -> {
+                        entity.data?.let { map ->
+                            val json = gson.toJson(map)
+                            val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
+                            db.clientDao().insert(client) // REPLACE strategy handles upsert
+                            Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
+                        }
+                    }
+                    "DELETE" -> {
+                        val existing = db.clientDao().getClientById(entity.id)
+                        if (existing != null) {
+                            db.clientDao().delete(existing)
+                            Log.d(TAG, "Applied DELETE client #${entity.id}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply client #${entity.id}: ${e.message}")
+            }
+        }
+
+        // === Buildings ===
+        data.buildings?.forEach { entity ->
+            try {
+                when (entity.action.uppercase()) {
+                    "CREATE", "UPDATE" -> {
+                        entity.data?.let { map ->
+                            val json = gson.toJson(map)
+                            val building = gson.fromJson(json, com.pronetwork.app.data.Building::class.java)
+                            db.buildingDao().insert(building)
+                            Log.d(TAG, "Applied ${entity.action} building #${entity.id}")
+                        }
+                    }
+                    "DELETE" -> {
+                        val existing = db.buildingDao().getBuildingById(entity.id)
+                        if (existing != null) {
+                            db.buildingDao().delete(existing)
+                            Log.d(TAG, "Applied DELETE building #${entity.id}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply building #${entity.id}: ${e.message}")
+            }
+        }
+
+        // === Payments ===
+        data.payments?.forEach { entity ->
+            try {
+                when (entity.action.uppercase()) {
+                    "CREATE", "UPDATE" -> {
+                        entity.data?.let { map ->
+                            val json = gson.toJson(map)
+                            val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
+                            db.paymentDao().insert(payment)
+                            Log.d(TAG, "Applied ${entity.action} payment #${entity.id}")
+                        }
+                    }
+                    "DELETE" -> {
+                        val existing = db.paymentDao().getPaymentById(entity.id)
+                        if (existing != null) {
+                            db.paymentDao().delete(existing)
+                            Log.d(TAG, "Applied DELETE payment #${entity.id}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply payment #${entity.id}: ${e.message}")
+            }
+        }
+
+        // === Payment Transactions ===
+        data.payment_transactions?.forEach { entity ->
+            try {
+                when (entity.action.uppercase()) {
+                    "CREATE", "UPDATE" -> {
+                        entity.data?.let { map ->
+                            val json = gson.toJson(map)
+                            val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
+                            db.paymentTransactionDao().insert(transaction)
+                            Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
+                        }
+                    }
+                    "DELETE" -> {
+                        db.paymentTransactionDao().deleteTransactionById(entity.id)
+                        Log.d(TAG, "Applied DELETE transaction #${entity.id}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply transaction #${entity.id}: ${e.message}")
+            }
+        }
 
         val clientCount = data.clients?.size ?: 0
         val buildingCount = data.buildings?.size ?: 0
         val paymentCount = data.payments?.size ?: 0
         val transactionCount = data.payment_transactions?.size ?: 0
-
-        Log.i(TAG, "Server changes: clients=$clientCount, buildings=$buildingCount, " +
+        Log.i(TAG, "Server changes applied: clients=$clientCount, buildings=$buildingCount, " +
                 "payments=$paymentCount, transactions=$transactionCount")
     }
 
