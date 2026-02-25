@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import com.pronetwork.app.data.DailyTransactionItem
 import androidx.lifecycle.switchMap
 import com.pronetwork.app.data.PaymentTransactionDao
+import com.pronetwork.app.network.SyncEngine
 
 // enum جديد لحالة الدفع
 enum class PaymentStatus {
@@ -49,9 +50,10 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         val paymentDao = db.paymentDao()
         val transactionDao = db.paymentTransactionDao()
         val clientDao = db.clientDao()
+        val syncEngine = SyncEngine(application)
 
-        paymentRepository = PaymentRepository(paymentDao, clientDao)
-        transactionRepository = PaymentTransactionRepository(transactionDao, clientDao)
+        paymentRepository = PaymentRepository(paymentDao, clientDao, syncEngine, application)
+        transactionRepository = PaymentTransactionRepository(transactionDao, clientDao, syncEngine, application)
 
         allPayments = paymentRepository.allPayments
     }

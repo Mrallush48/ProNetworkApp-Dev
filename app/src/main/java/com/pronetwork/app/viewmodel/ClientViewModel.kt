@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.repository.ClientRepository
+import com.pronetwork.app.network.SyncEngine
 import kotlinx.coroutines.launch
 
 class ClientViewModel(application: Application) : AndroidViewModel(application) {
@@ -20,7 +21,8 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         val clientDao = ClientDatabase.getDatabase(application).clientDao()
-        repository = ClientRepository(clientDao)
+        val syncEngine = SyncEngine(application)
+        repository = ClientRepository(clientDao, syncEngine, application)
         clients = _searchQuery.switchMap { query ->
             if (query.isEmpty()) repository.clients else repository.searchClients(query)
         }

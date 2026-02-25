@@ -1,10 +1,15 @@
 package com.pronetwork.app.repository
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import com.pronetwork.app.data.ClientDao
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentDao
 import com.pronetwork.app.data.Client
+import com.pronetwork.app.network.SyncEngine
+import com.pronetwork.app.network.SyncWorker
+import com.google.gson.Gson
+
 
 
 // توحيد صيغة الشهر إلى yyyy-MM
@@ -21,9 +26,12 @@ private fun normalizeMonth(yearMonth: String): String {
 
 class PaymentRepository(
     private val paymentDao: PaymentDao,
-    private val clientDao: ClientDao
+    private val clientDao: ClientDao,
+    private val syncEngine: SyncEngine? = null,
+    private val context: Context? = null
 ) {
 
+    private val gson = Gson()
 
     // === استعلامات القراءة ===
 
@@ -68,15 +76,19 @@ class PaymentRepository(
     // === استعلامات الكتابة ===
 
     suspend fun insert(payment: Payment): Long {
-        return paymentDao.insert(payment)
+        val rowId = paymentDao.insert(payment)
+        enqueueSync("payment", rowId.toInt(), "CREATE", payment.copy(id = rowId.toInt()))
+        return rowId
     }
 
     suspend fun update(payment: Payment) {
         paymentDao.update(payment)
+        enqueueSync("payment", payment.id, "UPDATE", payment)
     }
 
     suspend fun delete(payment: Payment) {
         paymentDao.delete(payment)
+        enqueueSync("payment", payment.id, "DELETE", payment)
     }
 
     suspend fun deleteClientPayments(clientId: Int) {
@@ -230,5 +242,20 @@ class PaymentRepository(
         return clientDao.getClientsByIds(ids)
     }
 
+    // === مزامنة العمليات ===
+
+    private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
+        try {
+            syncEngine?.enqueue(
+                entityType = entityType,
+                entityId = entityId,
+                action = action,
+                payload = gson.toJson(entity)
+            )
+            context?.let { SyncWorker.syncNow(it) }
+        } catch (e: Exception) {
+            android.util.Log.w("PaymentRepository", "Sync enqueue failed: ${e.message}")
+        }
+    }
 
 }

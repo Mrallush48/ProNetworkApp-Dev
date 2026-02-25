@@ -7,6 +7,7 @@ import com.pronetwork.app.data.BuildingDatabase
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.repository.BuildingRepository
 import kotlinx.coroutines.launch
+import com.pronetwork.app.network.SyncEngine
 
 class BuildingViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -19,8 +20,9 @@ class BuildingViewModel(application: Application) : AndroidViewModel(application
 
     init {
         val buildingDao = BuildingDatabase.getDatabase(application).buildingDao()
-        val clientDatabase = ClientDatabase.getDatabase(application) // ربط آمن بقاعدة البيانات الثانية
-        repository = BuildingRepository(buildingDao, clientDatabase)
+        val clientDatabase = ClientDatabase.getDatabase(application)
+        val syncEngine = SyncEngine(application)
+        repository = BuildingRepository(buildingDao, clientDatabase, syncEngine, application)
         buildings = _searchQuery.switchMap { query ->
             if (query.isEmpty()) repository.buildings else repository.searchBuildings(query)
         }

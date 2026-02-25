@@ -125,6 +125,7 @@ import com.pronetwork.app.network.ApprovalHelper
 import com.pronetwork.app.network.AuthManager
 import com.pronetwork.app.network.ConnectivityObserver
 import androidx.compose.ui.platform.LocalContext
+import com.pronetwork.app.network.SyncEngine
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -197,7 +198,8 @@ class MainActivity : ComponentActivity() {
 
     private val transactionRepository by lazy {
         val db = ClientDatabase.getDatabase(application)
-        PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
+        val syncEngine = SyncEngine(application)
+        PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao(), syncEngine, application)
     }
 
     private fun filterClients(
@@ -271,10 +273,10 @@ class MainActivity : ComponentActivity() {
         dailyExportManager = DailyCollectionExportManager(this)
 
         val buildingRepo = buildingViewModel.let {
-            val buildingDao =
-                com.pronetwork.app.data.BuildingDatabase.getDatabase(application).buildingDao()
+            val buildingDao = com.pronetwork.app.data.BuildingDatabase.getDatabase(application).buildingDao()
             val clientDatabase = com.pronetwork.app.data.ClientDatabase.getDatabase(application)
-            com.pronetwork.app.repository.BuildingRepository(buildingDao, clientDatabase)
+            val syncEngine = com.pronetwork.app.network.SyncEngine(application)
+            com.pronetwork.app.repository.BuildingRepository(buildingDao, clientDatabase, syncEngine, application)
         }
         importManager = ClientsImportManager(this, buildingRepo)
 

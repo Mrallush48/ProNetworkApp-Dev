@@ -1,30 +1,40 @@
 package com.pronetwork.app.repository
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import com.pronetwork.app.data.ClientDao
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.data.PaymentTransactionDao
+import com.pronetwork.app.network.SyncEngine
+import com.pronetwork.app.network.SyncWorker
 import com.pronetwork.data.DailySummary
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 
 
 class PaymentTransactionRepository(
     private val transactionDao: PaymentTransactionDao,
-    private val clientDao: ClientDao
+    private val clientDao: ClientDao,
+    private val syncEngine: SyncEngine? = null,
+    private val context: Context? = null
 ) {
 
+    private val gson = Gson()
 
     suspend fun insert(transaction: PaymentTransaction) {
         transactionDao.insert(transaction)
+        enqueueSync("payment_transaction", transaction.id, "CREATE", transaction)
     }
 
     suspend fun update(transaction: PaymentTransaction) {
         transactionDao.update(transaction)
+        enqueueSync("payment_transaction", transaction.id, "UPDATE", transaction)
     }
 
     suspend fun delete(transaction: PaymentTransaction) {
         transactionDao.delete(transaction)
+        enqueueSync("payment_transaction", transaction.id, "DELETE", transaction)
     }
 
     fun getTransactionsForPayment(paymentId: Int): LiveData<List<PaymentTransaction>> {
@@ -106,5 +116,20 @@ class PaymentTransactionRepository(
         return transactionDao.getTopUnpaidClientsForMonth(month, limit)
     }
 
+    // === مزامنة العمليات ===
+
+    private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
+        try {
+            syncEngine?.enqueue(
+                entityType = entityType,
+                entityId = entityId,
+                action = action,
+                payload = gson.toJson(entity)
+            )
+            context?.let { SyncWorker.syncNow(it) }
+        } catch (e: Exception) {
+            android.util.Log.w("PaymentTransactionRepo", "Sync enqueue failed: ${e.message}")
+        }
+    }
 
 }
