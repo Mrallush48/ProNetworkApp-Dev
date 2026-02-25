@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.SyncQueueEntity
+import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ class SyncEngine(private val context: Context) {
         private const val KEY_LAST_SYNC = "last_sync_timestamp"
         private const val MAX_RETRIES = 5
         private const val BATCH_SIZE = 50
+
         // Shared state across all instances
         private val _syncState = MutableStateFlow(SyncState())
         val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
@@ -46,7 +48,13 @@ class SyncEngine(private val context: Context) {
 
     private val db = ClientDatabase.getDatabase(context)
     private val syncQueueDao = db.syncQueueDao()
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    // Gson that ignores unknown fields (server_id, _checksum, etc.)
+    private val gson = GsonBuilder()
+        .setLenient()
+        .create()
 
     private val utcFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -86,7 +94,8 @@ class SyncEngine(private val context: Context) {
 
         _syncState.value = _syncState.value.copy(
             status = if (success) SyncStatus.SUCCESS else SyncStatus.ERROR,
-            lastSyncTime = if (success) utcFormat.format(System.currentTimeMillis()) else _syncState.value.lastSyncTime
+            lastSyncTime = if (success) utcFormat.format(System.currentTimeMillis())
+            else _syncState.value.lastSyncTime
         )
 
         Log.i(TAG, "=== SYNC ${if (success) "SUCCESS" else "PARTIAL FAILURE"} ===")
@@ -95,6 +104,7 @@ class SyncEngine(private val context: Context) {
 
     /**
      * Push: Upload all pending local operations to the server.
+     * Processes acknowledgments to remove successfully synced items.
      */
     private suspend fun push(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PUSHING)
@@ -129,10 +139,36 @@ class SyncEngine(private val context: Context) {
                     val result = response.body()
                     Log.d(TAG, "Push batch: ${result?.processed} processed, ${result?.failed} failed")
 
-                    // Remove successfully synced operations
-                    batch.forEach { entry ->
-                        syncQueueDao.remove(entry.id)
+                    // Process acknowledgments
+                    result?.acknowledgments?.forEach { ack ->
+                        if (ack.status == "ok") {
+                            // Find and remove the matching queue entry
+                            val matchingEntry = batch.find {
+                                it.entityType == ack.entity_type && it.entityId == ack.local_id
+                            }
+                            matchingEntry?.let { entry ->
+                                syncQueueDao.remove(entry.id)
+                                Log.d(TAG, "Ack OK: ${ack.entity_type} local=${ack.local_id} -> server=${ack.server_id}")
+                            }
+                        }
                     }
+
+                    // If no acknowledgments returned, remove all (backward compat)
+                    if (result?.acknowledgments.isNullOrEmpty() && result?.failed == 0) {
+                        batch.forEach { entry ->
+                            syncQueueDao.remove(entry.id)
+                        }
+                    }
+
+                    // Log errors if any
+                    result?.errors?.forEach { error ->
+                        Log.w(TAG, "Push error: $error")
+                    }
+
+                    if ((result?.failed ?: 0) > 0) {
+                        allSuccess = false
+                    }
+
                 } else if (response.code() == 404) {
                     Log.w(TAG, "Push: sync endpoint not available (404) — skipping")
                 } else {
@@ -203,9 +239,9 @@ class SyncEngine(private val context: Context) {
     /**
      * Apply changes received from the server to the local Room database.
      * Server wins in case of conflicts (Last-Write-Wins strategy).
+     * Gson ignores unknown fields (server_id, _checksum) automatically.
      */
     private suspend fun applyServerChanges(data: SyncPullResponse) {
-        val gson = com.google.gson.Gson()
 
         // === Clients ===
         data.clients?.forEach { entity ->
@@ -215,7 +251,7 @@ class SyncEngine(private val context: Context) {
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
-                            db.clientDao().insert(client) // REPLACE strategy handles upsert
+                            db.clientDao().insert(client)
                             Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
                         }
                     }

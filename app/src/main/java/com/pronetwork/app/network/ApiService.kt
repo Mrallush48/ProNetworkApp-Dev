@@ -80,7 +80,16 @@ data class SyncOperation(
 data class SyncPushResponse(
     val processed: Int,
     val failed: Int,
-    val errors: List<String>? = null
+    val errors: List<String>? = null,
+    val acknowledgments: List<SyncPushAck>? = null
+)
+
+data class SyncPushAck(
+    val entity_type: String,
+    val local_id: Int,
+    val server_id: Int,
+    val action: String,
+    val status: String = "ok"
 )
 
 data class SyncPullResponse(
