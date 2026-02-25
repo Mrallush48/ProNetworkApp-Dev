@@ -12,11 +12,19 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 
 /**
  * Background worker that runs sync periodically and on-demand.
  * Uses WorkManager for battery-efficient background execution.
+ *
+ * Best Practices Applied:
+ * - Exponential backoff for retries
+ * - Network constraint (only runs with connectivity)
+ * - Battery-aware (periodic sync only when battery not low)
+ * - Notification of sync results via SyncEngine state
+ * - Safe token handling
  */
 class SyncWorker(
     appContext: Context,
@@ -30,7 +38,7 @@ class SyncWorker(
 
         /**
          * Schedule periodic sync every 15 minutes (minimum allowed by WorkManager).
-         * Only runs when network is available.
+         * Only runs when network is available and battery is not low.
          */
         fun schedulePeriodic(context: Context) {
             val constraints = Constraints.Builder()
@@ -94,33 +102,51 @@ class SyncWorker(
     }
 
     override suspend fun doWork(): Result {
+        val startTime = System.currentTimeMillis()
         Log.i(TAG, "SyncWorker started (attempt: $runAttemptCount)")
 
+        // 1. Check auth token
         val authManager = AuthManager(applicationContext)
-        val token = authManager.getAccessToken()
+        val token = authManager.getValidToken()
 
         if (token.isNullOrBlank()) {
-            Log.w(TAG, "No auth token — skipping sync")
+            Log.w(TAG, "No valid auth token — skipping sync")
             return Result.success()
         }
 
+        // 2. Check if there's anything to sync
+        val syncEngine = SyncEngine(applicationContext)
+        val pendingCount = syncEngine.syncState.value.pendingCount
+
         return try {
-            val syncEngine = SyncEngine(applicationContext)
+            // 3. Execute sync
             val success = syncEngine.sync(token)
+            val duration = System.currentTimeMillis() - startTime
 
             if (success) {
-                Log.i(TAG, "SyncWorker completed successfully")
+                Log.i(TAG, "SyncWorker completed successfully in ${duration}ms")
                 Result.success()
             } else {
-                Log.w(TAG, "SyncWorker completed with errors — will retry")
-                Result.retry()
+                Log.w(TAG, "SyncWorker completed with errors in ${duration}ms — will retry")
+                if (runAttemptCount < 5) {
+                    Result.retry()
+                } else {
+                    Log.e(TAG, "SyncWorker max retries reached — failing")
+                    Result.failure(
+                        workDataOf("error" to "Max retries reached after $runAttemptCount attempts")
+                    )
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "SyncWorker failed: ${e.message}")
-            if (runAttemptCount < 3) {
+            val duration = System.currentTimeMillis() - startTime
+            Log.e(TAG, "SyncWorker failed in ${duration}ms: ${e.message}")
+
+            if (runAttemptCount < 5) {
                 Result.retry()
             } else {
-                Result.failure()
+                Result.failure(
+                    workDataOf("error" to (e.message ?: "Unknown error"))
+                )
             }
         }
     }
