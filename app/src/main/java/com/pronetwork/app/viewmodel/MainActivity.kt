@@ -501,8 +501,7 @@ class MainActivity : ComponentActivity() {
                 val connectivityStatus by app.connectivityObserver.observe()
                     .collectAsState(initial = ConnectivityObserver.Status.UNAVAILABLE)
 
-                val syncEngine = remember { SyncEngine(context) }
-                val syncState by syncEngine.syncState.collectAsState()
+                val syncState by SyncEngine.syncState.collectAsState()
 
 
                 Scaffold(

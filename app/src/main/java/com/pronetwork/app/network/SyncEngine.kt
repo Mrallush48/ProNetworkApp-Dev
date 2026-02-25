@@ -24,6 +24,9 @@ class SyncEngine(private val context: Context) {
         private const val KEY_LAST_SYNC = "last_sync_timestamp"
         private const val MAX_RETRIES = 5
         private const val BATCH_SIZE = 50
+        // Shared state across all instances
+        private val _syncState = MutableStateFlow(SyncState())
+        val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
     }
 
     enum class SyncStatus {
@@ -40,9 +43,6 @@ class SyncEngine(private val context: Context) {
         val lastSyncTime: String? = null,
         val errorMessage: String? = null
     )
-
-    private val _syncState = MutableStateFlow(SyncState())
-    val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
 
     private val db = ClientDatabase.getDatabase(context)
     private val syncQueueDao = db.syncQueueDao()
@@ -133,6 +133,8 @@ class SyncEngine(private val context: Context) {
                     batch.forEach { entry ->
                         syncQueueDao.remove(entry.id)
                     }
+                } else if (response.code() == 404) {
+                    Log.w(TAG, "Push: sync endpoint not available (404) — skipping")
                 } else {
                     Log.w(TAG, "Push batch failed: ${response.code()}")
                     batch.forEach { entry ->
@@ -180,6 +182,9 @@ class SyncEngine(private val context: Context) {
 
                     Log.d(TAG, "Pull: applied changes, next sync from ${pullData.server_timestamp}")
                 }
+                true
+            } else if (response.code() == 404) {
+                Log.w(TAG, "Pull: sync endpoint not available (404) — skipping")
                 true
             } else {
                 Log.w(TAG, "Pull failed: ${response.code()}")
