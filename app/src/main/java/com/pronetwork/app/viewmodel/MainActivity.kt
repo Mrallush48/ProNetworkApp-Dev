@@ -1,9 +1,13 @@
 package com.pronetwork.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,21 +19,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -57,23 +64,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
-import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.export.ClientsExportManager
+import com.pronetwork.app.export.ClientsImportManager
 import com.pronetwork.app.export.DailyCollectionExportManager
-import com.pronetwork.app.ui.components.DailyReportMode
 import com.pronetwork.app.export.PaymentsExportManager
-import com.pronetwork.app.repository.PaymentTransactionRepository
+import com.pronetwork.app.network.ApprovalHelper
+import com.pronetwork.app.network.ConnectivityObserver
+import com.pronetwork.app.network.NotificationHelper
+import com.pronetwork.app.network.RequestPollingWorker
+import com.pronetwork.app.network.SyncEngine
+import com.pronetwork.app.repository.BuildingRepository
 import com.pronetwork.app.ui.components.DailyExportDialog
+import com.pronetwork.app.ui.components.DailyReportMode
 import com.pronetwork.app.ui.components.ExportDialog
 import com.pronetwork.app.ui.components.ExportFormat
 import com.pronetwork.app.ui.components.ExportOption
 import com.pronetwork.app.ui.components.PaymentExportDialog
 import com.pronetwork.app.ui.components.ScreenTopBar
+import com.pronetwork.app.ui.components.SortOption
+import com.pronetwork.app.ui.components.ViewOptionsDialog
+import com.pronetwork.app.ui.screens.ApprovalRequestsScreen
 import com.pronetwork.app.ui.screens.BuildingDetailsScreen
 import com.pronetwork.app.ui.screens.BuildingEditDialog
 import com.pronetwork.app.ui.screens.BuildingListScreen
@@ -82,65 +100,45 @@ import com.pronetwork.app.ui.screens.ClientEditDialog
 import com.pronetwork.app.ui.screens.ClientListScreen
 import com.pronetwork.app.ui.screens.DailyCollectionScreen
 import com.pronetwork.app.ui.screens.DashboardScreen
+import com.pronetwork.app.ui.screens.LoginScreen
+import com.pronetwork.app.ui.screens.MyRequestsScreen
 import com.pronetwork.app.ui.screens.RecentTransaction
-import com.pronetwork.app.ui.screens.UnpaidClientInfo
 import com.pronetwork.app.ui.screens.StatisticsScreen
+import com.pronetwork.app.ui.screens.UnpaidClientInfo
+import com.pronetwork.app.ui.screens.UserManagementScreen
 import com.pronetwork.app.ui.theme.ProNetworkSpotTheme
+import com.pronetwork.app.viewmodel.ApprovalRequestsViewModel
 import com.pronetwork.app.viewmodel.BuildingViewModel
 import com.pronetwork.app.viewmodel.ClientViewModel
 import com.pronetwork.app.viewmodel.DailyCollectionUi
+import com.pronetwork.app.viewmodel.LoginViewModel
 import com.pronetwork.app.viewmodel.PaymentViewModel
+import com.pronetwork.app.viewmodel.UserManagementViewModel
 import com.pronetwork.data.DailySummary
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import android.app.Activity
-import android.content.Intent
-import androidx.activity.result.contract.ActivityResultContracts
-import com.pronetwork.app.export.ClientsImportManager
-import androidx.activity.compose.BackHandler
-import com.pronetwork.app.ui.components.SortOption
-import com.pronetwork.app.ui.components.ViewOptionsDialog
-import androidx.compose.foundation.layout.size
-import com.pronetwork.app.ui.screens.LoginScreen
-import com.pronetwork.app.viewmodel.LoginViewModel
-import androidx.compose.runtime.collectAsState
-import com.pronetwork.app.ui.screens.UserManagementScreen
-import com.pronetwork.app.viewmodel.UserManagementViewModel
-import com.pronetwork.app.viewmodel.ApprovalRequestsViewModel
-import com.pronetwork.app.ui.screens.ApprovalRequestsScreen
-import com.pronetwork.app.ui.screens.MyRequestsScreen
-import com.pronetwork.app.network.NotificationHelper
-import com.pronetwork.app.network.RequestPollingWorker
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.content.ContextCompat
-import androidx.compose.material.icons.filled.AdminPanelSettings
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material3.ButtonDefaults
-import com.pronetwork.app.network.ApprovalHelper
-import com.pronetwork.app.network.AuthManager
-import com.pronetwork.app.network.ConnectivityObserver
-import androidx.compose.ui.platform.LocalContext
-import com.pronetwork.app.network.SyncEngine
+import javax.inject.Inject
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val clientViewModel: ClientViewModel by viewModels()
-    private val buildingViewModel: BuildingViewModel by viewModels()
-    private val paymentViewModel: PaymentViewModel by viewModels()
-    private val loginViewModel: LoginViewModel by viewModels()
-    private val userManagementViewModel: UserManagementViewModel by viewModels()
+    // === Hilt-injected dependencies ===
+    @Inject lateinit var buildingRepo: BuildingRepository
+
+    // ViewModel references (set in setContent for importFileLauncher)
+    private lateinit var _clientViewModel: ClientViewModel
+    private lateinit var _paymentViewModel: PaymentViewModel
+
     private lateinit var exportManager: ClientsExportManager
     private lateinit var paymentsExportManager: PaymentsExportManager
     private lateinit var dailyExportManager: DailyCollectionExportManager
     private lateinit var importManager: ClientsImportManager
-    private val approvalRequestsViewModel: ApprovalRequestsViewModel by viewModels()
     private val importFileLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -161,9 +159,9 @@ class MainActivity : ComponentActivity() {
                                 }
                         // حفظ كل عميل والحصول على ID مباشرة ثم إنشاء سجلات الدفع
                         newClients.forEach { client ->
-                            val newId = clientViewModel.insertAndGetId(client)
+                            val newId = _clientViewModel.insertAndGetId(client)
                             val savedClientId = newId.toInt()
-                            paymentViewModel.createPaymentsForClient(
+                            _paymentViewModel.createPaymentsForClient(
                                 clientId = savedClientId,
                                 startMonth = client.startMonth,
                                 endMonth = null,
@@ -194,14 +192,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-
-    private val transactionRepository by lazy {
-        val db = ClientDatabase.getDatabase(application)
-        val syncEngine = SyncEngine(application)
-        PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao(), syncEngine, application)
-    }
-
     private fun filterClients(
         clients: List<Client>,
         selectedMonth: String,
@@ -264,20 +254,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val authManager = AuthManager(this)
-
         exportManager = ClientsExportManager(this)
 
         paymentsExportManager = PaymentsExportManager(this)
 
         dailyExportManager = DailyCollectionExportManager(this)
 
-        val buildingRepo = buildingViewModel.let {
-            val buildingDao = com.pronetwork.app.data.BuildingDatabase.getDatabase(application).buildingDao()
-            val clientDatabase = com.pronetwork.app.data.ClientDatabase.getDatabase(application)
-            val syncEngine = com.pronetwork.app.network.SyncEngine(application)
-            com.pronetwork.app.repository.BuildingRepository(buildingDao, clientDatabase, syncEngine, application)
-        }
         importManager = ClientsImportManager(this, buildingRepo)
 
         val myLightColors = lightColorScheme(
@@ -311,12 +293,31 @@ class MainActivity : ComponentActivity() {
         // Start background polling for approval request updates
         RequestPollingWorker.schedule(this)
 
-        // Load requests on app start for badge count
-        approvalRequestsViewModel.loadRequests()
-
         setContent {
             ProNetworkSpotTheme(darkTheme = false) {
+
+                // === Hilt ViewModels ===
+                val clientViewModel: ClientViewModel = hiltViewModel()
+                val buildingViewModel: BuildingViewModel = hiltViewModel()
+                val paymentViewModel: PaymentViewModel = hiltViewModel()
+                val loginViewModel: LoginViewModel = hiltViewModel()
+                val userManagementViewModel: UserManagementViewModel = hiltViewModel()
+                val approvalRequestsViewModel: ApprovalRequestsViewModel = hiltViewModel()
+
+                // Set references for importFileLauncher
+                _clientViewModel = clientViewModel
+                _paymentViewModel = paymentViewModel
+
+                // AuthManager from Hilt (via LoginViewModel)
+                val authManager = loginViewModel.authManager
+
+                // Load requests on app start for badge count
+                LaunchedEffect(Unit) {
+                    approvalRequestsViewModel.loadRequests()
+                }
+
                 val loginState by loginViewModel.uiState.collectAsState()
+
 
                 if (!loginState.loginSuccess) {
                     // ===== LOGIN SCREEN =====
@@ -458,11 +459,14 @@ class MainActivity : ComponentActivity() {
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val dateString = dateFormat.format(Date(dateMillis))
                     lifecycleScope.launch {
-                        transactionRepository.getDailySummary(dateString)
+                        paymentViewModel.getDailySummary(dateString)
                             .collect { summary ->
-                                dailySummary = summary
+                                if (summary != null) {
+                                    dailySummary = summary
+                                }
                             }
                     }
+
                 }
 
                 val monthsList = remember {

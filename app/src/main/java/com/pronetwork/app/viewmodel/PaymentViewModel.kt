@@ -14,6 +14,9 @@ import com.pronetwork.app.data.DailyTransactionItem
 import com.pronetwork.app.data.PaymentTransactionDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import com.pronetwork.data.DailySummary
+
 
 // enum جديد لحالة الدفع
 enum class PaymentStatus {
@@ -678,6 +681,12 @@ class PaymentViewModel @Inject constructor(
             )
         }
     }
+
+    // ================== Daily Summary ==================
+    fun getDailySummary(dateString: String): Flow<DailySummary?> {
+        return transactionRepository.getDailySummary(dateString)
+    }
+
 
     // ================== دوال مساعدة قديمة (تبقى موجودة) ==================
 
