@@ -25,8 +25,9 @@ class PaymentTransactionRepository @Inject constructor(
     private val gson = Gson()
 
     suspend fun insert(transaction: PaymentTransaction) {
-        transactionDao.insert(transaction)
-        enqueueSync("payment_transaction", transaction.id, "CREATE", transaction)
+        val rowId = transactionDao.insert(transaction)
+        val savedTransaction = transaction.copy(id = rowId.toInt())
+        enqueueSync("payment_transaction", savedTransaction.id, "CREATE", savedTransaction)
     }
 
     suspend fun update(transaction: PaymentTransaction) {

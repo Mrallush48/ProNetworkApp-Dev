@@ -156,14 +156,17 @@ class ProNetworkApp : Application(), Configuration.Provider {
 
     private suspend fun performImmediateSync() {
         try {
-            val success = syncEngine.sync()
-            if (success) {
-                Log.d(TAG, "Immediate sync completed successfully")
-            } else {
-                Log.w(TAG, "Immediate sync completed with errors")
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                val success = syncEngine.sync()
+                if (success) {
+                    Log.d(TAG, "Immediate sync completed successfully")
+                } else {
+                    Log.w(TAG, "Immediate sync completed with errors")
+                }
             }
         } catch (e: CancellationException) {
-            throw e
+            Log.d(TAG, "Sync cancelled gracefully (lifecycle change)")
+            // لا نعيد رميها — المزامنة ستُعاد تلقائياً عبر WorkManager
         } catch (e: Exception) {
             Log.w(TAG, "Immediate sync error: ${e.message}")
         }

@@ -17,7 +17,7 @@ interface PaymentTransactionDao {
 
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(transaction: PaymentTransaction)
+    suspend fun insert(transaction: PaymentTransaction): Long
 
     @Update
     suspend fun update(transaction: PaymentTransaction)

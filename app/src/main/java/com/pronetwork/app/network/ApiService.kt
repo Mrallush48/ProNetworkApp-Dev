@@ -271,30 +271,63 @@ class ConnectionLoggerInterceptor : okhttp3.Interceptor {
 
 // === Retrofit Instance with Failover ===
 object ApiClient {
+
     private const val PRIMARY_URL = "https://pronetwork.dpdns.org/"
     private const val FALLBACK_URL = "https://pronetwork-spot.duckdns.org/"
 
+    /**
+     * Track which server is currently active.
+     * Volatile ensures visibility across threads.
+     */
     @Volatile
     private var currentBaseUrl: String = PRIMARY_URL
+
+    /**
+     * Track when the last failover happened.
+     * Used to periodically re-check primary after failover.
+     */
+    @Volatile
+    private var lastFailoverTime: Long = 0L
+
+    /** Re-check primary every 2 minutes after failover */
+    private const val PRIMARY_RECHECK_INTERVAL_MS = 120_000L
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val client = OkHttpClient.Builder()
-        .addInterceptor(RetryInterceptor(maxRetries = 2))
+    /**
+     * Separate OkHttpClient for each server.
+     * Primary gets shorter timeouts to fail fast on DNS issues.
+     * Fallback gets standard timeouts.
+     */
+    private val primaryClient = OkHttpClient.Builder()
+        .addInterceptor(RetryInterceptor(maxRetries = 1))
         .addInterceptor(ConnectionLoggerInterceptor())
         .addInterceptor(loggingInterceptor)
         .dns(CachingDnsSelector())
-        .connectTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
+        .retryOnConnectionFailure(false)
         .connectionPool(ConnectionPool(5, 10, TimeUnit.MINUTES))
         .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
         .build()
 
-    private fun buildApi(baseUrl: String): ApiService {
+    private val fallbackClient = OkHttpClient.Builder()
+        .addInterceptor(RetryInterceptor(maxRetries = 1))
+        .addInterceptor(ConnectionLoggerInterceptor())
+        .addInterceptor(loggingInterceptor)
+        .dns(CachingDnsSelector())
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .connectionPool(ConnectionPool(5, 10, TimeUnit.MINUTES))
+        .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
+        .build()
+
+    private fun buildApi(baseUrl: String, client: OkHttpClient): ApiService {
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(client)
@@ -303,35 +336,69 @@ object ApiClient {
             .create(ApiService::class.java)
     }
 
-    private var primaryApi: ApiService = buildApi(PRIMARY_URL)
-    private var fallbackApi: ApiService = buildApi(FALLBACK_URL)
+    private val primaryApi: ApiService = buildApi(PRIMARY_URL, primaryClient)
+    private val fallbackApi: ApiService = buildApi(FALLBACK_URL, fallbackClient)
 
     val api: ApiService
         get() = if (currentBaseUrl == PRIMARY_URL) primaryApi else fallbackApi
 
+    /**
+     * Determines if we should try primary first based on current state.
+     * If we're on fallback but enough time passed, retry primary.
+     */
+    private fun shouldTryPrimaryFirst(): Boolean {
+        if (currentBaseUrl == PRIMARY_URL) return true
+        // Periodically re-check primary after failover
+        val elapsed = System.currentTimeMillis() - lastFailoverTime
+        if (elapsed > PRIMARY_RECHECK_INTERVAL_MS) {
+            android.util.Log.i("ProNetwork-API", "Re-checking PRIMARY after ${elapsed / 1000}s on FALLBACK")
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Smart failover with fast-fail on primary.
+     *
+     * Strategy:
+     * 1. If primary is active (or recheck interval passed) → try primary first
+     * 2. If primary fails → try fallback immediately (no long wait)
+     * 3. If already on fallback (within recheck interval) → go directly to fallback
+     * 4. Both fail → throw with clear error message
+     */
     suspend fun <T> safeCall(block: suspend (ApiService) -> Response<T>): Response<T> {
-        // Try PRIMARY first
-        try {
-            val response = block(primaryApi)
-            if (response.isSuccessful || response.code() in 400..499) {
-                // Real response (success or client error) — PRIMARY works
-                if (currentBaseUrl != PRIMARY_URL) {
-                    currentBaseUrl = PRIMARY_URL
-                    android.util.Log.i("ProNetwork-API", "SWITCHED BACK to PRIMARY: $PRIMARY_URL")
+        val tryPrimaryFirst = shouldTryPrimaryFirst()
+
+        if (tryPrimaryFirst) {
+            try {
+                val response = block(primaryApi)
+                if (response.isSuccessful || response.code() in 400..499) {
+                    // Primary works — switch back if needed
+                    if (currentBaseUrl != PRIMARY_URL) {
+                        currentBaseUrl = PRIMARY_URL
+                        android.util.Log.i("ProNetwork-API", "SWITCHED BACK to PRIMARY: $PRIMARY_URL")
+                    }
+                    return response
                 }
-                return response
+                // Server error (5xx) — try fallback
+                android.util.Log.w("ProNetwork-API", "PRIMARY returned ${response.code()}, trying FALLBACK")
+            } catch (e: Exception) {
+                android.util.Log.w("ProNetwork-API", "PRIMARY failed: ${e.message}, trying FALLBACK")
             }
-            // Server error (5xx) — try fallback
-            android.util.Log.w("ProNetwork-API", "PRIMARY returned ${response.code()}, trying FALLBACK")
-        } catch (e: Exception) {
-            android.util.Log.w("ProNetwork-API", "PRIMARY failed: ${e.message}, trying FALLBACK")
         }
 
         // Try FALLBACK
         try {
             val response = block(fallbackApi)
-            currentBaseUrl = FALLBACK_URL
-            android.util.Log.i("ProNetwork-API", "Using FALLBACK: $FALLBACK_URL")
+            if (response.isSuccessful || response.code() in 400..499) {
+                if (currentBaseUrl != FALLBACK_URL) {
+                    currentBaseUrl = FALLBACK_URL
+                    lastFailoverTime = System.currentTimeMillis()
+                    android.util.Log.i("ProNetwork-API", "FAILOVER to: $FALLBACK_URL")
+                }
+                return response
+            }
+            // Fallback also returned 5xx — return it anyway
             return response
         } catch (fallbackError: Exception) {
             android.util.Log.e("ProNetwork-API", "Both PRIMARY and FALLBACK failed")
@@ -339,3 +406,4 @@ object ApiClient {
         }
     }
 }
+
