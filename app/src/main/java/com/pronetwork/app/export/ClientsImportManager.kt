@@ -4,13 +4,13 @@ import android.content.Context
 import android.net.Uri
 import com.pronetwork.app.data.Building
 import com.pronetwork.app.data.Client
-import com.pronetwork.app.data.ClientDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ClientsImportManager(
     private val context: Context,
-    private val buildingRepository: com.pronetwork.app.repository.BuildingRepository? = null
+    private val buildingRepository: com.pronetwork.app.repository.BuildingRepository,
+    private val db: com.pronetwork.app.data.ClientDatabase
 ) {
 
     data class ImportResult(
@@ -41,7 +41,6 @@ class ClientsImportManager(
                     listOf("Unsupported file format. Please use Excel (.xls) file exported from this app."))
             }
 
-            val db = ClientDatabase.getDatabase(context)
             val buildingDao = db.buildingDao()
             val clientDao = db.clientDao()
 
@@ -106,12 +105,7 @@ class ClientsImportManager(
                     if (building == null && buildingName.isNotBlank()) {
                         // إنشاء المبنى الجديد تلقائياً
                         val newBuilding = Building(name = buildingName)
-                        val newId = if (buildingRepository != null) {
-                            // يدخل في القاعدتين تلقائياً (building_database + client_database)
-                            buildingRepository.insert(newBuilding)
-                        } else {
-                            buildingDao.insert(newBuilding)
-                        }
+                        val newId = buildingRepository.insert(newBuilding)
                         building = newBuilding.copy(id = newId.toInt())
                         existingBuildings.add(building)
                         newBuildingsCount++

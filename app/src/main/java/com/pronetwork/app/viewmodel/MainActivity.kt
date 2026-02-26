@@ -80,7 +80,6 @@ import com.pronetwork.app.network.ApprovalHelper
 import com.pronetwork.app.network.ConnectivityObserver
 import com.pronetwork.app.network.NotificationHelper
 import com.pronetwork.app.network.RequestPollingWorker
-import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.repository.BuildingRepository
 import com.pronetwork.app.ui.components.DailyExportDialog
 import com.pronetwork.app.ui.components.DailyReportMode
@@ -132,19 +131,23 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var buildingRepo: BuildingRepository
 
     @Inject
-    lateinit var paymentTransactionRepo: com.pronetwork.app.repository.PaymentTransactionRepository
+    lateinit var syncEngine: com.pronetwork.app.network.SyncEngine
 
     @Inject
-    lateinit var syncEngine: com.pronetwork.app.network.SyncEngine
+    lateinit var exportManager: ClientsExportManager
+
+    @Inject
+    lateinit var paymentsExportManager: PaymentsExportManager
+
+    @Inject
+    lateinit var dailyExportManager: DailyCollectionExportManager
+
+    @Inject
+    lateinit var importManager: ClientsImportManager
 
     // ViewModel references (set in setContent for importFileLauncher)
     private lateinit var _clientViewModel: ClientViewModel
     private lateinit var _paymentViewModel: PaymentViewModel
-
-    private lateinit var exportManager: ClientsExportManager
-    private lateinit var paymentsExportManager: PaymentsExportManager
-    private lateinit var dailyExportManager: DailyCollectionExportManager
-    private lateinit var importManager: ClientsImportManager
     private val importFileLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -259,18 +262,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        exportManager = ClientsExportManager(this)
-
-        paymentsExportManager = PaymentsExportManager(
-            this,
-            paymentTransactionRepo,
-            com.pronetwork.app.data.ClientDatabase.getDatabase(application)
-        )
-
-        dailyExportManager = DailyCollectionExportManager(this)
-
-        importManager = ClientsImportManager(this, buildingRepo)
 
         val myLightColors = lightColorScheme(
             primary = Color(0xFF673AB7),
