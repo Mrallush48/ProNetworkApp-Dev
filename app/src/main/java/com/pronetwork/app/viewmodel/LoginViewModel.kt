@@ -1,7 +1,6 @@
 package com.pronetwork.app.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.network.ApiClient
 import com.pronetwork.app.network.AuthManager
@@ -10,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
 
 data class LoginUiState(
     val isLoading: Boolean = false,
@@ -23,9 +25,11 @@ data class LoginUiState(
     val role: String = ""
 )
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    val authManager: AuthManager
+) : ViewModel() {
 
-    val authManager = AuthManager(application)
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()

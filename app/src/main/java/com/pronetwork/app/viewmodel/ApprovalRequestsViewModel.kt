@@ -1,7 +1,6 @@
 package com.pronetwork.app.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.network.ApiClient
 import com.pronetwork.app.network.ApprovalRequestResponse
@@ -10,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 data class ApprovalRequestsUiState(
     val requests: List<ApprovalRequestResponse> = emptyList(),
@@ -22,9 +23,10 @@ data class ApprovalRequestsUiState(
     val selectedRequestId: Int? = null
 )
 
-class ApprovalRequestsViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val authManager = AuthManager(application)
+@HiltViewModel
+class ApprovalRequestsViewModel @Inject constructor(
+    private val authManager: AuthManager
+) : ViewModel() {
     private val _uiState = MutableStateFlow(ApprovalRequestsUiState())
     val uiState: StateFlow<ApprovalRequestsUiState> = _uiState.asStateFlow()
 
