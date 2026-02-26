@@ -4,20 +4,29 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.pronetwork.app.data.ClientDatabase
+import com.pronetwork.app.data.SyncQueueDao
 import com.pronetwork.app.data.SyncQueueEntity
 import com.google.gson.GsonBuilder
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Core sync engine that handles push (upload local changes) and pull (download server changes).
  * Uses SyncQueue for offline operations and delta sync via lastSyncTimestamp.
  */
-class SyncEngine(private val context: Context) {
+@Singleton
+class SyncEngine @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val db: ClientDatabase,
+    private val syncQueueDao: SyncQueueDao
+) {
 
     companion object {
         private const val TAG = "SyncEngine"
@@ -25,11 +34,10 @@ class SyncEngine(private val context: Context) {
         private const val KEY_LAST_SYNC = "last_sync_timestamp"
         private const val MAX_RETRIES = 5
         private const val BATCH_SIZE = 50
-
-        // Shared state across all instances
-        private val _syncState = MutableStateFlow(SyncState())
-        val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
     }
+
+    private val _syncState = MutableStateFlow(SyncState())
+    val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
 
     enum class SyncStatus {
         IDLE,       // No sync in progress
@@ -45,9 +53,6 @@ class SyncEngine(private val context: Context) {
         val lastSyncTime: String? = null,
         val errorMessage: String? = null
     )
-
-    private val db = ClientDatabase.getDatabase(context)
-    private val syncQueueDao = db.syncQueueDao()
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 

@@ -18,11 +18,12 @@ import java.util.Date
 import java.util.Locale
 import android.os.Build
 
-class PaymentsExportManager(private val context: Context) {
+class PaymentsExportManager(
+    private val context: Context,
+    private val transactionRepo: PaymentTransactionRepository,
+    private val db: ClientDatabase
+) {
 
-    private val db = ClientDatabase.getDatabase(context)
-    private val transactionRepo =
-        PaymentTransactionRepository(db.paymentTransactionDao(), db.clientDao())
     private val paymentDao = db.paymentDao()
 
     // ===================== DATA MODELS =====================

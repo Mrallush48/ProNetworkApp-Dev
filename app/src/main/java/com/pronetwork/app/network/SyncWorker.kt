@@ -2,7 +2,10 @@ package com.pronetwork.app.network
 
 import android.content.Context
 import android.util.Log
+import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -14,9 +17,12 @@ import java.util.concurrent.TimeUnit
  * - Network constraint enforcement
  * - Graceful error handling with categorized retries
  */
-class SyncWorker(
-    context: Context,
-    params: WorkerParameters
+@HiltWorker
+class SyncWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val syncEngine: SyncEngine,
+    private val authManager: AuthManager
 ) : CoroutineWorker(context, params) {
 
     companion object {
@@ -98,10 +104,9 @@ class SyncWorker(
         Log.i(TAG, "=== SYNC START | trigger=$trigger | attempt=$attempt ===")
 
         try {
-            val syncEngine = SyncEngine(applicationContext)
+            // Get access token
+            val token = authManager.getAccessToken()
 
-            // Get valid access token
-            val token = AuthManager(applicationContext).getAccessToken()
             if (token == null) {
                 Log.w(TAG, "No auth token available - sync skipped")
                 return@withContext Result.failure(

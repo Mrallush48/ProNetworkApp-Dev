@@ -2,8 +2,11 @@ package com.pronetwork.app.network
 
 import android.content.Context
 import android.util.Log
+import androidx.hilt.work.HiltWorker
 import androidx.work.*
 import com.pronetwork.app.data.ClientDatabase
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
 
 /**
@@ -11,9 +14,13 @@ import java.util.concurrent.TimeUnit
  * - Admin: notified of new pending requests
  * - User: notified when request status changes + auto-executes approved deletions
  */
-class RequestPollingWorker(
-    context: Context,
-    params: WorkerParameters
+@HiltWorker
+class RequestPollingWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val authManager: AuthManager,
+    private val syncEngine: SyncEngine,
+    private val db: ClientDatabase
 ) : CoroutineWorker(context, params) {
 
     companion object {
@@ -59,7 +66,6 @@ class RequestPollingWorker(
     }
 
     override suspend fun doWork(): Result {
-        val authManager = AuthManager(applicationContext)
         if (!authManager.isLoggedIn()) return Result.success()
 
         val token = authManager.getAccessToken() ?: return Result.success()
@@ -148,8 +154,6 @@ class RequestPollingWorker(
      * Also enqueues a sync operation so the deletion propagates to the server.
      */
     private suspend fun executeApprovedAction(request: ApprovalRequestResponse) {
-        val db = ClientDatabase.getDatabase(applicationContext)
-        val syncEngine = SyncEngine(applicationContext)
         val targetId = request.target_id ?: return
 
         try {

@@ -9,7 +9,6 @@ import com.pronetwork.app.data.PaymentTransactionDao
 import com.pronetwork.app.data.SyncQueueDao
 import com.pronetwork.app.network.AuthManager
 import com.pronetwork.app.network.ConnectivityObserver
-import com.pronetwork.app.network.SyncEngine
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -80,9 +79,4 @@ object AppModule {
         return ConnectivityObserver(context)
     }
 
-    @Provides
-    @Singleton
-    fun provideSyncEngine(@ApplicationContext context: Context): SyncEngine {
-        return SyncEngine(context)
-    }
 }

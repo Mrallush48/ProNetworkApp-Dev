@@ -50,6 +50,12 @@ class ProNetworkApp : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var syncEngine: SyncEngine
+
+    @Inject
+    lateinit var authManager: AuthManager
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     lateinit var connectivityObserver: ConnectivityObserver
@@ -125,7 +131,6 @@ class ProNetworkApp : Application(), Configuration.Provider {
     }
 
     private fun startRealtimeSync() {
-        val authManager = AuthManager(this)
         val token = authManager.getAccessToken() ?: return
 
         sseClient.start(token, appScope)
@@ -163,10 +168,8 @@ class ProNetworkApp : Application(), Configuration.Provider {
 
     private suspend fun performImmediateSync() {
         try {
-            val authManager = AuthManager(this@ProNetworkApp)
             val token = authManager.getAccessToken() ?: return
 
-            val syncEngine = SyncEngine(this@ProNetworkApp)
             val success = syncEngine.sync(token)
 
             if (success) {

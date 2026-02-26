@@ -131,6 +131,12 @@ class MainActivity : ComponentActivity() {
     // === Hilt-injected dependencies ===
     @Inject lateinit var buildingRepo: BuildingRepository
 
+    @Inject
+    lateinit var paymentTransactionRepo: com.pronetwork.app.repository.PaymentTransactionRepository
+
+    @Inject
+    lateinit var syncEngine: com.pronetwork.app.network.SyncEngine
+
     // ViewModel references (set in setContent for importFileLauncher)
     private lateinit var _clientViewModel: ClientViewModel
     private lateinit var _paymentViewModel: PaymentViewModel
@@ -256,7 +262,11 @@ class MainActivity : ComponentActivity() {
 
         exportManager = ClientsExportManager(this)
 
-        paymentsExportManager = PaymentsExportManager(this)
+        paymentsExportManager = PaymentsExportManager(
+            this,
+            paymentTransactionRepo,
+            com.pronetwork.app.data.ClientDatabase.getDatabase(application)
+        )
 
         dailyExportManager = DailyCollectionExportManager(this)
 
@@ -505,7 +515,7 @@ class MainActivity : ComponentActivity() {
                 val connectivityStatus by app.connectivityObserver.observe()
                     .collectAsState(initial = ConnectivityObserver.Status.UNAVAILABLE)
 
-                val syncState by SyncEngine.syncState.collectAsState()
+                val syncState by syncEngine.syncState.collectAsState()
 
 
                 Scaffold(
