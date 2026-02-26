@@ -67,7 +67,7 @@ class SyncStreamClient {
     /**
      * Start SSE connection. Call when app enters foreground.
      */
-    fun start(token: String, scope: CoroutineScope) {
+    fun start(tokenProvider: suspend () -> String?, scope: CoroutineScope) {
         if (isRunning.getAndSet(true)) {
             Log.d(TAG, "Already running, ignoring start()")
             return
@@ -78,6 +78,13 @@ class SyncStreamClient {
             _connectionState.value = ConnectionState.CONNECTING
 
             while (isActive && isRunning.get()) {
+                // Get fresh token for each connection attempt
+                val token = tokenProvider()
+                if (token == null) {
+                    Log.w(TAG, "No valid token — SSE waiting...")
+                    delay(INITIAL_RETRY_MS)
+                    continue
+                }
                 val wasConnected = tryConnect(token)
 
                 if (!isActive || !isRunning.get()) break

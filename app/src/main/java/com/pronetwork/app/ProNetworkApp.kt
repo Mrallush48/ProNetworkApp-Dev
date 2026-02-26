@@ -131,9 +131,11 @@ class ProNetworkApp : Application(), Configuration.Provider {
     }
 
     private fun startRealtimeSync() {
+        sseClient.start(
+            tokenProvider = { authManager.getValidAccessToken() },
+            scope = appScope
+        )
         appScope.launch(Dispatchers.IO) {
-            val token = authManager.getValidAccessToken() ?: return@launch
-            sseClient.start(token, appScope)
             performImmediateSync()
         }
     }
