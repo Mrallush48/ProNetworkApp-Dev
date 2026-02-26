@@ -131,11 +131,9 @@ class ProNetworkApp : Application(), Configuration.Provider {
     }
 
     private fun startRealtimeSync() {
-        val token = authManager.getAccessToken() ?: return
-
-        sseClient.start(token, appScope)
-
         appScope.launch(Dispatchers.IO) {
+            val token = authManager.getValidAccessToken() ?: return@launch
+            sseClient.start(token, appScope)
             performImmediateSync()
         }
     }
@@ -168,10 +166,7 @@ class ProNetworkApp : Application(), Configuration.Provider {
 
     private suspend fun performImmediateSync() {
         try {
-            val token = authManager.getAccessToken() ?: return
-
-            val success = syncEngine.sync(token)
-
+            val success = syncEngine.sync()
             if (success) {
                 Log.d(TAG, "Immediate sync completed successfully")
             } else {
