@@ -25,7 +25,8 @@ import javax.inject.Singleton
 class SyncEngine @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: ClientDatabase,
-    private val syncQueueDao: SyncQueueDao
+    private val syncQueueDao: SyncQueueDao,
+    private val authManager: AuthManager
 ) {
 
     companion object {
@@ -35,6 +36,10 @@ class SyncEngine @Inject constructor(
         private const val MAX_RETRIES = 5
         private const val BATCH_SIZE = 50
     }
+
+    /** Track last HTTP error code for 401 auto-retry logic */
+    @Volatile
+    private var lastHttpCode: Int = 0
 
     private val _syncState = MutableStateFlow(SyncState())
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
@@ -83,29 +88,80 @@ class SyncEngine @Inject constructor(
     }
 
     /**
-     * Full sync cycle: Push local changes → Pull server changes.
-     * Returns true if sync completed successfully.
+     * Full sync cycle with automatic token management.
+     * Preferred entry point — gets valid token automatically.
+     */
+    suspend fun sync(): Boolean {
+        val token = authManager.getValidAccessToken()
+        if (token == null) {
+            Log.w(TAG, "No valid token available — sync skipped")
+            _syncState.value = _syncState.value.copy(
+                status = SyncStatus.ERROR,
+                errorMessage = "Not authenticated"
+            )
+            return false
+        }
+        return syncWithToken(token)
+    }
+
+    /**
+     * Full sync cycle with explicit token (used by SyncWorker/ProNetworkApp).
+     * Includes auto-retry with token refresh on 401.
      */
     suspend fun sync(token: String): Boolean {
+        return syncWithToken(token)
+    }
+
+    /**
+     * Internal sync implementation with 401 auto-retry.
+     * On first 401 → refreshes token → retries once.
+     */
+    private suspend fun syncWithToken(token: String): Boolean {
         Log.i(TAG, "=== SYNC STARTED ===")
 
         // Step 1: Push local changes to server
-        val pushSuccess = push(token)
+        var currentToken = token
+        var pushSuccess = push(currentToken)
+
+        // If push got 401 → refresh token and retry
+        if (!pushSuccess && lastHttpCode == 401) {
+            Log.i(TAG, "Push got 401 — refreshing token and retrying")
+            val newToken = authManager.refreshAccessToken()
+            if (newToken != null) {
+                currentToken = newToken
+                pushSuccess = push(currentToken)
+            } else {
+                Log.e(TAG, "Token refresh failed — cannot retry push")
+            }
+        }
 
         // Step 2: Pull server changes (even if push had partial failures)
-        val pullSuccess = pull(token)
+        var pullSuccess = pull(currentToken)
+
+        // If pull got 401 → refresh token and retry
+        if (!pullSuccess && lastHttpCode == 401) {
+            Log.i(TAG, "Pull got 401 — refreshing token and retrying")
+            val newToken = authManager.refreshAccessToken()
+            if (newToken != null) {
+                currentToken = newToken
+                pullSuccess = pull(currentToken)
+            } else {
+                Log.e(TAG, "Token refresh failed — cannot retry pull")
+            }
+        }
 
         val success = pushSuccess && pullSuccess
-
         _syncState.value = _syncState.value.copy(
             status = if (success) SyncStatus.SUCCESS else SyncStatus.ERROR,
             lastSyncTime = if (success) utcFormat.format(System.currentTimeMillis())
-            else _syncState.value.lastSyncTime
+            else _syncState.value.lastSyncTime,
+            errorMessage = if (success) null else _syncState.value.errorMessage
         )
 
         Log.i(TAG, "=== SYNC ${if (success) "SUCCESS" else "PARTIAL FAILURE"} ===")
         return success
     }
+
 
     /**
      * Push: Upload all pending local operations to the server.
@@ -113,7 +169,7 @@ class SyncEngine @Inject constructor(
      */
     private suspend fun push(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PUSHING)
-
+        lastHttpCode = 0
         val pending = syncQueueDao.getPendingWithRetryLimit(MAX_RETRIES)
         if (pending.isEmpty()) {
             Log.d(TAG, "Push: Nothing to push")
@@ -174,6 +230,11 @@ class SyncEngine @Inject constructor(
                         allSuccess = false
                     }
 
+                } else if (response.code() == 401) {
+                    Log.w(TAG, "Push: authentication failed (401)")
+                    lastHttpCode = 401
+                    allSuccess = false
+                    return@forEach
                 } else if (response.code() == 404) {
                     Log.w(TAG, "Push: sync endpoint not available (404) — skipping")
                 } else {
@@ -202,7 +263,7 @@ class SyncEngine @Inject constructor(
      */
     private suspend fun pull(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PULLING)
-
+        lastHttpCode = 0
         val lastSync = prefs.getString(KEY_LAST_SYNC, null)
         Log.d(TAG, "Pull: since=$lastSync")
 
@@ -227,6 +288,13 @@ class SyncEngine @Inject constructor(
             } else if (response.code() == 404) {
                 Log.w(TAG, "Pull: sync endpoint not available (404) — skipping")
                 true
+            } else if (response.code() == 401) {
+                Log.w(TAG, "Pull: authentication failed (401)")
+                lastHttpCode = 401
+                _syncState.value = _syncState.value.copy(
+                    errorMessage = "Authentication expired"
+                )
+                false
             } else {
                 Log.w(TAG, "Pull failed: ${response.code()}")
                 _syncState.value = _syncState.value.copy(
