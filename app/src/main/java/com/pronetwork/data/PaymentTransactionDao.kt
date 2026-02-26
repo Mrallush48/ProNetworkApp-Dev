@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PaymentTransactionDao {
 
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: PaymentTransaction)
 
@@ -49,6 +50,10 @@ interface PaymentTransactionDao {
 
     @Query("DELETE FROM payment_transactions WHERE id = :transactionId")
     suspend fun deleteTransactionById(transactionId: Int)
+
+    @Query("SELECT * FROM payment_transactions WHERE id = :transactionId")
+    suspend fun getTransactionById(transactionId: Int): PaymentTransaction?
+
 
     @Query("SELECT paymentId FROM payment_transactions WHERE id = :transactionId LIMIT 1")
     suspend fun getPaymentIdByTransactionId(transactionId: Int): Int?

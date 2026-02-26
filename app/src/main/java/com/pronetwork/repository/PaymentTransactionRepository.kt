@@ -65,11 +65,21 @@ class PaymentTransactionRepository @Inject constructor(
     }
 
     suspend fun deleteTransactionsForPayment(paymentId: Int) {
+        // Get transactions before deleting to enqueue sync
+        val transactions = transactionDao.getTransactionsForPaymentList(paymentId)
         transactionDao.deleteByPaymentId(paymentId)
+        transactions.forEach { tx ->
+            enqueueSync("payment_transaction", tx.id, "DELETE", tx)
+        }
     }
 
     suspend fun deleteTransactionById(transactionId: Int) {
+        // Get transaction before deleting to enqueue sync
+        val tx = transactionDao.getTransactionById(transactionId)
         transactionDao.deleteTransactionById(transactionId)
+        if (tx != null) {
+            enqueueSync("payment_transaction", tx.id, "DELETE", tx)
+        }
     }
 
     suspend fun getPaymentIdByTransactionId(transactionId: Int): Int? {

@@ -93,21 +93,43 @@ class PaymentRepository @Inject constructor(
     }
 
     suspend fun deleteClientPayments(clientId: Int) {
+        // Get payments before deleting to enqueue sync
+        val payments = paymentDao.getClientPaymentsDirect(clientId)
         paymentDao.deleteClientPayments(clientId)
+        payments.forEach { payment ->
+            enqueueSync("payment", payment.id, "DELETE", payment)
+        }
     }
 
     suspend fun deletePayment(clientId: Int, month: String) {
-        paymentDao.deletePayment(clientId, normalizeMonth(month))
+        val normalizedMonth = normalizeMonth(month)
+        val existing = paymentDao.getPayment(clientId, normalizedMonth)
+        paymentDao.deletePayment(clientId, normalizedMonth)
+        if (existing != null) {
+            enqueueSync("payment", existing.id, "DELETE", existing)
+        }
     }
 
     // === دوال مساعدة ===
 
     suspend fun markAsPaid(clientId: Int, month: String, paymentDate: Long) {
-        paymentDao.markAsPaid(clientId, normalizeMonth(month), paymentDate)
+        val normalizedMonth = normalizeMonth(month)
+        paymentDao.markAsPaid(clientId, normalizedMonth, paymentDate)
+        // Sync the updated payment
+        val updated = paymentDao.getPayment(clientId, normalizedMonth)
+        if (updated != null) {
+            enqueueSync("payment", updated.id, "UPDATE", updated)
+        }
     }
 
     suspend fun markAsUnpaid(clientId: Int, month: String) {
-        paymentDao.markAsUnpaid(clientId, normalizeMonth(month))
+        val normalizedMonth = normalizeMonth(month)
+        paymentDao.markAsUnpaid(clientId, normalizedMonth)
+        // Sync the updated payment
+        val updated = paymentDao.getPayment(clientId, normalizedMonth)
+        if (updated != null) {
+            enqueueSync("payment", updated.id, "UPDATE", updated)
+        }
     }
 
     suspend fun getPayment(clientId: Int, month: String): Payment? {
@@ -223,11 +245,17 @@ class PaymentRepository @Inject constructor(
         fromMonth: String,
         newAmount: Double
     ) {
+        val normalizedMonth = normalizeMonth(fromMonth)
         paymentDao.updateFutureUnpaidPaymentsAmount(
             clientId = clientId,
-            fromMonth = normalizeMonth(fromMonth),
+            fromMonth = normalizedMonth,
             newAmount = newAmount
         )
+        // Sync all affected payments
+        val updatedPayments = paymentDao.getFutureUnpaidPayments(clientId, normalizedMonth)
+        updatedPayments.forEach { payment ->
+            enqueueSync("payment", payment.id, "UPDATE", payment)
+        }
     }
 
     // دالة جديدة: جلب أول شهر غير مسجّل عليه أي حركات لعميل معيّن

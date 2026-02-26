@@ -11,6 +11,13 @@ import androidx.room.Update
 @Dao
 interface PaymentDao {
 
+    @Query("SELECT * FROM payments WHERE clientId = :clientId")
+    suspend fun getClientPaymentsDirect(clientId: Int): List<Payment>
+
+    @Query("SELECT * FROM payments WHERE clientId = :clientId AND month >= :fromMonth AND isPaid = 0")
+    suspend fun getFutureUnpaidPayments(clientId: Int, fromMonth: String): List<Payment>
+
+
     // === استعلامات القراءة ===
 
     // جلب كل الدفعات
