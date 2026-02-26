@@ -13,6 +13,8 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * SSE (Server-Sent Events) client for real-time sync notifications.
@@ -25,7 +27,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * SSE connects directly to the server (bypasses Cloudflare CDN buffering).
  * On receiving a sync_update event, triggers SyncEngine.sync() to pull changes.
  */
-class SyncStreamClient {
+@Singleton
+class SyncStreamClient @Inject constructor() {
 
     companion object {
         private const val TAG = "SyncSSE"

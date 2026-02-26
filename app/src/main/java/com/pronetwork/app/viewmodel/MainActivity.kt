@@ -64,7 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -121,6 +120,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import com.pronetwork.app.network.SyncEngine
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -129,21 +129,13 @@ class MainActivity : ComponentActivity() {
 
     // === Hilt-injected dependencies ===
     @Inject lateinit var buildingRepo: BuildingRepository
+    @Inject lateinit var syncEngine: SyncEngine
+    @Inject lateinit var connectivityObserver: ConnectivityObserver
+    @Inject lateinit var exportManager: ClientsExportManager
+    @Inject lateinit var paymentsExportManager: PaymentsExportManager
+    @Inject lateinit var dailyExportManager: DailyCollectionExportManager
+    @Inject lateinit var importManager: ClientsImportManager
 
-    @Inject
-    lateinit var syncEngine: com.pronetwork.app.network.SyncEngine
-
-    @Inject
-    lateinit var exportManager: ClientsExportManager
-
-    @Inject
-    lateinit var paymentsExportManager: PaymentsExportManager
-
-    @Inject
-    lateinit var dailyExportManager: DailyCollectionExportManager
-
-    @Inject
-    lateinit var importManager: ClientsImportManager
 
     // ViewModel references (set in setContent for importFileLauncher)
     private lateinit var _clientViewModel: ClientViewModel
@@ -501,11 +493,8 @@ class MainActivity : ComponentActivity() {
                 val addActionLabel = stringResource(R.string.action_add)
 
                 // Sync status
-                val context = LocalContext.current
-                val app = context.applicationContext as com.pronetwork.app.ProNetworkApp
-                val connectivityStatus by app.connectivityObserver.observe()
+                val connectivityStatus by connectivityObserver.observe()
                     .collectAsState(initial = ConnectivityObserver.Status.UNAVAILABLE)
-
                 val syncState by syncEngine.syncState.collectAsState()
 
 
