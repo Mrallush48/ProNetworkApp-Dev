@@ -38,6 +38,7 @@ import com.pronetwork.app.ui.components.SortOption
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
+
 // ============ ألوان حالة الدفع ============
 private val PaidColor = Color(0xFF4CAF50)
 private val PartialColor = Color(0xFFFF9800)
@@ -162,8 +163,8 @@ fun ClientListScreen(
                     val monthAmount = payment?.amount ?: client.price
 
                     val monthUiList by paymentViewModel
-                        .getClientMonthPaymentsUi(client.id)
-                        .observeAsState(emptyList())
+                        .observeClientMonthPaymentsUi(client.id)
+                        .collectAsStateWithLifecycle(initialValue = emptyList())
                     val monthUi = monthUiList.firstOrNull { it.month == selectedMonth }
                     val totalPaid = monthUi?.totalPaid ?: 0.0
                     val remaining = monthUi?.remaining ?: monthAmount
@@ -196,8 +197,8 @@ fun ClientListScreen(
             val shouldPay = !isCurrentlyPaid
 
             val monthUiList by paymentViewModel
-                .getClientMonthPaymentsUi(client.id)
-                .observeAsState(emptyList())
+                .observeClientMonthPaymentsUi(client.id)
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             val monthUi = monthUiList.firstOrNull { it.month == month }
             val isPartial = monthUi != null && monthUi.status == PaymentStatus.PARTIAL
             val dialogRemaining = monthUi?.remaining ?: monthAmount

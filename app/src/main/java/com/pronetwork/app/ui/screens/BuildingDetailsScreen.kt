@@ -53,7 +53,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -90,6 +89,7 @@ import android.widget.Toast
 import com.pronetwork.app.network.ApprovalHelper
 import com.pronetwork.app.network.AuthManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -325,12 +325,12 @@ fun BuildingDetailsScreen(
                 }
             ) { client ->
 
-            val status by paymentViewModel.getClientMonthStatus(client.id, selectedMonth).observeAsState(initial = PaymentStatus.UNPAID)
-                val payment by paymentViewModel.getPaymentLive(client.id, selectedMonth).observeAsState(null)
-                val monthAmount = payment?.amount ?: client.price
-
-                val monthUiList by paymentViewModel.getClientMonthPaymentsUi(client.id).observeAsState(emptyList())
+                val monthUiList by paymentViewModel
+                    .observeClientMonthPaymentsUi(client.id)
+                    .collectAsStateWithLifecycle(initialValue = emptyList())
                 val monthUi = monthUiList.firstOrNull { it.month == selectedMonth }
+                val status = monthUi?.status ?: PaymentStatus.UNPAID
+                val monthAmount = monthUi?.monthAmount ?: client.price
                 val totalPaid = monthUi?.totalPaid ?: 0.0
                 val remaining = monthUi?.remaining ?: monthAmount
 
@@ -517,12 +517,12 @@ fun BuildingDetailsScreen(
 
     // ===== حوار الدفع =====
     showPaymentDialog?.let { (client, month, monthAmount) ->
-        val payment by paymentViewModel.getPaymentLive(client.id, month).observeAsState()
-        val isPaid = payment?.isPaid ?: false
-        val shouldPay = !isPaid
-        val monthUiList by paymentViewModel.getClientMonthPaymentsUi(client.id).observeAsState(emptyList())
+        val monthUiList by paymentViewModel
+            .observeClientMonthPaymentsUi(client.id)
+            .collectAsStateWithLifecycle(initialValue = emptyList())
         val monthUi = monthUiList.firstOrNull { it.month == month }
-        val isPartial = monthUi != null && monthUi.status == PaymentStatus.PARTIAL
+        val shouldPay = monthUi?.status != PaymentStatus.FULL
+        val isPartial = monthUi?.status == PaymentStatus.PARTIAL
         val dialogRemaining = monthUi?.remaining ?: monthAmount
 
         AlertDialog(

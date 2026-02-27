@@ -121,6 +121,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import com.pronetwork.app.network.SyncEngine
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -1277,13 +1278,12 @@ class MainActivity : ComponentActivity() {
                                         .getClientPayments(client.id)
                                         .observeAsState(emptyList())
                                     val clientMonthUi by paymentViewModel
-                                        .getClientMonthPaymentsUi(client.id)
-                                        .observeAsState(emptyList())
+                                        .observeClientMonthPaymentsUi(client.id)
+                                        .collectAsStateWithLifecycle(initialValue = emptyList())
 
                                     ClientDetailsScreen(
                                         client = client,
-                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
-                                            ?: "",
+                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "",
                                         payments = clientPayments,
                                         monthUiList = clientMonthUi,
                                         onEdit = { clientToEdit ->
@@ -1550,13 +1550,12 @@ class MainActivity : ComponentActivity() {
                                         .getClientPayments(client.id)
                                         .observeAsState(emptyList())
                                     val clientMonthUi by paymentViewModel
-                                        .getClientMonthPaymentsUi(client.id)
-                                        .observeAsState(emptyList())
+                                        .observeClientMonthPaymentsUi(client.id)
+                                        .collectAsStateWithLifecycle(initialValue = emptyList())
 
                                     ClientDetailsScreen(
                                         client = client,
-                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name
-                                            ?: "",
+                                        buildingName = buildings.firstOrNull { it.id == client.buildingId }?.name ?: "",
                                         payments = clientPayments,
                                         monthUiList = clientMonthUi,
                                         onEdit = { clientToEdit ->

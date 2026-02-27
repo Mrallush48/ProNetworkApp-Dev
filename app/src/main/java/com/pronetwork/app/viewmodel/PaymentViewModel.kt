@@ -48,40 +48,61 @@ class PaymentViewModel @Inject constructor(
 
     val allPayments: LiveData<List<Payment>> = paymentRepository.allPayments
 
-    // ================== دالة جديدة: تحضير بيانات عرض حالة الدفع لكل شهر ==================
+    // ================== منطق مشترك لحساب حالة الدفع ==================
 
-    fun getClientMonthPaymentsUi(clientId: Int): LiveData<List<ClientMonthPaymentUi>> {
-        val source = paymentRepository.getClientPayments(clientId)
-        val mediator = MediatorLiveData<List<ClientMonthPaymentUi>>()
-        mediator.addSource(source) { paymentList ->
-            viewModelScope.launch {
-                val payments = paymentList ?: emptyList()
-                val ids = payments.map { it.id }
-                val totalsMap = transactionRepository.getTotalsForPayments(ids)
-                val refundIds = transactionRepository.getPaymentIdsWithRefunds(ids).toSet()
+    /**
+     * حساب حالة الدفع من المبلغ المدفوع والمبلغ المطلوب ووجود استرجاع.
+     * تُستخدم كمصدر وحيد للحقيقة في كل مكان يحتاج تحديد PaymentStatus.
+     */
+    private fun resolvePaymentStatus(
+        totalPaid: Double,
+        monthAmount: Double,
+        hasRefund: Boolean
+    ): PaymentStatus = when {
+        totalPaid <= 0.0 -> PaymentStatus.UNPAID
+        totalPaid < monthAmount && hasRefund -> PaymentStatus.SETTLED
+        totalPaid < monthAmount -> PaymentStatus.PARTIAL
+        else -> PaymentStatus.FULL
+    }
 
-                val uiList = payments.map { p ->
+    // ================== Flow تفاعلي: بيانات عرض حالة الدفع لكل شهر لعميل واحد ==================
+
+    /**
+     * نسخة تفاعلية — تستمع لتغييرات جدولي payments و payment_transactions
+     * وتحدّث totalPaid / remaining / status تلقائياً.
+     * تُبنى بنفس نمط observeAllClientStatusesForMonth لضمان التوحيد المعماري.
+     */
+    fun observeClientMonthPaymentsUi(clientId: Int): Flow<List<ClientMonthPaymentUi>> {
+        val paymentsFlow = paymentRepository.observeClientPayments(clientId)
+
+        return paymentsFlow.flatMapLatest { payments ->
+            if (payments.isEmpty()) {
+                return@flatMapLatest kotlinx.coroutines.flow.flowOf(emptyList<ClientMonthPaymentUi>())
+            }
+
+            val ids = payments.map { it.id }
+            val totalsFlow = transactionRepository.observeTotalsForPayments(ids)
+            val refundsFlow = transactionRepository.observePaymentIdsWithRefunds(ids)
+
+            combine(totalsFlow, refundsFlow) { totalsList, refundIdsList ->
+                val totalsMap = totalsList.associate { it.paymentId to it.totalPaid }
+                val refundIds = refundIdsList.toSet()
+
+                payments.map { p ->
                     val totalPaid = totalsMap[p.id] ?: 0.0
                     val remaining = (p.amount - totalPaid).coerceAtLeast(0.0)
                     val hasRefund = refundIds.contains(p.id)
-                    val status = when {
-                        totalPaid <= 0.0 -> PaymentStatus.UNPAID
-                        totalPaid < p.amount && hasRefund -> PaymentStatus.SETTLED
-                        totalPaid < p.amount -> PaymentStatus.PARTIAL
-                        else -> PaymentStatus.FULL
-                    }
+
                     ClientMonthPaymentUi(
                         month = p.month,
                         monthAmount = p.amount,
                         totalPaid = totalPaid,
                         remaining = remaining,
-                        status = status
+                        status = resolvePaymentStatus(totalPaid, p.amount, hasRefund)
                     )
                 }.sortedBy { it.month }
-                mediator.postValue(uiList)
             }
-        }
-        return mediator
+        }.distinctUntilChanged()
     }
 
     // ================== تحصيل يومي لكل مبنى ==================
@@ -414,29 +435,6 @@ class PaymentViewModel @Inject constructor(
         return result
     }
 
-    // ================== Dashboard/Sort: حالة الدفع لكل العملاء في شهر معين ==================
-
-    fun getAllClientStatusesForMonth(clientIds: List<Int>, month: String): LiveData<Map<Int, PaymentStatus>> {
-        val result = MutableLiveData<Map<Int, PaymentStatus>>()
-        viewModelScope.launch {
-            val statusMap = mutableMapOf<Int, PaymentStatus>()
-            for (clientId in clientIds) {
-                val payment = paymentRepository.getPayment(clientId, month)
-                if (payment == null) { statusMap[clientId] = PaymentStatus.UNPAID; continue }
-                val totalPaid = transactionRepository.getTotalPaidForPayment(payment.id)
-                val hasRefund = transactionRepository.hasNegativeTransaction(payment.id)
-                statusMap[clientId] = when {
-                    totalPaid <= 0.0 -> PaymentStatus.UNPAID
-                    totalPaid < payment.amount && hasRefund -> PaymentStatus.SETTLED
-                    totalPaid < payment.amount -> PaymentStatus.PARTIAL
-                    else -> PaymentStatus.FULL
-                }
-            }
-            result.postValue(statusMap)
-        }
-        return result
-    }
-
     // ================== Flow تفاعلي: حالة الدفع لكل العملاء (يتحدث تلقائياً) ==================
 
     /**
@@ -460,13 +458,7 @@ class PaymentViewModel @Inject constructor(
                 payments.associate { p ->
                     val totalPaid = totalsMap[p.id] ?: 0.0
                     val hasRefund = refundIds.contains(p.id)
-                    val status = when {
-                        totalPaid <= 0.0 -> PaymentStatus.UNPAID
-                        totalPaid < p.amount && hasRefund -> PaymentStatus.SETTLED
-                        totalPaid < p.amount -> PaymentStatus.PARTIAL
-                        else -> PaymentStatus.FULL
-                    }
-                    p.clientId to status
+                    p.clientId to resolvePaymentStatus(totalPaid, p.amount, hasRefund)
                 }
             }
         }.distinctUntilChanged()
@@ -530,31 +522,6 @@ class PaymentViewModel @Inject constructor(
             } else {
                 result.postValue(emptyList())
             }
-        }
-        return result
-    }
-
-    /**
-     * إرجاع حالة دفع شهر واحد لعميل واحد (UNPAID / PARTIAL / FULL)
-     * مبنية على مجموع الحركات (transactions) وقيمة amount في جدول payments.
-     */
-    fun getClientMonthStatus(clientId: Int, month: String): LiveData<PaymentStatus> {
-        val result = MutableLiveData<PaymentStatus>()
-        viewModelScope.launch {
-            val payment = paymentRepository.getPayment(clientId, month)
-            if (payment == null) {
-                result.postValue(PaymentStatus.UNPAID)
-                return@launch
-            }
-            val totalPaid = transactionRepository.getTotalPaidForPayment(payment.id)
-            val hasRefund = transactionRepository.hasNegativeTransaction(payment.id)
-            val status = when {
-                totalPaid <= 0.0 -> PaymentStatus.UNPAID
-                totalPaid < payment.amount && hasRefund -> PaymentStatus.SETTLED
-                totalPaid < payment.amount -> PaymentStatus.PARTIAL
-                else -> PaymentStatus.FULL
-            }
-            result.postValue(status)
         }
         return result
     }
