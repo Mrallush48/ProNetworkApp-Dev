@@ -12,6 +12,7 @@ import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
 // توحيد صيغة الشهر إلى yyyy-MM
 private fun normalizeMonth(yearMonth: String): String {
@@ -72,6 +73,22 @@ class PaymentRepository @Inject constructor(
 
     fun getTotalUnpaidAmountByMonth(month: String): LiveData<Double?> {
         return paymentDao.getTotalUnpaidAmountByMonth(normalizeMonth(month))
+    }
+
+    // ================== Flow-based reactive queries ==================
+
+    /**
+     * Flow تفاعلي: جلب كل الدفعات في شهر معيّن — يتحدث تلقائياً.
+     */
+    fun observePaymentsByMonth(month: String): Flow<List<Payment>> {
+        return paymentDao.observePaymentsByMonth(normalizeMonth(month))
+    }
+
+    /**
+     * Flow تفاعلي: جلب كل دفعات عميل معيّن — يتحدث تلقائياً.
+     */
+    fun observeClientPayments(clientId: Int): Flow<List<Payment>> {
+        return paymentDao.observeClientPayments(clientId)
     }
 
     // === استعلامات الكتابة ===

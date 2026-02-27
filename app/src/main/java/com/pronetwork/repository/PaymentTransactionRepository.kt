@@ -131,6 +131,32 @@ class PaymentTransactionRepository @Inject constructor(
         return transactionDao.getTopUnpaidClientsForMonth(month, limit)
     }
 
+    // ================== Flow-based reactive queries ==================
+
+    /**
+     * Flow تفاعلي: مجموع المدفوع لكل paymentId — يتحدث تلقائياً.
+     * يُمرّر مباشرة من الـ Dao بدون تحويل.
+     */
+    fun observeTotalsForPayments(paymentIds: List<Int>): Flow<List<PaymentTransactionDao.PaymentTotal>> {
+        if (paymentIds.isEmpty()) return kotlinx.coroutines.flow.flowOf(emptyList())
+        return transactionDao.observeTotalsForPayments(paymentIds)
+    }
+
+    /**
+     * Flow تفاعلي: أي paymentIds فيها حركات سالبة — يتحدث تلقائياً.
+     */
+    fun observePaymentIdsWithRefunds(paymentIds: List<Int>): Flow<List<Int>> {
+        if (paymentIds.isEmpty()) return kotlinx.coroutines.flow.flowOf(emptyList())
+        return transactionDao.observePaymentIdsWithRefunds(paymentIds)
+    }
+
+    /**
+     * Flow تفاعلي: مجموع المدفوع لـ payment واحد — يتحدث تلقائياً.
+     */
+    fun observeTotalPaidForPayment(paymentId: Int): Flow<Double> {
+        return transactionDao.observeTotalPaidForPayment(paymentId)
+    }
+
     // === مزامنة العمليات ===
 
     /**

@@ -35,6 +35,7 @@ import java.util.Locale
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 import com.pronetwork.app.ui.components.SortOption
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 // ============ ألوان حالة الدفع ============
@@ -113,11 +114,10 @@ fun ClientListScreen(
             LaunchedEffect(sortOption) {
                 listState.animateScrollToItem(0)
             }
-            // جلب حالات الدفع لكل العملاء دفعة واحدة
-            val clientIds = remember(clients) { clients.map { it.id } }
+            // جلب حالات الدفع لكل العملاء — Flow تفاعلي يتحدث تلقائياً عند أي تغيير
             val allStatuses by paymentViewModel
-                .getAllClientStatusesForMonth(clientIds, selectedMonth)
-                .observeAsState(emptyMap())
+                .observeAllClientStatusesForMonth(selectedMonth)
+                .collectAsStateWithLifecycle(initialValue = emptyMap())
 
             val sortedClients = remember(clients, allStatuses, sortOption) {
                 when (sortOption) {

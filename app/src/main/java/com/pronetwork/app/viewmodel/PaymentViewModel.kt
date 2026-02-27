@@ -16,6 +16,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import com.pronetwork.data.DailySummary
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 
 // enum جديد لحالة الدفع
@@ -431,6 +434,36 @@ class PaymentViewModel @Inject constructor(
             result.postValue(statusMap)
         }
         return result
+    }
+
+    // ================== Flow تفاعلي: حالة الدفع لكل العملاء (يتحدث تلقائياً) ==================
+
+    /**
+     * نسخة تفاعلية من getAllClientStatusesForMonth — تستمع لتغييرات
+     * جدولي payments و payment_transactions وتحدّث الـ UI تلقائياً.
+     */
+    fun observeAllClientStatusesForMonth(month: String): Flow<Map<Int, PaymentStatus>> {
+        val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
+
+        return paymentsFlow.map { payments ->
+            val ids = payments.map { it.id }
+            if (ids.isEmpty()) return@map emptyMap<Int, PaymentStatus>()
+
+            val totalsMap = transactionRepository.getTotalsForPayments(ids)
+            val refundIds = transactionRepository.getPaymentIdsWithRefunds(ids).toSet()
+
+            payments.associate { p ->
+                val totalPaid = totalsMap[p.id] ?: 0.0
+                val hasRefund = refundIds.contains(p.id)
+                val status = when {
+                    totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                    totalPaid < p.amount && hasRefund -> PaymentStatus.SETTLED
+                    totalPaid < p.amount -> PaymentStatus.PARTIAL
+                    else -> PaymentStatus.FULL
+                }
+                p.clientId to status
+            }
+        }.distinctUntilChanged()
     }
 
     // ================== استعلامات أساسية ==================
