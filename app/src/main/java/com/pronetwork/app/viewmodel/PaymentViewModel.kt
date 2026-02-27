@@ -19,6 +19,7 @@ import com.pronetwork.data.DailySummary
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 
 
 // enum جديد لحالة الدفع
@@ -445,23 +446,28 @@ class PaymentViewModel @Inject constructor(
     fun observeAllClientStatusesForMonth(month: String): Flow<Map<Int, PaymentStatus>> {
         val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
 
-        return paymentsFlow.map { payments ->
+        return paymentsFlow.flatMapLatest { payments ->
             val ids = payments.map { it.id }
-            if (ids.isEmpty()) return@map emptyMap<Int, PaymentStatus>()
+            if (ids.isEmpty()) return@flatMapLatest kotlinx.coroutines.flow.flowOf(emptyMap())
 
-            val totalsMap = transactionRepository.getTotalsForPayments(ids)
-            val refundIds = transactionRepository.getPaymentIdsWithRefunds(ids).toSet()
+            val totalsFlow = transactionRepository.observeTotalsForPayments(ids)
+            val refundsFlow = transactionRepository.observePaymentIdsWithRefunds(ids)
 
-            payments.associate { p ->
-                val totalPaid = totalsMap[p.id] ?: 0.0
-                val hasRefund = refundIds.contains(p.id)
-                val status = when {
-                    totalPaid <= 0.0 -> PaymentStatus.UNPAID
-                    totalPaid < p.amount && hasRefund -> PaymentStatus.SETTLED
-                    totalPaid < p.amount -> PaymentStatus.PARTIAL
-                    else -> PaymentStatus.FULL
+            combine(totalsFlow, refundsFlow) { totalsList, refundIdsList ->
+                val totalsMap = totalsList.associate { it.paymentId to it.totalPaid }
+                val refundIds = refundIdsList.toSet()
+
+                payments.associate { p ->
+                    val totalPaid = totalsMap[p.id] ?: 0.0
+                    val hasRefund = refundIds.contains(p.id)
+                    val status = when {
+                        totalPaid <= 0.0 -> PaymentStatus.UNPAID
+                        totalPaid < p.amount && hasRefund -> PaymentStatus.SETTLED
+                        totalPaid < p.amount -> PaymentStatus.PARTIAL
+                        else -> PaymentStatus.FULL
+                    }
+                    p.clientId to status
                 }
-                p.clientId to status
             }
         }.distinctUntilChanged()
     }
