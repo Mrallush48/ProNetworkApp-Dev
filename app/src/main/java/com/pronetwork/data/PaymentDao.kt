@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PaymentDao {
@@ -164,4 +165,20 @@ interface PaymentDao {
     """
     )
     suspend fun getFirstUnpaidMonthForClient(clientId: Int): String?
+
+    // ================== Flow-based reactive queries (real-time UI updates) ==================
+
+    /**
+     * Flow تفاعلي: جلب كل الدفعات في شهر معيّن — يتحدث تلقائياً عند أي تغيير في جدول payments.
+     * يُستخدم مع observeTotalsForPayments لحساب حالات الدفع بشكل تفاعلي.
+     */
+    @Query("SELECT * FROM payments WHERE month = :month")
+    fun observePaymentsByMonth(month: String): Flow<List<Payment>>
+
+    /**
+     * Flow تفاعلي: جلب كل دفعات عميل معيّن — يتحدث تلقائياً.
+     * يُستخدم في شاشة تفاصيل العميل لتحديث فوري.
+     */
+    @Query("SELECT * FROM payments WHERE clientId = :clientId ORDER BY month DESC")
+    fun observeClientPayments(clientId: Int): Flow<List<Payment>>
 }

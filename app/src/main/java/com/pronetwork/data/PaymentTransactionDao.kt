@@ -272,5 +272,36 @@ interface PaymentTransactionDao {
         val remaining: Double
     )
 
+    // ================== Flow-based reactive queries (real-time UI updates) ==================
+
+    /**
+     * Flow تفاعلي: مجموع المدفوع لكل paymentId — يتحدث تلقائياً عند أي تغيير في payment_transactions.
+     * يُستخدم لتحديث حالات الدفع في ClientListScreen و Dashboard فوراً.
+     */
+    @Query("""
+        SELECT paymentId, COALESCE(SUM(amount), 0) AS totalPaid
+        FROM payment_transactions
+        WHERE paymentId IN (:paymentIds)
+        GROUP BY paymentId
+    """)
+    fun observeTotalsForPayments(paymentIds: List<Int>): Flow<List<PaymentTotal>>
+
+    /**
+     * Flow تفاعلي: أي paymentIds فيها حركات سالبة (Refund) — يتحدث تلقائياً.
+     * يُستخدم لتحديد حالة SETTLED بشكل تفاعلي.
+     */
+    @Query("""
+        SELECT DISTINCT paymentId
+        FROM payment_transactions
+        WHERE paymentId IN (:paymentIds) AND amount < 0
+    """)
+    fun observePaymentIdsWithRefunds(paymentIds: List<Int>): Flow<List<Int>>
+
+    /**
+     * Flow تفاعلي: مجموع المدفوع لـ payment واحد — يتحدث تلقائياً.
+     * يُستخدم في شاشة تفاصيل العميل.
+     */
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM payment_transactions WHERE paymentId = :paymentId")
+    fun observeTotalPaidForPayment(paymentId: Int): Flow<Double>
 
 }
