@@ -24,9 +24,36 @@ class PaymentTransactionRepository @Inject constructor(
 ) {
     private val gson = Gson()
 
+    /**
+     * اسم المستخدم الحالي من SharedPreferences.
+     * يُستخدم لتعبئة createdBy تلقائياً عند إدخال حركة جديدة.
+     */
+    private fun currentUsername(): String {
+        return try {
+            val masterKey = androidx.security.crypto.MasterKey.Builder(context)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
+                context,
+                "pronetwork_auth",
+                masterKey,
+                androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+            prefs.getString("username", "") ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
     suspend fun insert(transaction: PaymentTransaction) {
-        val rowId = transactionDao.insert(transaction)
-        val savedTransaction = transaction.copy(id = rowId.toInt())
+        val actualTransaction = if (transaction.createdBy.isEmpty()) {
+            transaction.copy(createdBy = currentUsername())
+        } else {
+            transaction
+        }
+        val rowId = transactionDao.insert(actualTransaction)
+        val savedTransaction = actualTransaction.copy(id = rowId.toInt())
         enqueueSync("payment_transaction", savedTransaction.id, "CREATE", savedTransaction)
     }
 
@@ -110,6 +137,17 @@ class PaymentTransactionRepository @Inject constructor(
         return transactionDao.getDetailedDailyCollections(dayStartMillis, dayEndMillis)
     }
 
+    /**
+     * حركات يوم معيّن لمستخدم محدد — لـ Daily Collection الشخصي.
+     */
+    suspend fun getDetailedDailyCollectionsByUser(
+        dayStartMillis: Long,
+        dayEndMillis: Long,
+        userId: String
+    ): List<PaymentTransactionDao.DailyDetailedTransaction> {
+        return transactionDao.getDetailedDailyCollectionsByUser(dayStartMillis, dayEndMillis, userId)
+    }
+
     /** هل يوجد حركة سالبة (Refund) لهذا الـ Payment؟ */
     suspend fun hasNegativeTransaction(paymentId: Int): Boolean {
         return transactionDao.hasNegativeTransaction(paymentId)
@@ -155,6 +193,20 @@ class PaymentTransactionRepository @Inject constructor(
      */
     fun observeTotalPaidForPayment(paymentId: Int): Flow<Double> {
         return transactionDao.observeTotalPaidForPayment(paymentId)
+    }
+
+    /**
+     * Flow تفاعلي: آخر الحركات — يتحدث تلقائياً.
+     */
+    fun observeRecentTransactions(limit: Int): Flow<List<PaymentTransactionDao.DashboardRecentTransaction>> {
+        return transactionDao.observeRecentTransactions(limit)
+    }
+
+    /**
+     * Flow تفاعلي: العملاء الأكثر تأخراً — يتحدث تلقائياً.
+     */
+    fun observeTopUnpaidClients(month: String, limit: Int): Flow<List<PaymentTransactionDao.DashboardUnpaidClient>> {
+        return transactionDao.observeTopUnpaidClientsForMonth(month, limit)
     }
 
     // === مزامنة العمليات ===

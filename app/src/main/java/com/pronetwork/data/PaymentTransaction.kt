@@ -27,5 +27,6 @@ data class PaymentTransaction(
     val paymentId: Int,        // يرتبط بسجل Payment (عميل + شهر)
     val amount: Double,        // قيمة الدفعة (قد تكون جزئية أو كاملة)
     val date: Long = System.currentTimeMillis(), // تاريخ الدفعة
-    val notes: String = ""     // ملاحظات اختيارية (مثلاً "دفع جزئي")
+    val notes: String = "",     // ملاحظات اختيارية (مثلاً "دفع جزئي")
+    val createdBy: String = ""
 )

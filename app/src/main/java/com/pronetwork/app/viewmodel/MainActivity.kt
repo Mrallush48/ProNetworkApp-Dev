@@ -393,7 +393,7 @@ class MainActivity : ComponentActivity() {
                 var dailyUi by remember { mutableStateOf<DailyCollectionUi?>(null) }
                 var dailySummary by remember { mutableStateOf(DailySummary()) }
 
-                fun loadDailyCollectionFor(dateMillis: Long) {
+                fun loadDailyCollectionFor(dateMillis: Long, showAll: Boolean = false) {
                     val calendar = Calendar.getInstance().apply {
                         timeInMillis = dateMillis
                         set(Calendar.HOUR_OF_DAY, 0)
@@ -405,24 +405,27 @@ class MainActivity : ComponentActivity() {
                     calendar.add(Calendar.DAY_OF_MONTH, 1)
                     val dayEndMillis = calendar.timeInMillis
 
-                    val monthFormat =
-                        java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+                    val monthFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
                     val currentMonth = monthFormat.format(java.util.Date(dateMillis))
 
-                    // جلب التحصيل التفصيلي (عميل بعميل)
-                    val detailedLiveData = paymentViewModel.getDetailedDailyCollections(
-                        dayStartMillis, dayEndMillis, currentMonth
-                    )
+                    val detailedLiveData = if (showAll) {
+                        paymentViewModel.getDetailedDailyCollections(
+                            dayStartMillis, dayEndMillis, currentMonth
+                        )
+                    } else {
+                        val currentUser = loginViewModel.authManager.getUsername()
+                        paymentViewModel.getDetailedDailyCollectionsByUser(
+                            dayStartMillis, dayEndMillis, currentMonth, currentUser
+                        )
+                    }
+
                     detailedLiveData.observe(this@MainActivity) { detailedBuildings ->
                         val total = detailedBuildings.sumOf { it.totalAmount }
                         val totalExpected = detailedBuildings.sumOf { it.expectedAmount }
-                        val overallRate =
-                            if (totalExpected > 0) (total / totalExpected) * 100 else 0.0
+                        val overallRate = if (totalExpected > 0) (total / totalExpected) * 100 else 0.0
                         val totalClients = detailedBuildings.sumOf { it.clientsCount }
-                        val topBuilding =
-                            detailedBuildings.maxByOrNull { it.collectionRate }?.buildingName
-                        val lowBuilding =
-                            detailedBuildings.minByOrNull { it.collectionRate }?.buildingName
+                        val topBuilding = detailedBuildings.maxByOrNull { it.collectionRate }?.buildingName
+                        val lowBuilding = detailedBuildings.minByOrNull { it.collectionRate }?.buildingName
 
                         dailyUi = DailyCollectionUi(
                             dateMillis = dateMillis,
@@ -449,7 +452,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // جلب الملخص (totalAmount, totalClients, totalTransactions)
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val dateString = dateFormat.format(Date(dateMillis))
                     lifecycleScope.launch {
@@ -460,7 +462,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                     }
-
                 }
 
                 val monthsList = remember {
@@ -653,18 +654,16 @@ class MainActivity : ComponentActivity() {
                             paymentViewModel.setStatsMonth(selectedMonth)
                         }
                         val clientsCount by clientViewModel.clientsCount.observeAsState(0)
-                        val monthStats by paymentViewModel.monthStats.observeAsState(null)
+                        val monthStats by paymentViewModel.monthStats.collectAsStateWithLifecycle()
 
                         when {
                             // ===== Dashboard =====
                             currentScreen == "dashboard" -> {
-                                val previousMonthStatsState by paymentViewModel.previousMonthStats.observeAsState(
-                                    null
-                                )
+                                val previousMonthStatsState by paymentViewModel.previousMonthStats.collectAsStateWithLifecycle()
 
                                 // آخر الحركات
-                                val recentTxRaw by paymentViewModel.getRecentTransactions(10)
-                                    .observeAsState(emptyList())
+                                val recentTxRaw by paymentViewModel.observeRecentTransactions(10)
+                                    .collectAsStateWithLifecycle(initialValue = emptyList())
                                 val timeFormat = remember {
                                     SimpleDateFormat(
                                         "hh:mm a",
@@ -684,10 +683,9 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 // العملاء المتأخرين
-                                val unpaidRaw by paymentViewModel.getTopUnpaidClients(
-                                    selectedMonth,
-                                    5
-                                ).observeAsState(emptyList())
+                                val unpaidRaw by paymentViewModel.observeTopUnpaidClients(
+                                    selectedMonth, 5
+                                ).collectAsStateWithLifecycle(initialValue = emptyList())
                                 val dashboardUnpaidClients = remember(unpaidRaw) {
                                     unpaidRaw.map { client ->
                                         UnpaidClientInfo(
@@ -1764,6 +1762,9 @@ class MainActivity : ComponentActivity() {
                                                 onChangeDate = { newMillis ->
                                                     selectedDailyDateMillis = newMillis
                                                     loadDailyCollectionFor(newMillis)
+                                                },
+                                                onToggleShowAll = { showAll ->
+                                                    loadDailyCollectionFor(selectedDailyDateMillis, showAll)
                                                 }
                                             )
 

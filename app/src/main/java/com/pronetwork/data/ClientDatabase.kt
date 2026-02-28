@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [Client::class, Payment::class, PaymentTransaction::class,
         Building::class, SyncQueueEntity::class],
-    version = 6,
+    version = 7,
     // ✅ الطبقة 1: تفعيل تصدير الـ Schema
     // يحفظ نسخة JSON من كل version عشان نقدر نتحقق ونختبر الـ migrations
     exportSchema = true
@@ -43,7 +43,9 @@ abstract class ClientDatabase : RoomDatabase() {
                         MIGRATION_2_3,
                         MIGRATION_3_4,
                         MIGRATION_4_5,
-                        MIGRATION_5_6
+                        MIGRATION_5_6,
+                        MIGRATION_6_7
+
                     )
                     // ✅ الطبقة 3: فقط عند الـ downgrade يحذف ويعيد البناء
                     // عند الـ upgrade بدون migration → crash واضح (لا حذف صامت للبيانات)
@@ -79,7 +81,7 @@ abstract class ClientDatabase : RoomDatabase() {
 
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                Log.i(TAG, "Database created fresh (version 6)")
+                Log.i(TAG, "Database created fresh — version 7")
             }
         }
 
@@ -160,6 +162,12 @@ abstract class ClientDatabase : RoomDatabase() {
                         `lastError` TEXT
                     )
                 """.trimIndent())
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE payment_transactions ADD COLUMN createdBy TEXT NOT NULL DEFAULT ''")
             }
         }
     }

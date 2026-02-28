@@ -65,7 +65,8 @@ fun DailyCollectionScreen(
     dailyCollection: DailyCollectionUi?,
     dailySummary: DailySummary,
     selectedDateMillis: Long,
-    onChangeDate: (Long) -> Unit
+    onChangeDate: (Long) -> Unit,
+    onToggleShowAll: (Boolean) -> Unit = {}
 ) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     var expandedBuildingId by remember { mutableStateOf<Int?>(null) }
@@ -468,10 +469,12 @@ fun DailyCollectionScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = { showAllClients = !showAllClients }
-                ) {
-                    Text(
+                OutlinedButton(onClick = {
+                    val newValue = !showAllClients
+                    showAllClients = newValue
+                    onToggleShowAll(newValue)
+                }) {
+                Text(
                         text = if (showAllClients) "\uD83D\uDC65 Show Today's Transactions Only"
                                else "\uD83D\uDCCB Show All Clients",
                         style = MaterialTheme.typography.labelMedium

@@ -199,6 +199,39 @@ interface PaymentTransactionDao {
         dayEndMillis: Long
     ): List<DailyDetailedTransaction>
 
+    /**
+     * نفس getDetailedDailyCollections لكن مع فلتر createdBy.
+     * يُستخدم في Daily Collection لعرض حركات المستخدم الحالي فقط.
+     */
+    @Query("""
+    SELECT 
+        pt.id AS transactionId,
+        pt.amount AS paidAmount,
+        pt.date AS transactionDate,
+        pt.notes AS notes,
+        p.id AS paymentId,
+        p.amount AS monthlyAmount,
+        p.clientId AS clientId,
+        c.name AS clientName,
+        c.subscriptionNumber AS subscriptionNumber,
+        c.roomNumber AS roomNumber,
+        c.packageType AS packageType,
+        c.buildingId AS buildingId,
+        COALESCE(b.name, 'Unknown') AS buildingName
+    FROM payment_transactions AS pt
+    INNER JOIN payments AS p ON p.id = pt.paymentId
+    INNER JOIN clients AS c ON c.id = p.clientId
+    LEFT JOIN buildings AS b ON b.id = c.buildingId
+    WHERE pt.date >= :dayStartMillis AND pt.date < :dayEndMillis
+      AND pt.createdBy = :userId
+    ORDER BY b.name COLLATE NOCASE ASC, c.name COLLATE NOCASE ASC, pt.date ASC
+""")
+    suspend fun getDetailedDailyCollectionsByUser(
+        dayStartMillis: Long,
+        dayEndMillis: Long,
+        userId: String
+    ): List<DailyDetailedTransaction>
+
     data class DailyDetailedTransaction(
         val transactionId: Int,
         val paidAmount: Double,
@@ -303,5 +336,48 @@ interface PaymentTransactionDao {
      */
     @Query("SELECT COALESCE(SUM(amount), 0) FROM payment_transactions WHERE paymentId = :paymentId")
     fun observeTotalPaidForPayment(paymentId: Int): Flow<Double>
+
+    /**
+     * Flow تفاعلي: آخر الحركات — يتحدث تلقائياً عند أي تغيير.
+     */
+    @Query("""
+    SELECT 
+        pt.id AS transactionId,
+        pt.amount AS transactionAmount,
+        pt.date AS transactionDate,
+        pt.notes AS transactionNotes,
+        c.name AS clientName,
+        COALESCE(b.name, 'Unknown') AS buildingName
+    FROM payment_transactions AS pt
+    INNER JOIN payments AS p ON p.id = pt.paymentId
+    INNER JOIN clients AS c ON c.id = p.clientId
+    LEFT JOIN buildings AS b ON b.id = c.buildingId
+    ORDER BY pt.date DESC
+    LIMIT :limit
+""")
+    fun observeRecentTransactions(limit: Int): Flow<List<DashboardRecentTransaction>>
+
+    /**
+     * Flow تفاعلي: العملاء الأكثر تأخراً — يتحدث تلقائياً.
+     */
+    @Query("""
+    SELECT 
+        p.clientId AS clientId,
+        c.name AS clientName,
+        COALESCE(b.name, 'Unknown') AS buildingName,
+        p.amount AS monthlyAmount,
+        COALESCE(SUM(pt.amount), 0) AS totalPaid,
+        (p.amount - COALESCE(SUM(pt.amount), 0)) AS remaining
+    FROM payments AS p
+    INNER JOIN clients AS c ON c.id = p.clientId
+    LEFT JOIN buildings AS b ON b.id = c.buildingId
+    LEFT JOIN payment_transactions AS pt ON pt.paymentId = p.id
+    WHERE p.month = :month
+    GROUP BY p.id
+    HAVING remaining > 0
+    ORDER BY remaining DESC
+    LIMIT :limit
+""")
+    fun observeTopUnpaidClientsForMonth(month: String, limit: Int): Flow<List<DashboardUnpaidClient>>
 
 }
