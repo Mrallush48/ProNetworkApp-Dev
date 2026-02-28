@@ -165,108 +165,6 @@ class PaymentViewModel @Inject constructor(
 
             val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
 
-            /**
-             * حركات يوم معيّن لمستخدم محدد — لـ Daily Collection الشخصي.
-             * عند showAllClients = false: يعرض فقط حركات المستخدم الحالي.
-             */
-            fun getDetailedDailyCollectionsByUser(
-                dayStartMillis: Long,
-                dayEndMillis: Long,
-                month: String,
-                userId: String
-            ): LiveData<List<DailyBuildingDetailedUi>> {
-                val result = MutableLiveData<List<DailyBuildingDetailedUi>>()
-                viewModelScope.launch {
-                    val rawTransactions = transactionRepository.getDetailedDailyCollectionsByUser(
-                        dayStartMillis, dayEndMillis, userId
-                    )
-
-                    val allPaymentIds = rawTransactions.map { it.paymentId }.distinct()
-                    val refundPaymentIds = if (allPaymentIds.isNotEmpty())
-                        transactionRepository.getPaymentIdsWithRefunds(allPaymentIds).toSet()
-                    else emptySet()
-
-                    val allTotalsPaidMap = if (allPaymentIds.isNotEmpty())
-                        transactionRepository.getTotalsForPayments(allPaymentIds)
-                    else emptyMap()
-
-                    val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
-
-                    val buildingCollections = rawTransactions
-                        .groupBy { it.buildingId }
-                        .map { (buildingId, txList) ->
-                            val buildingName = txList.first().buildingName
-                            val clients = txList
-                                .groupBy { it.clientId }
-                                .map { (clientId, clientTxs) ->
-                                    val firstTx = clientTxs.first()
-                                    val totalPaid = clientTxs.sumOf { it.paidAmount }
-                                    val lastTxTime = clientTxs.maxOf { it.transactionDate }
-                                    val allNotes = clientTxs
-                                        .map { it.notes }
-                                        .filter { it.isNotBlank() }
-                                        .distinct()
-                                        .joinToString(" | ")
-
-                                    val txItems = clientTxs.map { tx ->
-                                        DailyTransactionItem(
-                                            amount = tx.paidAmount,
-                                            time = timeFormat.format(java.util.Date(tx.transactionDate)),
-                                            type = if (tx.paidAmount < 0) "Refund" else "Payment",
-                                            notes = tx.notes
-                                        )
-                                    }
-
-                                    val clientPaymentId = firstTx.paymentId
-                                    val overallTotalPaid = allTotalsPaidMap[clientPaymentId] ?: totalPaid
-                                    val hasRefund = clientPaymentId in refundPaymentIds
-
-                                    val status = when {
-                                        overallTotalPaid <= 0.0 -> "UNPAID"
-                                        overallTotalPaid < firstTx.monthlyAmount && hasRefund -> "SETTLED"
-                                        overallTotalPaid < firstTx.monthlyAmount -> "PARTIAL"
-                                        else -> "PAID"
-                                    }
-
-                                    DailyClientCollection(
-                                        clientId = clientId,
-                                        clientName = firstTx.clientName,
-                                        subscriptionNumber = firstTx.subscriptionNumber,
-                                        roomNumber = firstTx.roomNumber,
-                                        packageType = firstTx.packageType,
-                                        monthlyAmount = firstTx.monthlyAmount,
-                                        paidAmount = totalPaid,
-                                        todayPaid = totalPaid,
-                                        totalPaid = overallTotalPaid,
-                                        transactionTime = timeFormat.format(java.util.Date(lastTxTime)),
-                                        notes = allNotes,
-                                        transactions = txItems,
-                                        paymentStatus = status
-                                    )
-                                }.sortedBy { it.clientName }
-
-                            val totalAmount = clients.sumOf { it.paidAmount }
-                            val expectedAmount = clients.sumOf { it.monthlyAmount }
-                            val rate = if (expectedAmount > 0) (totalAmount / expectedAmount) * 100 else 0.0
-
-                            DailyBuildingDetailedUi(
-                                buildingId = buildingId,
-                                buildingName = buildingName,
-                                totalAmount = totalAmount,
-                                clientsCount = clients.size,
-                                expectedAmount = expectedAmount,
-                                collectionRate = rate,
-                                clients = clients
-                            )
-                        }.sortedByDescending { it.totalAmount }
-
-                    result.postValue(buildingCollections)
-                }
-                return result
-            }
-
-
-
             // ── بناء مجموعات المباني من الحركات اليومية ──────────────────────
             val buildingCollections = rawTransactions
                 .groupBy { it.buildingId }
@@ -448,6 +346,111 @@ class PaymentViewModel @Inject constructor(
                 }
 
             result.postValue(updatedBuildings.sortedByDescending { it.totalAmount })
+        }
+        return result
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // تحصيل يومي تفصيلي لمستخدم محدد
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * حركات يوم معيّن لمستخدم محدد — لـ Daily Collection الشخصي.
+     * عند showAllClients = false: يعرض فقط حركات المستخدم الحالي.
+     */
+    fun getDetailedDailyCollectionsByUser(
+        dayStartMillis: Long,
+        dayEndMillis: Long,
+        month: String,
+        userId: String
+    ): LiveData<List<DailyBuildingDetailedUi>> {
+        val result = MutableLiveData<List<DailyBuildingDetailedUi>>()
+        viewModelScope.launch {
+            val rawTransactions = transactionRepository.getDetailedDailyCollectionsByUser(
+                dayStartMillis, dayEndMillis, userId
+            )
+
+            val allPaymentIds = rawTransactions.map { it.paymentId }.distinct()
+
+            val refundPaymentIds = if (allPaymentIds.isNotEmpty())
+                transactionRepository.getPaymentIdsWithRefunds(allPaymentIds).toSet()
+            else emptySet()
+
+            val allTotalsPaidMap = if (allPaymentIds.isNotEmpty())
+                transactionRepository.getTotalsForPayments(allPaymentIds)
+            else emptyMap()
+
+            val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+
+            val buildingCollections = rawTransactions
+                .groupBy { it.buildingId }
+                .map { (buildingId, txList) ->
+                    val buildingName = txList.first().buildingName
+                    val clients = txList
+                        .groupBy { it.clientId }
+                        .map { (clientId, clientTxs) ->
+                            val firstTx = clientTxs.first()
+                            val totalPaid = clientTxs.sumOf { it.paidAmount }
+                            val lastTxTime = clientTxs.maxOf { it.transactionDate }
+                            val allNotes = clientTxs
+                                .map { it.notes }
+                                .filter { it.isNotBlank() }
+                                .distinct()
+                                .joinToString(" | ")
+
+                            val txItems = clientTxs.map { tx ->
+                                DailyTransactionItem(
+                                    amount = tx.paidAmount,
+                                    time = timeFormat.format(java.util.Date(tx.transactionDate)),
+                                    type = if (tx.paidAmount < 0) "Refund" else "Payment",
+                                    notes = tx.notes
+                                )
+                            }
+
+                            val clientPaymentId = firstTx.paymentId
+                            val overallTotalPaid = allTotalsPaidMap[clientPaymentId] ?: totalPaid
+                            val hasRefund = clientPaymentId in refundPaymentIds
+
+                            val status = when {
+                                overallTotalPaid <= 0.0 -> "UNPAID"
+                                overallTotalPaid < firstTx.monthlyAmount && hasRefund -> "SETTLED"
+                                overallTotalPaid < firstTx.monthlyAmount -> "PARTIAL"
+                                else -> "PAID"
+                            }
+
+                            DailyClientCollection(
+                                clientId = clientId,
+                                clientName = firstTx.clientName,
+                                subscriptionNumber = firstTx.subscriptionNumber,
+                                roomNumber = firstTx.roomNumber,
+                                packageType = firstTx.packageType,
+                                monthlyAmount = firstTx.monthlyAmount,
+                                paidAmount = totalPaid,
+                                todayPaid = totalPaid,
+                                totalPaid = overallTotalPaid,
+                                transactionTime = timeFormat.format(java.util.Date(lastTxTime)),
+                                notes = allNotes,
+                                transactions = txItems,
+                                paymentStatus = status
+                            )
+                        }.sortedBy { it.clientName }
+
+                    val totalAmount = clients.sumOf { it.paidAmount }
+                    val expectedAmount = clients.sumOf { it.monthlyAmount }
+                    val rate = if (expectedAmount > 0) (totalAmount / expectedAmount) * 100 else 0.0
+
+                    DailyBuildingDetailedUi(
+                        buildingId = buildingId,
+                        buildingName = buildingName,
+                        totalAmount = totalAmount,
+                        clientsCount = clients.size,
+                        expectedAmount = expectedAmount,
+                        collectionRate = rate,
+                        clients = clients
+                    )
+                }.sortedByDescending { it.totalAmount }
+
+            result.postValue(buildingCollections)
         }
         return result
     }
