@@ -62,6 +62,7 @@ import kotlin.math.abs
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pronetwork.app.viewmodel.PaymentViewModel
+import com.pronetwork.app.viewmodel.GlobalPaymentStatusCounts
 
 
 @Composable
@@ -89,7 +90,7 @@ fun DailyCollectionScreen(
             .format(java.util.Date(selectedDateMillis))
     }
     val globalCounts by paymentViewModel.observeGlobalPaymentStatusCounts(currentMonth)
-        .collectAsState(initial = PaymentViewModel.GlobalPaymentStatusCounts())
+        .collectAsState(initial = GlobalPaymentStatusCounts())
     val unpaidCount = globalCounts.unpaidCount
 
     // Filter buildings: show only clients with today's transactions by default

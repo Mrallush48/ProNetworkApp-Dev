@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Logout
 import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.ui.components.ConnectionBadge
 import com.pronetwork.app.ui.components.SyncStatusBar
+import com.pronetwork.app.viewmodel.MonthStats
 
 
 
@@ -61,8 +62,8 @@ fun DashboardScreen(
     userName: String = "",
     userRole: String = "",
     onLogout: () -> Unit = {},
-    currentMonthStats: PaymentViewModel.MonthStats?,
-    previousMonthStats: PaymentViewModel.MonthStats?,
+    currentMonthStats: MonthStats?,
+    previousMonthStats: MonthStats?,
     totalClients: Int,
     totalBuildings: Int,
     recentTransactions: List<RecentTransaction>,
@@ -323,7 +324,7 @@ private fun KpiCard(
 // =============== Collection Rate Card ===============
 @Composable
 private fun CollectionRateCard(
-    currentMonthStats: PaymentViewModel.MonthStats?,
+    currentMonthStats: MonthStats?,
     totalClients: Int
 ) {
     val stats = currentMonthStats
@@ -446,8 +447,8 @@ private fun StatusChip(
 // =============== Month Comparison Card ===============
 @Composable
 private fun MonthComparisonCard(
-    currentMonthStats: PaymentViewModel.MonthStats?,
-    previousMonthStats: PaymentViewModel.MonthStats?,
+    currentMonthStats: MonthStats?,
+    previousMonthStats: MonthStats?,
     currencyFormat: NumberFormat
 ) {
     val currentAmount = currentMonthStats?.totalPaidAmount ?: 0.0

@@ -15,13 +15,14 @@ import com.pronetwork.app.viewmodel.PaymentViewModel
 import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.ui.graphics.Color
+import com.pronetwork.app.viewmodel.MonthStats
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
     clientsCount: Int,
     buildingsCount: Int,
-    monthStats: PaymentViewModel.MonthStats?,
+    monthStats: MonthStats?,
     monthOptions: List<String>,
     selectedMonth: String,
     onMonthChange: (String) -> Unit,
