@@ -202,7 +202,7 @@ class SyncEngine @Inject constructor(
 
                     // Process acknowledgments
                     result?.acknowledgments?.forEach { ack ->
-                        if (ack.status == "ok") {
+                        if (ack.status == "ok" || ack.status == "conflict_server_wins") {
                             // Find and remove the matching queue entry
                             val matchingEntry = batch.find {
                                 it.entityType == ack.entity_type && it.entityId == ack.local_id
