@@ -19,3 +19,4 @@ data class DailyCollectionUi(
     val settledAmount: Double = 0.0,
     val refundAmount: Double = 0.0
 )
+

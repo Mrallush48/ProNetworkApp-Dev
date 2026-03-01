@@ -630,6 +630,48 @@ class PaymentViewModel @Inject constructor(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // عدد العملاء غير المدفوعين الإجمالي لشهر معيّن (لكل المستخدمين)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * يحسب عدد العملاء حسب حالة الدفع الفعلية لشهر معيّن.
+     * يُستخدم في شاشة Daily Collection لعرض الإحصائيات العالمية
+     * بغض النظر عن فلتر المستخدم الحالي.
+     */
+    data class GlobalPaymentStatusCounts(
+        val paidCount: Int = 0,
+        val partialCount: Int = 0,
+        val settledCount: Int = 0,
+        val unpaidCount: Int = 0
+    )
+
+    fun observeGlobalPaymentStatusCounts(month: String): Flow<GlobalPaymentStatusCounts> {
+        val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
+        return paymentsFlow.flatMapLatest { payments ->
+            if (payments.isEmpty()) return@flatMapLatest flowOf(GlobalPaymentStatusCounts())
+            val ids = payments.map { it.id }
+            val totalsFlow = transactionRepository.observeTotalsForPayments(ids)
+            val refundsFlow = transactionRepository.observePaymentIdsWithRefunds(ids)
+            combine(totalsFlow, refundsFlow) { totalsList, refundIdsList ->
+                val totalsMap = totalsList.associate { it.paymentId to it.totalPaid }
+                val refundIds = refundIdsList.toSet()
+                var paid = 0; var partial = 0; var settled = 0; var unpaid = 0
+                payments.forEach { p ->
+                    val totalPaid = totalsMap[p.id] ?: 0.0
+                    val hasRefund = p.id in refundIds
+                    when (resolvePaymentStatus(totalPaid, p.amount, hasRefund)) {
+                        PaymentStatus.FULL -> paid++
+                        PaymentStatus.PARTIAL -> partial++
+                        PaymentStatus.SETTLED -> settled++
+                        PaymentStatus.UNPAID -> unpaid++
+                    }
+                }
+                GlobalPaymentStatusCounts(paid, partial, settled, unpaid)
+            }
+        }.distinctUntilChanged()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // استعلامات أساسية
     // ─────────────────────────────────────────────────────────────────────────
 

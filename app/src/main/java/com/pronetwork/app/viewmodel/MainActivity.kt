@@ -1759,8 +1759,9 @@ class MainActivity : ComponentActivity() {
                                                 dailyCollection = dailyUi,
                                                 dailySummary = dailySummary,
                                                 selectedDateMillis = selectedDailyDateMillis,
+                                                paymentViewModel = paymentViewModel,
                                                 onChangeDate = { newMillis ->
-                                                    selectedDailyDateMillis = newMillis
+                                                selectedDailyDateMillis = newMillis
                                                     loadDailyCollectionFor(newMillis)
                                                 },
                                                 onToggleShowAll = { showAll ->

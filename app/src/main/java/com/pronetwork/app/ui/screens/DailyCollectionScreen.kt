@@ -59,6 +59,10 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.pronetwork.app.viewmodel.PaymentViewModel
+
 
 @Composable
 fun DailyCollectionScreen(
@@ -66,7 +70,8 @@ fun DailyCollectionScreen(
     dailySummary: DailySummary,
     selectedDateMillis: Long,
     onChangeDate: (Long) -> Unit,
-    onToggleShowAll: (Boolean) -> Unit = {}
+    onToggleShowAll: (Boolean) -> Unit = {},
+    paymentViewModel: PaymentViewModel = hiltViewModel()
 ) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     var expandedBuildingId by remember { mutableStateOf<Int?>(null) }
@@ -77,7 +82,15 @@ fun DailyCollectionScreen(
     val paidCount = allClients.count { it.paymentStatus == "PAID" }
     val partialCount = allClients.count { it.paymentStatus == "PARTIAL" }
     val settledCount = allClients.count { it.paymentStatus == "SETTLED" }
-    val unpaidCount = allClients.count { it.paymentStatus == "UNPAID" }
+
+    // Unpaid عالمي: يحسب من قاعدة البيانات مباشرة لكل العملاء
+    val currentMonth = remember(selectedDateMillis) {
+        java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+            .format(java.util.Date(selectedDateMillis))
+    }
+    val globalCounts by paymentViewModel.observeGlobalPaymentStatusCounts(currentMonth)
+        .collectAsState(initial = PaymentViewModel.GlobalPaymentStatusCounts())
+    val unpaidCount = globalCounts.unpaidCount
 
     // Filter buildings: show only clients with today's transactions by default
     val displayBuildings = if (showAllClients) {
