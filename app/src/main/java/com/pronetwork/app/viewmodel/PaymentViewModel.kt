@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.data.DailyBuildingDetailedUi
-import com.pronetwork.app.data.DailyClientCollection
-import com.pronetwork.app.data.DailyTransactionItem
+
+
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.data.PaymentTransactionDao
@@ -29,26 +29,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Enums & UI Models
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum class PaymentStatus {
-    UNPAID,
-    PARTIAL,
-    SETTLED,
-    FULL
-}
-
-data class ClientMonthPaymentUi(
-    val month: String,
-    val monthAmount: Double,
-    val totalPaid: Double,
-    val remaining: Double,
-    val status: PaymentStatus
-)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ViewModel
@@ -697,20 +677,4 @@ class PaymentViewModel @Inject constructor(
     ) = viewModelScope.launch {
         paymentRepository.createOrUpdatePayment(clientId, month, amount, isPaid, paymentDate, notes)
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Performance Evaluation
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum class DailyPerformanceLevel {
-    EXCELLENT,
-    GOOD,
-    POOR
-}
-
-fun getDailyPerformance(totalAmount: Double): DailyPerformanceLevel = when {
-    totalAmount >= 2000.0 -> DailyPerformanceLevel.EXCELLENT
-    totalAmount >= 1000.0 -> DailyPerformanceLevel.GOOD
-    else                  -> DailyPerformanceLevel.POOR
 }
