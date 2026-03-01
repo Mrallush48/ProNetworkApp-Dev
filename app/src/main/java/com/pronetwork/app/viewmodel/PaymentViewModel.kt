@@ -58,7 +58,9 @@ data class ClientMonthPaymentUi(
 class PaymentViewModel @Inject constructor(
     private val paymentRepository: PaymentRepository,
     private val transactionRepository: PaymentTransactionRepository,
-    private val db: ClientDatabase
+    private val db: ClientDatabase,
+    private val statusResolver: PaymentStatusResolver,
+    private val dailyCollectionBuilder: DailyCollectionBuilder
 ) : ViewModel() {
 
     val allPayments: LiveData<List<Payment>> = paymentRepository.allPayments
