@@ -260,52 +260,77 @@ class SyncEngine @Inject constructor(
     /**
      * Pull: Download changes from server since last sync.
      * Uses delta sync — only fetches what changed.
+     * Supports pagination via has_more flag.
      */
     private suspend fun pull(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PULLING)
         lastHttpCode = 0
-        val lastSync = prefs.getString(KEY_LAST_SYNC, null)
-        Log.d(TAG, "Pull: since=$lastSync")
 
-        return try {
-            val response = ApiClient.safeCall { api ->
-                api.syncPull("Bearer $token", lastSync)
-            }
+        var currentSince = prefs.getString(KEY_LAST_SYNC, null)
+        var totalApplied = 0
+        var pageCount = 0
+        val maxPages = 50 // Safety limit to prevent infinite loops
 
-            if (response.isSuccessful) {
-                val pullData = response.body()
-                if (pullData != null) {
-                    applyServerChanges(pullData)
+        try {
+            while (pageCount < maxPages) {
+                pageCount++
+                Log.d(TAG, "Pull page $pageCount: since=$currentSince")
 
-                    // Save server timestamp for next delta sync
-                    prefs.edit()
-                        .putString(KEY_LAST_SYNC, pullData.server_timestamp)
-                        .apply()
-
-                    Log.d(TAG, "Pull: applied changes, next sync from ${pullData.server_timestamp}")
+                val response = ApiClient.safeCall { api ->
+                    api.syncPull("Bearer $token", currentSince)
                 }
-                true
-            } else if (response.code() == 404) {
-                Log.w(TAG, "Pull: sync endpoint not available (404) — skipping")
-                true
-            } else if (response.code() == 401) {
-                Log.w(TAG, "Pull: authentication failed (401)")
-                lastHttpCode = 401
-                _syncState.value = _syncState.value.copy(
-                    errorMessage = "Authentication expired"
-                )
-                false
-            } else {
-                Log.w(TAG, "Pull failed: ${response.code()}")
-                _syncState.value = _syncState.value.copy(
-                    errorMessage = "Pull failed: HTTP ${response.code()}"
-                )
-                false
+
+                if (response.isSuccessful) {
+                    val pullData = response.body()
+                    if (pullData != null) {
+                        applyServerChanges(pullData)
+
+                        val pageTotal = (pullData.clients?.size ?: 0) +
+                                (pullData.buildings?.size ?: 0) +
+                                (pullData.payments?.size ?: 0) +
+                                (pullData.payment_transactions?.size ?: 0)
+                        totalApplied += pageTotal
+
+                        // Save server timestamp for next page/sync
+                        prefs.edit()
+                            .putString(KEY_LAST_SYNC, pullData.server_timestamp)
+                            .apply()
+                        currentSince = pullData.server_timestamp
+
+                        Log.d(TAG, "Pull page $pageCount: applied $pageTotal changes, has_more=${pullData.has_more}")
+
+                        if (!pullData.has_more) {
+                            break // All changes fetched
+                        }
+                    } else {
+                        break
+                    }
+                } else if (response.code() == 404) {
+                    Log.w(TAG, "Pull: sync endpoint not available (404) — skipping")
+                    return true
+                } else if (response.code() == 401) {
+                    Log.w(TAG, "Pull: authentication failed (401)")
+                    lastHttpCode = 401
+                    _syncState.value = _syncState.value.copy(
+                        errorMessage = "Authentication expired"
+                    )
+                    return false
+                } else {
+                    Log.w(TAG, "Pull failed: ${response.code()}")
+                    _syncState.value = _syncState.value.copy(
+                        errorMessage = "Pull failed: HTTP ${response.code()}"
+                    )
+                    return false
+                }
             }
+
+            Log.d(TAG, "Pull complete: $totalApplied total changes in $pageCount pages")
+            return true
+
         } catch (e: Exception) {
             Log.e(TAG, "Pull error: ${e.message}")
             _syncState.value = _syncState.value.copy(errorMessage = e.message)
-            false
+            return false
         }
     }
 
@@ -391,7 +416,7 @@ class SyncEngine @Inject constructor(
             }
         }
 
-        // === Payment Transactions ===
+        // === Payment Transactions (MERGE — protect local data) ===
         data.payment_transactions?.forEach { entity ->
             try {
                 when (entity.action.uppercase()) {
@@ -399,8 +424,16 @@ class SyncEngine @Inject constructor(
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
-                            db.paymentTransactionDao().insert(transaction)
-                            Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
+                            // Check if this transaction already exists locally
+                            val existing = db.paymentTransactionDao().getTransactionById(entity.id)
+                            if (existing == null) {
+                                // New transaction from another device — insert it
+                                db.paymentTransactionDao().insert(transaction)
+                                Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
+                            } else {
+                                // Already exists locally — skip to protect local data
+                                Log.d(TAG, "Skipped ${entity.action} transaction #${entity.id} (already exists locally)")
+                            }
                         }
                     }
                     "DELETE" -> {

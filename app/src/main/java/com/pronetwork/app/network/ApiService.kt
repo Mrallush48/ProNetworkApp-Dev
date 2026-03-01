@@ -97,7 +97,8 @@ data class SyncPullResponse(
     val buildings: List<SyncEntity>? = null,
     val payments: List<SyncEntity>? = null,
     val payment_transactions: List<SyncEntity>? = null,
-    val server_timestamp: String
+    val server_timestamp: String,
+    val has_more: Boolean = false
 )
 
 data class SyncEntity(
