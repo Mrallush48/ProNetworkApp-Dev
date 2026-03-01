@@ -434,16 +434,18 @@ class PaymentViewModel @Inject constructor(
     fun deleteTransaction(transactionId: Int) = viewModelScope.launch {
         val paymentId = transactionRepository.getPaymentIdByTransactionId(transactionId)
             ?: return@launch
-
         transactionRepository.deleteTransactionById(transactionId)
 
         val newTotalPaid = transactionRepository.getTotalPaidForPayment(paymentId)
-        val payment      = paymentRepository.getPaymentById(paymentId) ?: return@launch
+        val payment = paymentRepository.getPaymentById(paymentId) ?: return@launch
+        val hasRefund = transactionRepository.hasNegativeTransaction(paymentId)
+
+        val newStatus = statusResolver.resolve(newTotalPaid, payment.amount, hasRefund)
 
         paymentRepository.update(
-            when {
-                newTotalPaid >= payment.amount -> payment.copy(isPaid = true)
-                else                           -> payment.copy(isPaid = false, paymentDate = null)
+            when (newStatus) {
+                PaymentStatus.FULL -> payment.copy(isPaid = true)
+                else -> payment.copy(isPaid = false, paymentDate = null)
             }
         )
     }
