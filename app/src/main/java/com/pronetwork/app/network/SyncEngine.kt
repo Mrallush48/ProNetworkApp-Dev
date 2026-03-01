@@ -416,7 +416,7 @@ class SyncEngine @Inject constructor(
             }
         }
 
-        // === Payment Transactions (MERGE — protect local data) ===
+        // === Payment Transactions ===
         data.payment_transactions?.forEach { entity ->
             try {
                 when (entity.action.uppercase()) {
@@ -424,16 +424,8 @@ class SyncEngine @Inject constructor(
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
-                            // Check if this transaction already exists locally
-                            val existing = db.paymentTransactionDao().getTransactionById(entity.id)
-                            if (existing == null) {
-                                // New transaction from another device — insert it
-                                db.paymentTransactionDao().insert(transaction)
-                                Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
-                            } else {
-                                // Already exists locally — skip to protect local data
-                                Log.d(TAG, "Skipped ${entity.action} transaction #${entity.id} (already exists locally)")
-                            }
+                            db.paymentTransactionDao().insert(transaction)
+                            Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
                         }
                     }
                     "DELETE" -> {
