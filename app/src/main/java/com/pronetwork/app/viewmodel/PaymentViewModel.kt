@@ -118,7 +118,7 @@ class PaymentViewModel @Inject constructor(
                         monthAmount  = p.amount,
                         totalPaid    = totalPaid,
                         remaining    = remaining,
-                        status       = resolvePaymentStatus(totalPaid, p.amount, hasRefund)
+                        status       = statusResolver.resolve(totalPaid, p.amount, hasRefund)
                     )
                 }.sortedBy { it.month }
             }
@@ -536,7 +536,7 @@ class PaymentViewModel @Inject constructor(
                     val hasRefund        = p.id in refundIds
                     totalPaidAmount += paidForThis
 
-                    when (resolvePaymentStatus(paidForThis, p.amount, hasRefund)) {
+                    when (statusResolver.resolve(paidForThis, p.amount, hasRefund)) {
                         PaymentStatus.UNPAID -> {
                             unpaidCount++
                             totalRemaining += p.amount
@@ -625,7 +625,7 @@ class PaymentViewModel @Inject constructor(
                 payments.associate { p ->
                     val totalPaid = totalsMap[p.id] ?: 0.0
                     val hasRefund = p.id in refundIds
-                    p.clientId to resolvePaymentStatus(totalPaid, p.amount, hasRefund)
+                    p.clientId to statusResolver.resolve(totalPaid, p.amount, hasRefund)
                 }
             }
         }.distinctUntilChanged()
@@ -661,7 +661,7 @@ class PaymentViewModel @Inject constructor(
                 payments.forEach { p ->
                     val totalPaid = totalsMap[p.id] ?: 0.0
                     val hasRefund = p.id in refundIds
-                    when (resolvePaymentStatus(totalPaid, p.amount, hasRefund)) {
+                    when (statusResolver.resolve(totalPaid, p.amount, hasRefund)) {
                         PaymentStatus.FULL -> paid++
                         PaymentStatus.PARTIAL -> partial++
                         PaymentStatus.SETTLED -> settled++
