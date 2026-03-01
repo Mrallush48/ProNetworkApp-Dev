@@ -7,8 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.DailyBuildingCollection
 import com.pronetwork.app.data.DailyBuildingDetailedUi
-
-
 import com.pronetwork.app.data.Payment
 import com.pronetwork.app.data.PaymentTransaction
 import com.pronetwork.app.data.PaymentTransactionDao
@@ -49,11 +47,6 @@ class PaymentViewModel @Inject constructor(
     // Flow تفاعلي: بيانات عرض حالة الدفع لكل شهر لعميل واحد
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * يستمع لتغييرات جدولي [payments] و [payment_transactions]
-     * ويُحدّث [totalPaid] / [remaining] / [status] تلقائياً.
-     * مبني بنفس نمط [observeAllClientStatusesForMonth] لضمان التوحيد المعماري.
-     */
     fun observeClientMonthPaymentsUi(clientId: Int): Flow<List<ClientMonthPaymentUi>> {
         val paymentsFlow = paymentRepository.observeClientPayments(clientId)
 
@@ -128,14 +121,12 @@ class PaymentViewModel @Inject constructor(
                 transactionRepository.getTotalsForPayments(allPaymentIds)
             } else emptyMap()
 
-            // ── بناء مجموعات المباني ──
             val buildingCollections = dailyCollectionBuilder.buildFromTransactions(
                 rawTransactions = rawTransactions,
                 allTotalsPaidMap = allTotalsPaidMap,
                 refundPaymentIds = refundPaymentIds
             )
 
-            // ── إضافة العملاء غير المدفوعين ──
             val paidClientIds = rawTransactions.map { it.clientId }.toSet()
             val finalResult = dailyCollectionBuilder.overlayUnpaidClients(
                 buildingCollections = buildingCollections,
@@ -153,10 +144,6 @@ class PaymentViewModel @Inject constructor(
     // تحصيل يومي تفصيلي لمستخدم محدد
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * حركات يوم معيّن لمستخدم محدد — لـ Daily Collection الشخصي.
-     * عند showAllClients = false: يعرض فقط حركات المستخدم الحالي.
-     */
     fun getDetailedDailyCollectionsByUser(
         dayStartMillis: Long,
         dayEndMillis: Long,
@@ -186,7 +173,6 @@ class PaymentViewModel @Inject constructor(
                 refundPaymentIds = refundPaymentIds
             )
 
-            // ملاحظة: لا نضيف unpaid overlay لفلتر المستخدم
             result.postValue(buildingCollections)
         }
 
@@ -197,28 +183,15 @@ class PaymentViewModel @Inject constructor(
     // إحصائيات شهرية عامة
     // ─────────────────────────────────────────────────────────────────────────
 
-    data class MonthStats(
-        val month: String,
-        val paidCount: Int,
-        val partiallyPaidCount: Int,
-        val settledCount: Int,
-        val unpaidCount: Int,
-        val totalPaidAmount: Double,
-        val totalUnpaidAmount: Double,
-        val settledAmount: Double
-    )
-
     private val _selectedStatsMonth = MutableStateFlow("")
     val selectedStatsMonth: StateFlow<String> = _selectedStatsMonth
 
-    /** Flow تفاعلي — يتحدث تلقائياً عند أي تغيير في payments أو transactions */
     val monthStats: StateFlow<MonthStats?> = _selectedStatsMonth
         .filter { it.isNotEmpty() }
         .flatMapLatest { month -> buildMonthStatsFlow(month) }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /** Flow تفاعلي — إحصائيات الشهر السابق للمقارنة */
     val previousMonthStats: StateFlow<MonthStats?> = _selectedStatsMonth
         .filter { it.isNotEmpty() }
         .map { calculatePreviousMonth(it) }
@@ -226,11 +199,6 @@ class PaymentViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /**
-     * بناء Flow تفاعلي لإحصائيات شهر معيّن.
-     * يستمع لتغييرات جدولي [payments] و [payment_transactions] معاً
-     * ويُعيد حساب الإحصائيات تلقائياً عند أي تغيير.
-     */
     private fun buildMonthStatsFlow(month: String): Flow<MonthStats> {
         val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
 
@@ -321,14 +289,12 @@ class PaymentViewModel @Inject constructor(
     // Dashboard: آخر الحركات والعملاء الأكثر تأخراً
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Flow تفاعلي: آخر الحركات — يتحدث تلقائياً */
     fun observeRecentTransactions(
         limit: Int = 10
     ): Flow<List<PaymentTransactionDao.DashboardRecentTransaction>> {
         return transactionRepository.observeRecentTransactions(limit)
     }
 
-    /** Flow تفاعلي: العملاء الأكثر تأخراً — يتحدث تلقائياً */
     fun observeTopUnpaidClients(
         month: String,
         limit: Int = 5
@@ -340,10 +306,6 @@ class PaymentViewModel @Inject constructor(
     // Flow تفاعلي: حالة الدفع لكل العملاء (يتحدث تلقائياً)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * نسخة تفاعلية من getAllClientStatusesForMonth — تستمع لتغييرات
-     * جدولي [payments] و [payment_transactions] وتُحدّث الـ UI تلقائياً.
-     */
     fun observeAllClientStatusesForMonth(month: String): Flow<Map<Int, PaymentStatus>> {
         val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
 
@@ -370,18 +332,6 @@ class PaymentViewModel @Inject constructor(
     // ─────────────────────────────────────────────────────────────────────────
     // عدد العملاء غير المدفوعين الإجمالي لشهر معيّن (لكل المستخدمين)
     // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * يحسب عدد العملاء حسب حالة الدفع الفعلية لشهر معيّن.
-     * يُستخدم في شاشة Daily Collection لعرض الإحصائيات العالمية
-     * بغض النظر عن فلتر المستخدم الحالي.
-     */
-    data class GlobalPaymentStatusCounts(
-        val paidCount: Int = 0,
-        val partialCount: Int = 0,
-        val settledCount: Int = 0,
-        val unpaidCount: Int = 0
-    )
 
     fun observeGlobalPaymentStatusCounts(month: String): Flow<GlobalPaymentStatusCounts> {
         val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
@@ -502,10 +452,6 @@ class PaymentViewModel @Inject constructor(
     // الدفع الكامل والجزئي
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * دفع كامل: ينشئ/يضمن وجود [Payment] لهذا الشهر، ويسجل فقط المبلغ المتبقي
-     * للوصول إلى الدفع الكامل، ثم يضبط [isPaid] = true مع تاريخ الدفع.
-     */
     fun markFullPayment(clientId: Int, month: String, amount: Double) = viewModelScope.launch {
         val paymentId   = paymentRepository.getOrCreatePaymentId(clientId, month, amount)
         val alreadyPaid = transactionRepository.getTotalPaidForPayment(paymentId)
@@ -525,10 +471,6 @@ class PaymentViewModel @Inject constructor(
         )
     }
 
-    /**
-     * دفع جزئي: يسجل [PaymentTransaction] بقيمة جزئية، ثم يحسب مجموع المدفوع
-     * ويقرر هل يصبح مدفوعاً بالكامل أم يبقى جزئياً.
-     */
     fun addPartialPayment(
         clientId: Int, month: String, monthAmount: Double, partialAmount: Double
     ) = viewModelScope.launch {
@@ -558,10 +500,6 @@ class PaymentViewModel @Inject constructor(
     // حركة عكسية (استرجاع / رصيد)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * تسجل [PaymentTransaction] بمبلغ سالب.
-     * تُستخدم عند فصل الخدمة قبل نهاية الشهر أو عند رد جزء من المبلغ للعميل.
-     */
     fun addReverseTransaction(
         clientId: Int, month: String, monthAmount: Double,
         refundAmount: Double, reason: String = "Refund"
@@ -587,10 +525,6 @@ class PaymentViewModel @Inject constructor(
     // تعديل مبلغ الاشتراك من شهر معيّن
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * تعديل مبلغ الاشتراك الشهري اعتبارًا من شهر معيّن فما بعد.
-     * لا يلمس الشهور التي عليها حركات.
-     */
     fun applyNewMonthlyPriceFromMonth(
         clientId: Int, fromMonth: String, newAmount: Double
     ) = viewModelScope.launch {
@@ -601,10 +535,6 @@ class PaymentViewModel @Inject constructor(
         )
     }
 
-    /**
-     * تعديل مبلغ الاشتراك اعتبارًا من أول شهر "نظيف" (لا حركات عليه) فما بعد.
-     * مفيد عند تغيير السعر للأشهر المستقبلية دون التأثير على الأشهر الحالية.
-     */
     fun applyNewMonthlyPriceFromNextUnpaidMonth(
         clientId: Int, newAmount: Double
     ) = viewModelScope.launch {
@@ -620,12 +550,6 @@ class PaymentViewModel @Inject constructor(
     // إنشاء دفعات للعميل
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * إنشاء دفعات شهرية للعميل.
-     * الشهر الأول قد يكون بسعر مختلف (مثل 30 ريال)، والباقي بالسعر العادي.
-     *
-     * @param firstMonthAmount إذا كان غير null يُطبَّق على الشهر الأول فقط.
-     */
     fun createPaymentsForClient(
         clientId: Int,
         startMonth: String,
