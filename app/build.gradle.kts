@@ -113,6 +113,9 @@ dependencies {
     // === WorkManager for background polling ===
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    // === UUIDv7 Generator ===
+    implementation("com.github.f4b6a3:uuid-creator:6.0.0")
+
     // === Hilt DI ===
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")
