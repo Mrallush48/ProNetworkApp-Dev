@@ -8,11 +8,16 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import androidx.room.Upsert
 
 @Dao
 interface ClientDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(client: Client): Long
+
+    // === A2: Upsert آمن من CASCADE ===
+    @Upsert
+    suspend fun upsert(client: Client)
 
     @Update
     suspend fun update(client: Client)

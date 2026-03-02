@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import androidx.room.Upsert
 
 @Dao
 interface PaymentDao {
@@ -79,6 +80,10 @@ interface PaymentDao {
     // إضافة دفعة جديدة
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(payment: Payment): Long
+
+    // === A1: Upsert آمن من CASCADE ===
+    @Upsert
+    suspend fun upsert(payment: Payment)
 
     // تحديث دفعة موجودة
     @Update

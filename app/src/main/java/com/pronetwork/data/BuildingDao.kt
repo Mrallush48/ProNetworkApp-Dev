@@ -8,11 +8,16 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import androidx.room.Upsert
 
 @Dao
 interface BuildingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(building: Building): Long
+
+    // === A3: Upsert آمن من CASCADE ===
+    @Upsert
+    suspend fun upsert(building: Building)
 
     @Update
     suspend fun update(building: Building)

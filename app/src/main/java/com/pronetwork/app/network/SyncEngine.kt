@@ -164,8 +164,19 @@ class SyncEngine @Inject constructor(
 
 
     /**
+     * A5: Queue Compaction — يُبقي فقط آخر عملية لكل كيان.
+     * مثال: 5 عمليات UPDATE على payment #7 → تُختصر إلى عملية واحدة.
+     * DELETE يلغي كل العمليات السابقة لنفس الكيان.
+     */
+    private fun compactQueue(entries: List<SyncQueueEntity>): List<SyncQueueEntity> {
+        val grouped = entries.groupBy { "${it.entityType}:${it.entityId}" }
+        return grouped.map { (_, ops) -> ops.last() }
+    }
+
+    /**
      * Push: Upload all pending local operations to the server.
      * Processes acknowledgments to remove successfully synced items.
+     * Uses queue compaction to reduce duplicate operations.
      */
     private suspend fun push(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PUSHING)
@@ -176,11 +187,12 @@ class SyncEngine @Inject constructor(
             return true
         }
 
-        Log.d(TAG, "Push: ${pending.size} operations pending")
+        val compacted = compactQueue(pending)
+        Log.d(TAG, "Push: ${pending.size} pending, ${compacted.size} after compaction")
         var allSuccess = true
 
         // Process in batches
-        pending.chunked(BATCH_SIZE).forEach { batch ->
+        compacted.chunked(BATCH_SIZE).forEach { batch ->
             try {
                 val operations = batch.map { entry ->
                     SyncOperation(
@@ -203,21 +215,26 @@ class SyncEngine @Inject constructor(
                     // Process acknowledgments
                     result?.acknowledgments?.forEach { ack ->
                         if (ack.status == "ok" || ack.status == "conflict_server_wins") {
-                            // Find and remove the matching queue entry
-                            val matchingEntry = batch.find {
+                            // Remove ALL original queue entries for this entity (not just compacted one)
+                            val allOriginal = pending.filter {
                                 it.entityType == ack.entity_type && it.entityId == ack.local_id
                             }
-                            matchingEntry?.let { entry ->
-                                syncQueueDao.remove(entry.id)
-                                Log.d(TAG, "Ack OK: ${ack.entity_type} local=${ack.local_id} -> server=${ack.server_id}")
+                            allOriginal.forEach { original ->
+                                syncQueueDao.remove(original.id)
                             }
+                            Log.d(TAG, "Ack OK: ${ack.entity_type} local=${ack.local_id} -> server=${ack.server_id} (removed ${allOriginal.size} queue entries)")
                         }
                     }
 
                     // If no acknowledgments returned, remove all (backward compat)
                     if (result?.acknowledgments.isNullOrEmpty() && result?.failed == 0) {
                         batch.forEach { entry ->
-                            syncQueueDao.remove(entry.id)
+                            val allOriginal = pending.filter {
+                                it.entityType == entry.entityType && it.entityId == entry.entityId
+                            }
+                            allOriginal.forEach { original ->
+                                syncQueueDao.remove(original.id)
+                            }
                         }
                     }
 
@@ -336,7 +353,7 @@ class SyncEngine @Inject constructor(
 
     /**
      * Apply changes received from the server to the local Room database.
-     * Server wins in case of conflicts (Last-Write-Wins strategy).
+     * Uses @Upsert for CREATE/UPDATE — safe from CASCADE, handles both insert and update.
      * Gson ignores unknown fields (server_id, _checksum) automatically.
      */
     private suspend fun applyServerChanges(data: SyncPullResponse) {
@@ -349,7 +366,7 @@ class SyncEngine @Inject constructor(
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
-                            db.clientDao().insert(client)
+                            db.clientDao().upsert(client)
                             Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
                         }
                     }
@@ -374,7 +391,7 @@ class SyncEngine @Inject constructor(
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val building = gson.fromJson(json, com.pronetwork.app.data.Building::class.java)
-                            db.buildingDao().insert(building)
+                            db.buildingDao().upsert(building)
                             Log.d(TAG, "Applied ${entity.action} building #${entity.id}")
                         }
                     }
@@ -399,7 +416,7 @@ class SyncEngine @Inject constructor(
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
-                            db.paymentDao().insert(payment)
+                            db.paymentDao().upsert(payment)
                             Log.d(TAG, "Applied ${entity.action} payment #${entity.id}")
                         }
                     }
