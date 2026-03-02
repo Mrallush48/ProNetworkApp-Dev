@@ -10,6 +10,7 @@ import androidx.room.Update
 import androidx.room.RoomWarnings
 import com.pronetwork.data.DailySummary
 import kotlinx.coroutines.flow.Flow
+import androidx.room.Upsert
 
 
 @Dao
@@ -18,6 +19,11 @@ interface PaymentTransactionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: PaymentTransaction): Long
+
+    // === Upsert آمن من CASCADE (يتجنب DELETE+INSERT) ===
+    @Upsert
+    suspend fun upsert(transaction: PaymentTransaction)
+
 
     @Update
     suspend fun update(transaction: PaymentTransaction)

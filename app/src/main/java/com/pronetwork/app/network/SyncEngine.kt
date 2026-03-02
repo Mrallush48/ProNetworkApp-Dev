@@ -441,7 +441,7 @@ class SyncEngine @Inject constructor(
                         entity.data?.let { map ->
                             val json = gson.toJson(map)
                             val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
-                            db.paymentTransactionDao().insert(transaction)
+                            db.paymentTransactionDao().upsert(transaction)
                             Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
                         }
                     }
