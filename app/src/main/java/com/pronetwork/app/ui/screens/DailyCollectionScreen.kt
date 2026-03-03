@@ -75,7 +75,7 @@ fun DailyCollectionScreen(
     paymentViewModel: PaymentViewModel = hiltViewModel()
 ) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    var expandedBuildingId by remember { mutableStateOf<Int?>(null) }
+    var expandedBuildingId by remember { mutableStateOf<String?>(null) }
 
     // Compute status breakdown from buildings
     val allClients = dailyCollection?.buildings?.flatMap { it.clients } ?: emptyList()

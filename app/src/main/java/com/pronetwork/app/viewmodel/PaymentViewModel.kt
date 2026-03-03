@@ -306,7 +306,7 @@ class PaymentViewModel @Inject constructor(
     // Flow تفاعلي: حالة الدفع لكل العملاء (يتحدث تلقائياً)
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun observeAllClientStatusesForMonth(month: String): Flow<Map<Int, PaymentStatus>> {
+    fun observeAllClientStatusesForMonth(month: String): Flow<Map<String, PaymentStatus>> {
         val paymentsFlow = paymentRepository.observePaymentsByMonth(month)
 
         return paymentsFlow.flatMapLatest { payments ->
@@ -456,7 +456,8 @@ class PaymentViewModel @Inject constructor(
 
         if (remaining > 0.0) {
             transactionRepository.insert(
-                PaymentTransaction(paymentId = paymentId, amount = remaining, notes = "full payment")
+                PaymentTransaction(paymentId = paymentId, type = "Payment", amount = remaining, notes = "full payment")
+
             )
         }
 
@@ -472,7 +473,8 @@ class PaymentViewModel @Inject constructor(
         val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
 
         transactionRepository.insert(
-            PaymentTransaction(paymentId = paymentId, amount = partialAmount, notes = "partial payment")
+            PaymentTransaction(paymentId = paymentId, type = "Payment", amount = partialAmount, notes = "partial payment")
+
         )
 
         val totalPaid = transactionRepository.getTotalPaidForPayment(paymentId)
@@ -499,7 +501,8 @@ class PaymentViewModel @Inject constructor(
         val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
 
         transactionRepository.insert(
-            PaymentTransaction(paymentId = paymentId, amount = -refundAmount, notes = reason)
+            PaymentTransaction(paymentId = paymentId, type = "Refund", amount = -refundAmount, notes = reason)
+
         )
 
         val newTotalPaid = transactionRepository.getTotalPaidForPayment(paymentId)

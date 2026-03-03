@@ -43,7 +43,7 @@ fun ClientDetailsScreen(
     onTogglePayment: (month: String, monthAmount: Double, shouldPay: Boolean) -> Unit,
     onPartialPaymentRequest: (month: String, monthAmount: Double, partialAmount: Double) -> Unit,
     getMonthTransactions: (String) -> LiveData<List<PaymentTransaction>>,
-    onDeleteTransaction: (Int) -> Unit,
+    onDeleteTransaction: (String) -> Unit,
     onAddReverseTransaction: (month: String, monthAmount: Double, refundAmount: Double, reason: String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -64,7 +64,7 @@ fun ClientDetailsScreen(
     var confirmCancelPaymentMonth by remember { mutableStateOf<String?>(null) }
     var confirmCancelPaymentMonthAmount by remember { mutableStateOf(0.0) }
 
-    var deleteTransactionId by remember { mutableStateOf<Int?>(null) }
+    var deleteTransactionId by remember { mutableStateOf<String?>(null) }
 
     var reverseMonth by remember { mutableStateOf<String?>(null) }
     var reverseAmountText by remember { mutableStateOf("") }
@@ -435,10 +435,7 @@ fun ClientDetailsScreen(
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 transactions.forEach { tx: PaymentTransaction ->
-                                    val dateText = DateFormat.format(
-                                        "yyyy-MM-dd HH:mm",
-                                        tx.date
-                                    ).toString()
+                                    val dateText = DateFormat.format("yyyy-MM-dd HH:mm", tx.timestamp).toString()
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),

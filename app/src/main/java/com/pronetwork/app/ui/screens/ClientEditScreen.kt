@@ -35,7 +35,7 @@ fun ClientEditScreen(
     // --- حالات القوائم المنسدلة ---
 
     // حالة المبنى
-    val initialBuilding = buildingList.find { it.id == (client?.buildingId ?: 0) }
+    val initialBuilding = buildingList.find { it.id == (client?.buildingId ?: "") }
     var selectedBuilding by remember { mutableStateOf(initialBuilding) }
     var buildingExpanded by remember { mutableStateOf(false) }
 
@@ -143,7 +143,7 @@ fun ClientEditScreen(
                             name = name,
                             subscriptionNumber = subscriptionNumber,
                             price = parsedPrice,
-                            buildingId = selectedBuilding?.id ?: 0,
+                            buildingId = selectedBuilding?.id ?: "",
                             startMonth = selectedDate,
                             phone = phone,
                             address = address,

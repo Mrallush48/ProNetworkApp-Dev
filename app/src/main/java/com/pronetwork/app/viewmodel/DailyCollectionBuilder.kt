@@ -180,7 +180,7 @@ class DailyCollectionBuilder @Inject constructor(
         val allBuildingsMap = db.buildingDao().getAllBuildingsDirect().associate { it.id to it.name }
 
         val unpaidByBuilding = filteredNonTodayPayments.groupBy { payment ->
-            unpaidClientsMap[payment.clientId]?.buildingId ?: -1
+            unpaidClientsMap[payment.clientId]?.buildingId ?: ""
         }
 
         // ── دالة مساعدة: تحويل Payment → DailyClientCollection ─────────
@@ -229,7 +229,7 @@ class DailyCollectionBuilder @Inject constructor(
 
         // مباني جديدة تحتوي عملاء غير مدفوعين فقط
         unpaidByBuilding
-            .filterKeys { it !in existingBuildingIds && it != -1 }
+            .filterKeys { it !in existingBuildingIds && it.isNotBlank() }
             .forEach { (buildingId, payments) ->
                 val unpaidClients = payments
                     .mapNotNull { buildUnpaidClientCollection(it) }

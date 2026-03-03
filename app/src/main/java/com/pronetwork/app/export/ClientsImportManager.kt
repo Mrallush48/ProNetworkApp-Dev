@@ -111,7 +111,7 @@ class ClientsImportManager(
                         newBuildingsCount++
                     }
 
-                    val buildingId = building?.id ?: 0
+                    val buildingId = building?.id ?: ""
 
                     newClients.add(
                         Client(

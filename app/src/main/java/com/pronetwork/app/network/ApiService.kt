@@ -42,7 +42,7 @@ data class ApprovalRequestResponse(
     val id: Int,
     val requester_id: Int,
     val request_type: String,
-    val target_id: Int?,
+    val target_id: String?,
     val target_name: String?,
     val reason: String?,
     val status: String,
