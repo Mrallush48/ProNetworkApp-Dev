@@ -33,7 +33,7 @@ data class UserResponse(
 
 data class ApprovalRequestCreate(
     val request_type: String,
-    val target_id: Int? = null,
+    val target_id: String? = null,
     val target_name: String? = null,
     val reason: String? = null
 )
@@ -65,16 +65,18 @@ data class UpdateUserRequest(
 )
 
 // === Sync Models ===
+
 data class SyncPushRequest(
     val operations: List<SyncOperation>
 )
 
 data class SyncOperation(
     val entity_type: String,
-    val entity_id: Int,
+    val entity_id: String,
     val action: String,
     val payload: String,
-    val client_timestamp: String
+    val client_timestamp: String,
+    val idempotency_key: String = ""
 )
 
 data class SyncPushResponse(
@@ -86,8 +88,8 @@ data class SyncPushResponse(
 
 data class SyncPushAck(
     val entity_type: String,
-    val local_id: Int,
-    val server_id: Int,
+    val local_id: String,
+    val server_id: String,
     val action: String,
     val status: String = "ok"
 )
@@ -102,9 +104,9 @@ data class SyncPullResponse(
 )
 
 data class SyncEntity(
-    val id: Int,
+    val id: String,
     val action: String,
-    val data: Map<String, Any?>? = null
+    val data: Map<String, Any>? = null
 )
 
 // === API Interface ===

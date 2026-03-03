@@ -6,6 +6,7 @@ import android.util.Log
 import com.pronetwork.app.data.ClientDatabase
 import com.pronetwork.app.data.SyncQueueDao
 import com.pronetwork.app.data.SyncQueueEntity
+import com.pronetwork.util.generateId
 import com.google.gson.GsonBuilder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,6 @@ class SyncEngine @Inject constructor(
     private val syncQueueDao: SyncQueueDao,
     private val authManager: AuthManager
 ) {
-
     companion object {
         private const val TAG = "SyncEngine"
         private const val PREFS_NAME = "sync_prefs"
@@ -45,11 +45,11 @@ class SyncEngine @Inject constructor(
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
 
     enum class SyncStatus {
-        IDLE,       // No sync in progress
-        PUSHING,    // Uploading local changes
-        PULLING,    // Downloading server changes
-        SUCCESS,    // Last sync completed successfully
-        ERROR       // Last sync failed
+        IDLE,
+        PUSHING,
+        PULLING,
+        SUCCESS,
+        ERROR
     }
 
     data class SyncState(
@@ -58,10 +58,10 @@ class SyncEngine @Inject constructor(
         val lastSyncTime: String? = null,
         val errorMessage: String? = null
     )
+
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    // Gson that ignores unknown fields (server_id, _checksum, etc.)
     private val gson = GsonBuilder()
         .setLenient()
         .create()
@@ -72,15 +72,22 @@ class SyncEngine @Inject constructor(
 
     /**
      * Enqueue a local operation for later sync.
-     * Called whenever the app creates/updates/deletes an entity.
+     * Validates entityId is not empty — rejects invalid operations.
+     * Generates idempotencyKey to prevent duplicate processing on server.
      */
-    suspend fun enqueue(entityType: String, entityId: Int, action: String, payload: String) {
+    suspend fun enqueue(entityType: String, entityId: String, action: String, payload: String) {
+        if (entityId.isBlank()) {
+            Log.e(TAG, "REJECTED: enqueue with blank entityId for $action $entityType")
+            return
+        }
+
         val entry = SyncQueueEntity(
             entityType = entityType,
             entityId = entityId,
-            action = action,
+            operation = action,
             payload = payload,
-            createdAt = utcFormat.format(System.currentTimeMillis())
+            idempotencyKey = generateId(),
+            createdAt = System.currentTimeMillis()
         )
         syncQueueDao.enqueue(entry)
         updatePendingCount()
@@ -89,7 +96,6 @@ class SyncEngine @Inject constructor(
 
     /**
      * Full sync cycle with automatic token management.
-     * Preferred entry point — gets valid token automatically.
      */
     suspend fun sync(): Boolean {
         val token = authManager.getValidAccessToken()
@@ -106,7 +112,6 @@ class SyncEngine @Inject constructor(
 
     /**
      * Full sync cycle with explicit token (used by SyncWorker/ProNetworkApp).
-     * Includes auto-retry with token refresh on 401.
      */
     suspend fun sync(token: String): Boolean {
         return syncWithToken(token)
@@ -114,16 +119,13 @@ class SyncEngine @Inject constructor(
 
     /**
      * Internal sync implementation with 401 auto-retry.
-     * On first 401 → refreshes token → retries once.
      */
     private suspend fun syncWithToken(token: String): Boolean {
         Log.i(TAG, "=== SYNC STARTED ===")
 
-        // Step 1: Push local changes to server
         var currentToken = token
         var pushSuccess = push(currentToken)
 
-        // If push got 401 → refresh token and retry
         if (!pushSuccess && lastHttpCode == 401) {
             Log.i(TAG, "Push got 401 — refreshing token and retrying")
             val newToken = authManager.refreshAccessToken()
@@ -135,10 +137,8 @@ class SyncEngine @Inject constructor(
             }
         }
 
-        // Step 2: Pull server changes (even if push had partial failures)
         var pullSuccess = pull(currentToken)
 
-        // If pull got 401 → refresh token and retry
         if (!pullSuccess && lastHttpCode == 401) {
             Log.i(TAG, "Pull got 401 — refreshing token and retrying")
             val newToken = authManager.refreshAccessToken()
@@ -153,34 +153,53 @@ class SyncEngine @Inject constructor(
         val success = pushSuccess && pullSuccess
         _syncState.value = _syncState.value.copy(
             status = if (success) SyncStatus.SUCCESS else SyncStatus.ERROR,
-            lastSyncTime = if (success) utcFormat.format(System.currentTimeMillis())
-            else _syncState.value.lastSyncTime,
+            lastSyncTime = if (success) utcFormat.format(System.currentTimeMillis()) else _syncState.value.lastSyncTime,
             errorMessage = if (success) null else _syncState.value.errorMessage
         )
-
         Log.i(TAG, "=== SYNC ${if (success) "SUCCESS" else "PARTIAL FAILURE"} ===")
         return success
     }
 
-
     /**
-     * A5: Queue Compaction — يُبقي فقط آخر عملية لكل كيان.
-     * مثال: 5 عمليات UPDATE على payment #7 → تُختصر إلى عملية واحدة.
-     * DELETE يلغي كل العمليات السابقة لنفس الكيان.
+     * Smart Queue Compaction — reduces redundant operations per entity.
+     *
+     * Rules:
+     * - CREATE → DELETE = null (cancel both — entity never existed on server)
+     * - CREATE → UPDATE(s) = single CREATE with latest payload
+     * - Multiple UPDATEs = single UPDATE with latest payload
+     * - DELETE after anything = DELETE only
      */
     private fun compactQueue(entries: List<SyncQueueEntity>): List<SyncQueueEntity> {
         val grouped = entries.groupBy { "${it.entityType}:${it.entityId}" }
-        return grouped.map { (_, ops) -> ops.last() }
+        return grouped.mapNotNull { (_, ops) ->
+            val sorted = ops.sortedBy { it.createdAt }
+            val first = sorted.first()
+            val last = sorted.last()
+
+            when {
+                // CREATE followed by DELETE → cancel both
+                first.operation == "CREATE" && last.operation == "DELETE" -> null
+
+                // CREATE followed by UPDATE(s) → single CREATE with latest payload
+                first.operation == "CREATE" && last.operation == "UPDATE" ->
+                    first.copy(payload = last.payload, createdAt = last.createdAt)
+
+                // Any sequence ending with DELETE → just DELETE
+                last.operation == "DELETE" -> last
+
+                // Multiple UPDATEs or single operation → keep latest
+                else -> last
+            }
+        }
     }
 
     /**
      * Push: Upload all pending local operations to the server.
-     * Processes acknowledgments to remove successfully synced items.
-     * Uses queue compaction to reduce duplicate operations.
      */
     private suspend fun push(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PUSHING)
         lastHttpCode = 0
+
         val pending = syncQueueDao.getPendingWithRetryLimit(MAX_RETRIES)
         if (pending.isEmpty()) {
             Log.d(TAG, "Push: Nothing to push")
@@ -189,18 +208,38 @@ class SyncEngine @Inject constructor(
 
         val compacted = compactQueue(pending)
         Log.d(TAG, "Push: ${pending.size} pending, ${compacted.size} after compaction")
+
+        // Remove cancelled operations (CREATE→DELETE = null)
+        val cancelledEntityKeys = pending
+            .map { "${it.entityType}:${it.entityId}" }
+            .toSet()
+            .minus(compacted.map { "${it.entityType}:${it.entityId}" }.toSet())
+
+        cancelledEntityKeys.forEach { key ->
+            val (type, id) = key.split(":", limit = 2)
+            pending.filter { it.entityType == type && it.entityId == id }
+                .forEach { syncQueueDao.remove(it.id) }
+            Log.d(TAG, "Compaction: cancelled $key (CREATE→DELETE)")
+        }
+
+        if (compacted.isEmpty()) {
+            Log.d(TAG, "Push: All operations cancelled by compaction")
+            updatePendingCount()
+            return true
+        }
+
         var allSuccess = true
 
-        // Process in batches
         compacted.chunked(BATCH_SIZE).forEach { batch ->
             try {
                 val operations = batch.map { entry ->
                     SyncOperation(
                         entity_type = entry.entityType,
                         entity_id = entry.entityId,
-                        action = entry.action,
+                        action = entry.operation,
                         payload = entry.payload,
-                        client_timestamp = entry.createdAt
+                        client_timestamp = utcFormat.format(entry.createdAt),
+                        idempotency_key = entry.idempotencyKey
                     )
                 }
 
@@ -212,21 +251,19 @@ class SyncEngine @Inject constructor(
                     val result = response.body()
                     Log.d(TAG, "Push batch: ${result?.processed} processed, ${result?.failed} failed")
 
-                    // Process acknowledgments
                     result?.acknowledgments?.forEach { ack ->
                         if (ack.status == "ok" || ack.status == "conflict_server_wins") {
-                            // Remove ALL original queue entries for this entity (not just compacted one)
                             val allOriginal = pending.filter {
-                                it.entityType == ack.entity_type && it.entityId == ack.local_id
+                                it.entityType == ack.entity_type &&
+                                        it.entityId == ack.local_id
                             }
                             allOriginal.forEach { original ->
                                 syncQueueDao.remove(original.id)
                             }
-                            Log.d(TAG, "Ack OK: ${ack.entity_type} local=${ack.local_id} -> server=${ack.server_id} (removed ${allOriginal.size} queue entries)")
+                            Log.d(TAG, "Ack OK: ${ack.entity_type} id=${ack.local_id} (removed ${allOriginal.size} queue entries)")
                         }
                     }
 
-                    // If no acknowledgments returned, remove all (backward compat)
                     if (result?.acknowledgments.isNullOrEmpty() && result?.failed == 0) {
                         batch.forEach { entry ->
                             val allOriginal = pending.filter {
@@ -238,7 +275,6 @@ class SyncEngine @Inject constructor(
                         }
                     }
 
-                    // Log errors if any
                     result?.errors?.forEach { error ->
                         Log.w(TAG, "Push error: $error")
                     }
@@ -246,7 +282,6 @@ class SyncEngine @Inject constructor(
                     if ((result?.failed ?: 0) > 0) {
                         allSuccess = false
                     }
-
                 } else if (response.code() == 401) {
                     Log.w(TAG, "Push: authentication failed (401)")
                     lastHttpCode = 401
@@ -257,14 +292,14 @@ class SyncEngine @Inject constructor(
                 } else {
                     Log.w(TAG, "Push batch failed: ${response.code()}")
                     batch.forEach { entry ->
-                        syncQueueDao.incrementRetry(entry.id, "HTTP ${response.code()}")
+                        syncQueueDao.incrementRetry(entry.id)
                     }
                     allSuccess = false
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Push batch error: ${e.message}")
                 batch.forEach { entry ->
-                    syncQueueDao.incrementRetry(entry.id, e.message)
+                    syncQueueDao.incrementRetry(entry.id)
                 }
                 allSuccess = false
             }
@@ -276,8 +311,8 @@ class SyncEngine @Inject constructor(
 
     /**
      * Pull: Download changes from server since last sync.
-     * Uses delta sync — only fetches what changed.
-     * Supports pagination via has_more flag.
+     * Applies changes in correct order: CREATEs/UPDATEs first (parent→child),
+     * then DELETEs in reverse order (child→parent) to respect FK constraints.
      */
     private suspend fun pull(token: String): Boolean {
         _syncState.value = _syncState.value.copy(status = SyncStatus.PULLING)
@@ -286,7 +321,7 @@ class SyncEngine @Inject constructor(
         var currentSince = prefs.getString(KEY_LAST_SYNC, null)
         var totalApplied = 0
         var pageCount = 0
-        val maxPages = 50 // Safety limit to prevent infinite loops
+        val maxPages = 50
 
         try {
             while (pageCount < maxPages) {
@@ -301,24 +336,20 @@ class SyncEngine @Inject constructor(
                     val pullData = response.body()
                     if (pullData != null) {
                         applyServerChanges(pullData)
-
-                        val pageTotal = (pullData.clients?.size ?: 0) +
-                                (pullData.buildings?.size ?: 0) +
-                                (pullData.payments?.size ?: 0) +
-                                (pullData.payment_transactions?.size ?: 0)
+                        val pageTotal =
+                            (pullData.clients?.size ?: 0) +
+                                    (pullData.buildings?.size ?: 0) +
+                                    (pullData.payments?.size ?: 0) +
+                                    (pullData.payment_transactions?.size ?: 0)
                         totalApplied += pageTotal
 
-                        // Save server timestamp for next page/sync
                         prefs.edit()
                             .putString(KEY_LAST_SYNC, pullData.server_timestamp)
                             .apply()
                         currentSince = pullData.server_timestamp
 
                         Log.d(TAG, "Pull page $pageCount: applied $pageTotal changes, has_more=${pullData.has_more}")
-
-                        if (!pullData.has_more) {
-                            break // All changes fetched
-                        }
+                        if (!pullData.has_more) break
                     } else {
                         break
                     }
@@ -328,22 +359,17 @@ class SyncEngine @Inject constructor(
                 } else if (response.code() == 401) {
                     Log.w(TAG, "Pull: authentication failed (401)")
                     lastHttpCode = 401
-                    _syncState.value = _syncState.value.copy(
-                        errorMessage = "Authentication expired"
-                    )
+                    _syncState.value = _syncState.value.copy(errorMessage = "Authentication expired")
                     return false
                 } else {
                     Log.w(TAG, "Pull failed: ${response.code()}")
-                    _syncState.value = _syncState.value.copy(
-                        errorMessage = "Pull failed: HTTP ${response.code()}"
-                    )
+                    _syncState.value = _syncState.value.copy(errorMessage = "Pull failed: HTTP ${response.code()}")
                     return false
                 }
             }
 
             Log.d(TAG, "Pull complete: $totalApplied total changes in $pageCount pages")
             return true
-
         } catch (e: Exception) {
             Log.e(TAG, "Pull error: ${e.message}")
             _syncState.value = _syncState.value.copy(errorMessage = e.message)
@@ -352,106 +378,118 @@ class SyncEngine @Inject constructor(
     }
 
     /**
-     * Apply changes received from the server to the local Room database.
-     * Uses @Upsert for CREATE/UPDATE — safe from CASCADE, handles both insert and update.
-     * Gson ignores unknown fields (server_id, _checksum) automatically.
+     * Apply changes from server with correct ordering:
+     * 1. CREATEs/UPDATEs: buildings → clients → payments → transactions (parent-first)
+     * 2. DELETEs: transactions → payments → clients → buildings (child-first)
+     * This prevents FK constraint violations.
      */
     private suspend fun applyServerChanges(data: SyncPullResponse) {
+        // === Phase 1: CREATEs and UPDATEs (parent → child) ===
 
-        // === Clients ===
-        data.clients?.forEach { entity ->
+        // 1. Buildings
+        data.buildings?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
             try {
-                when (entity.action.uppercase()) {
-                    "CREATE", "UPDATE" -> {
-                        entity.data?.let { map ->
-                            val json = gson.toJson(map)
-                            val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
-                            db.clientDao().upsert(client)
-                            Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
-                        }
-                    }
-                    "DELETE" -> {
-                        val existing = db.clientDao().getClientById(entity.id)
-                        if (existing != null) {
-                            db.clientDao().delete(existing)
-                            Log.d(TAG, "Applied DELETE client #${entity.id}")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to apply client #${entity.id}: ${e.message}")
-            }
-        }
-
-        // === Buildings ===
-        data.buildings?.forEach { entity ->
-            try {
-                when (entity.action.uppercase()) {
-                    "CREATE", "UPDATE" -> {
-                        entity.data?.let { map ->
-                            val json = gson.toJson(map)
-                            val building = gson.fromJson(json, com.pronetwork.app.data.Building::class.java)
-                            db.buildingDao().upsert(building)
-                            Log.d(TAG, "Applied ${entity.action} building #${entity.id}")
-                        }
-                    }
-                    "DELETE" -> {
-                        val existing = db.buildingDao().getBuildingById(entity.id)
-                        if (existing != null) {
-                            db.buildingDao().delete(existing)
-                            Log.d(TAG, "Applied DELETE building #${entity.id}")
-                        }
-                    }
+                entity.data?.let { map ->
+                    val json = gson.toJson(map)
+                    val building = gson.fromJson(json, com.pronetwork.app.data.Building::class.java)
+                    db.buildingDao().upsert(building)
+                    Log.d(TAG, "Applied ${entity.action} building #${entity.id}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply building #${entity.id}: ${e.message}")
             }
         }
 
-        // === Payments ===
-        data.payments?.forEach { entity ->
+        // 2. Clients
+        data.clients?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
             try {
-                when (entity.action.uppercase()) {
-                    "CREATE", "UPDATE" -> {
-                        entity.data?.let { map ->
-                            val json = gson.toJson(map)
-                            val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
-                            db.paymentDao().upsert(payment)
-                            Log.d(TAG, "Applied ${entity.action} payment #${entity.id}")
-                        }
-                    }
-                    "DELETE" -> {
-                        val existing = db.paymentDao().getPaymentById(entity.id)
-                        if (existing != null) {
-                            db.paymentDao().delete(existing)
-                            Log.d(TAG, "Applied DELETE payment #${entity.id}")
-                        }
-                    }
+                entity.data?.let { map ->
+                    val json = gson.toJson(map)
+                    val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
+                    db.clientDao().upsert(client)
+                    Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply client #${entity.id}: ${e.message}")
+            }
+        }
+
+        // 3. Payments
+        data.payments?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
+            try {
+                entity.data?.let { map ->
+                    val json = gson.toJson(map)
+                    val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
+                    db.paymentDao().upsert(payment)
+                    Log.d(TAG, "Applied ${entity.action} payment #${entity.id}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply payment #${entity.id}: ${e.message}")
             }
         }
 
-        // === Payment Transactions ===
-        data.payment_transactions?.forEach { entity ->
+        // 4. Payment Transactions
+        data.payment_transactions?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
             try {
-                when (entity.action.uppercase()) {
-                    "CREATE", "UPDATE" -> {
-                        entity.data?.let { map ->
-                            val json = gson.toJson(map)
-                            val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
-                            db.paymentTransactionDao().upsert(transaction)
-                            Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
-                        }
-                    }
-                    "DELETE" -> {
-                        db.paymentTransactionDao().deleteTransactionById(entity.id)
-                        Log.d(TAG, "Applied DELETE transaction #${entity.id}")
-                    }
+                entity.data?.let { map ->
+                    val json = gson.toJson(map)
+                    val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
+                    db.paymentTransactionDao().upsert(transaction)
+                    Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply transaction #${entity.id}: ${e.message}")
+            }
+        }
+
+        // === Phase 2: DELETEs (child → parent) ===
+
+        // 1. Payment Transactions (child-most)
+        data.payment_transactions?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            try {
+                db.paymentTransactionDao().deleteTransactionById(entity.id)
+                Log.d(TAG, "Applied DELETE transaction #${entity.id}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete transaction #${entity.id}: ${e.message}")
+            }
+        }
+
+        // 2. Payments
+        data.payments?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            try {
+                val existing = db.paymentDao().getPaymentById(entity.id)
+                if (existing != null) {
+                    db.paymentDao().delete(existing)
+                    Log.d(TAG, "Applied DELETE payment #${entity.id}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete payment #${entity.id}: ${e.message}")
+            }
+        }
+
+        // 3. Clients
+        data.clients?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            try {
+                val existing = db.clientDao().getClientById(entity.id)
+                if (existing != null) {
+                    db.clientDao().delete(existing)
+                    Log.d(TAG, "Applied DELETE client #${entity.id}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete client #${entity.id}: ${e.message}")
+            }
+        }
+
+        // 4. Buildings (parent-most)
+        data.buildings?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            try {
+                val existing = db.buildingDao().getBuildingById(entity.id)
+                if (existing != null) {
+                    db.buildingDao().delete(existing)
+                    Log.d(TAG, "Applied DELETE building #${entity.id}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete building #${entity.id}: ${e.message}")
             }
         }
 
@@ -463,17 +501,11 @@ class SyncEngine @Inject constructor(
                 "payments=$paymentCount, transactions=$transactionCount")
     }
 
-    /**
-     * Update the pending count in the sync state.
-     */
     private suspend fun updatePendingCount() {
         val count = syncQueueDao.getPendingCount()
         _syncState.value = _syncState.value.copy(pendingCount = count)
     }
 
-    /**
-     * Reset sync state (used after logout or full re-sync).
-     */
     suspend fun reset() {
         syncQueueDao.clearAll()
         prefs.edit().remove(KEY_LAST_SYNC).apply()
@@ -481,9 +513,6 @@ class SyncEngine @Inject constructor(
         Log.i(TAG, "Sync state reset")
     }
 
-    /**
-     * Get last sync timestamp.
-     */
     fun getLastSyncTimestamp(): String? {
         return prefs.getString(KEY_LAST_SYNC, null)
     }
