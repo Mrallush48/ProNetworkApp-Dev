@@ -33,12 +33,12 @@ fun ExportDialog(
     ) -> Unit,
     showBuildingFilter: Boolean = true,
     showPackageFilter: Boolean = true,
-    buildings: List<Pair<Int, String>> = emptyList(),
+    buildings: List<Pair<String, String>> = emptyList(),
     packages: List<String> = emptyList()
 ) {
     var selectedType by remember { mutableStateOf(ExportType.SUMMARY) }
     var selectedPeriod by remember { mutableStateOf(ExportPeriod.MONTHLY) }
-    var selectedBuilding by remember { mutableStateOf<Int?>(null) }
+    var selectedBuilding by remember { mutableStateOf<String?>(null) }
     var selectedPackage by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(

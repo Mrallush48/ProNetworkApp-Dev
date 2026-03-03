@@ -67,7 +67,7 @@ enum class PaymentReportFilter {
 fun PaymentExportDialog(
     monthOptions: List<String>,
     selectedMonth: String,
-    buildings: List<Pair<Int, String>>,
+    buildings: List<Pair<String, String>>,
     packages: List<String>,
     onDismiss: () -> Unit,
     onExport: (
@@ -90,7 +90,7 @@ fun PaymentExportDialog(
     var endMonth by remember { mutableStateOf(selectedMonth) }
     var endMonthDropdownExpanded by remember { mutableStateOf(false) }
 
-    var buildingFilter by remember { mutableStateOf<Int?>(null) }
+    var buildingFilter by remember { mutableStateOf<String?>(null) }
     var buildingDropdownExpanded by remember { mutableStateOf(false) }
 
     var packageFilter by remember { mutableStateOf<String?>(null) }

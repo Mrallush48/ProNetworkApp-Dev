@@ -625,7 +625,7 @@ private fun QuickActionsCard(
 private fun NeedsAttentionCard(
     topUnpaidClients: List<UnpaidClientInfo>,
     currencyFormat: NumberFormat,
-    onClientClick: (Int) -> Unit,
+    onClientClick: (String) -> Unit,
     onViewAll: () -> Unit
 ) {
     Card(

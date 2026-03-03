@@ -363,7 +363,7 @@ class PaymentViewModel @Inject constructor(
     // استعلامات أساسية
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun getPaymentLive(clientId: String, month: String): LiveData<Payment?> =
+    fun getPaymentLive(clientId: String, month: String): LiveData<Payment> =
         paymentRepository.getPaymentLive(clientId, month)
 
     fun getClientPayments(clientId: String): LiveData<List<Payment>> =
@@ -378,10 +378,10 @@ class PaymentViewModel @Inject constructor(
     fun getUnpaidCountByMonth(month: String): LiveData<Int> =
         paymentRepository.getUnpaidCountByMonth(month)
 
-    fun getTotalPaidAmountByMonth(month: String): LiveData<Double?> =
+    fun getTotalPaidAmountByMonth(month: String): LiveData<Double> =
         paymentRepository.getTotalPaidAmountByMonth(month)
 
-    fun getTotalUnpaidAmountByMonth(month: String): LiveData<Double?> =
+    fun getTotalUnpaidAmountByMonth(month: String): LiveData<Double> =
         paymentRepository.getTotalUnpaidAmountByMonth(month)
 
     // ─────────────────────────────────────────────────────────────────────────

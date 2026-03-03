@@ -47,8 +47,8 @@ class DailyCollectionBuilder @Inject constructor(
      */
     fun buildFromTransactions(
         rawTransactions: List<PaymentTransactionDao.DailyDetailedTransaction>,
-        allTotalsPaidMap: Map<Int, Double>,
-        refundPaymentIds: Set<Int>
+        allTotalsPaidMap: Map<String, Double>,
+        refundPaymentIds: Set<String>
     ): List<DailyBuildingDetailedUi> {
         val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
 
@@ -136,7 +136,7 @@ class DailyCollectionBuilder @Inject constructor(
     suspend fun overlayUnpaidClients(
         buildingCollections: List<DailyBuildingDetailedUi>,
         month: String,
-        paidClientIds: Set<Int>
+        paidClientIds: Set<String>
     ): List<DailyBuildingDetailedUi> {
         // ── جلب كل الدفعات للشهر وتحديد غير المدفوعين ──────────────────
         val allPaymentsForMonth = paymentRepository.getPaymentsByMonthDirect(month)
