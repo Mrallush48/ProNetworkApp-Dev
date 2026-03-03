@@ -48,7 +48,7 @@ data class RecentTransaction(
 )
 
 data class UnpaidClientInfo(
-    val clientId: Int,
+    val clientId: String,
     val clientName: String,
     val buildingName: String,
     val monthlyAmount: Double,
@@ -71,7 +71,7 @@ fun DashboardScreen(
     onNavigateToDaily: () -> Unit,
     onNavigateToClients: () -> Unit,
     onNavigateToStats: () -> Unit,
-    onClientClick: (Int) -> Unit,
+    onClientClick: (String) -> Unit,
     connectivityStatus: com.pronetwork.app.network.ConnectivityObserver.Status =
         com.pronetwork.app.network.ConnectivityObserver.Status.UNAVAILABLE,
     syncState: SyncEngine.SyncState = SyncEngine.SyncState()

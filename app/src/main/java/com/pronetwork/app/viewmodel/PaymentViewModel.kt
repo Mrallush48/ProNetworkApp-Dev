@@ -47,7 +47,7 @@ class PaymentViewModel @Inject constructor(
     // Flow تفاعلي: بيانات عرض حالة الدفع لكل شهر لعميل واحد
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun observeClientMonthPaymentsUi(clientId: Int): Flow<List<ClientMonthPaymentUi>> {
+    fun observeClientMonthPaymentsUi(clientId: String): Flow<List<ClientMonthPaymentUi>> {
         val paymentsFlow = paymentRepository.observeClientPayments(clientId)
 
         return paymentsFlow.flatMapLatest { payments ->
@@ -363,10 +363,10 @@ class PaymentViewModel @Inject constructor(
     // استعلامات أساسية
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun getPaymentLive(clientId: Int, month: String): LiveData<Payment?> =
+    fun getPaymentLive(clientId: String, month: String): LiveData<Payment?> =
         paymentRepository.getPaymentLive(clientId, month)
 
-    fun getClientPayments(clientId: Int): LiveData<List<Payment>> =
+    fun getClientPayments(clientId: String): LiveData<List<Payment>> =
         paymentRepository.getClientPayments(clientId)
 
     fun getPaymentsByMonth(month: String): LiveData<List<Payment>> =
@@ -397,10 +397,10 @@ class PaymentViewModel @Inject constructor(
     fun delete(payment: Payment) =
         viewModelScope.launch { paymentRepository.delete(payment) }
 
-    fun deleteClientPayments(clientId: Int) =
+    fun deleteClientPayments(clientId: String) =
         viewModelScope.launch { paymentRepository.deleteClientPayments(clientId) }
 
-    fun deletePayment(clientId: Int, month: String) =
+    fun deletePayment(clientId: String, month: String) =
         viewModelScope.launch { paymentRepository.deletePayment(clientId, month) }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -408,14 +408,9 @@ class PaymentViewModel @Inject constructor(
     // ─────────────────────────────────────────────────────────────────────────
 
     @Suppress("unused")
-    private suspend fun getPaymentIdForMonth(
-        clientId: Int, month: String, monthAmount: Double
-    ): Int = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
+    private suspend fun getPaymentIdForMonth(clientId: String, month: String, monthAmount: Double): String = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
 
-    fun getTransactionsForClientMonth(
-        clientId: Int,
-        month: String
-    ): LiveData<List<PaymentTransaction>> {
+    fun getTransactionsForClientMonth(clientId: String, month: String): LiveData<List<PaymentTransaction>> {
         val result = MutableLiveData<List<PaymentTransaction>>()
         viewModelScope.launch {
             val payment = paymentRepository.getPayment(clientId, month)
@@ -431,7 +426,7 @@ class PaymentViewModel @Inject constructor(
     // حذف حركة فردية
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun deleteTransaction(transactionId: Int) = viewModelScope.launch {
+    fun deleteTransaction(transactionId: String) = viewModelScope.launch {
         val paymentId = transactionRepository.getPaymentIdByTransactionId(transactionId)
             ?: return@launch
         transactionRepository.deleteTransactionById(transactionId)
@@ -454,7 +449,7 @@ class PaymentViewModel @Inject constructor(
     // الدفع الكامل والجزئي
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun markFullPayment(clientId: Int, month: String, amount: Double) = viewModelScope.launch {
+    fun markFullPayment(clientId: String, month: String, amount: Double) = viewModelScope.launch {
         val paymentId   = paymentRepository.getOrCreatePaymentId(clientId, month, amount)
         val alreadyPaid = transactionRepository.getTotalPaidForPayment(paymentId)
         val remaining   = (amount - alreadyPaid).coerceAtLeast(0.0)
@@ -473,9 +468,7 @@ class PaymentViewModel @Inject constructor(
         )
     }
 
-    fun addPartialPayment(
-        clientId: Int, month: String, monthAmount: Double, partialAmount: Double
-    ) = viewModelScope.launch {
+    fun addPartialPayment(clientId: String, month: String, monthAmount: Double, partialAmount: Double) = viewModelScope.launch {
         val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
 
         transactionRepository.insert(
@@ -502,10 +495,7 @@ class PaymentViewModel @Inject constructor(
     // حركة عكسية (استرجاع / رصيد)
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun addReverseTransaction(
-        clientId: Int, month: String, monthAmount: Double,
-        refundAmount: Double, reason: String = "Refund"
-    ) = viewModelScope.launch {
+    fun addReverseTransaction(clientId: String, month: String, monthAmount: Double, refundAmount: Double, reason: String = "Refund") = viewModelScope.launch {
         val paymentId = paymentRepository.getOrCreatePaymentId(clientId, month, monthAmount)
 
         transactionRepository.insert(
@@ -527,9 +517,7 @@ class PaymentViewModel @Inject constructor(
     // تعديل مبلغ الاشتراك من شهر معيّن
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun applyNewMonthlyPriceFromMonth(
-        clientId: Int, fromMonth: String, newAmount: Double
-    ) = viewModelScope.launch {
+    fun applyNewMonthlyPriceFromMonth(clientId: String, fromMonth: String, newAmount: Double) = viewModelScope.launch {
         paymentRepository.updateFutureUnpaidPaymentsAmount(
             clientId  = clientId,
             fromMonth = fromMonth,
@@ -537,9 +525,7 @@ class PaymentViewModel @Inject constructor(
         )
     }
 
-    fun applyNewMonthlyPriceFromNextUnpaidMonth(
-        clientId: Int, newAmount: Double
-    ) = viewModelScope.launch {
+    fun applyNewMonthlyPriceFromNextUnpaidMonth(clientId: String, newAmount: Double) = viewModelScope.launch {
         val fromMonth = paymentRepository.getFirstUnpaidMonthForClient(clientId) ?: return@launch
         paymentRepository.updateFutureUnpaidPaymentsAmount(
             clientId  = clientId,
@@ -552,14 +538,7 @@ class PaymentViewModel @Inject constructor(
     // إنشاء دفعات للعميل
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun createPaymentsForClient(
-        clientId: Int,
-        startMonth: String,
-        endMonth: String?,
-        amount: Double,
-        monthOptions: List<String>,
-        firstMonthAmount: Double? = null
-    ) = viewModelScope.launch {
+    fun createPaymentsForClient(clientId: String, startMonth: String, endMonth: String?, amount: Double, monthOptions: List<String>, firstMonthAmount: Double? = null) = viewModelScope.launch {
         val months = monthOptions
             .filter { it >= startMonth && (endMonth == null || it < endMonth) }
             .sorted()
@@ -587,20 +566,17 @@ class PaymentViewModel @Inject constructor(
     // ─────────────────────────────────────────────────────────────────────────
 
     @Deprecated("استخدم markFullPayment بدلاً من هذه الدالة", ReplaceWith("markFullPayment(clientId, month, amount)"))
-    fun markAsPaid(clientId: Int, month: String, amount: Double) = viewModelScope.launch {
+    fun markAsPaid(clientId: String, month: String, amount: Double) = viewModelScope.launch {
         markFullPayment(clientId, month, amount)
     }
 
-    fun markAsUnpaid(clientId: Int, month: String) = viewModelScope.launch {
+    fun markAsUnpaid(clientId: String, month: String) = viewModelScope.launch {
         val payment = paymentRepository.getPayment(clientId, month) ?: return@launch
         transactionRepository.deleteTransactionsForPayment(payment.id)
         paymentRepository.update(payment.copy(isPaid = false, paymentDate = null))
     }
 
-    fun createOrUpdatePayment(
-        clientId: Int, month: String, amount: Double,
-        isPaid: Boolean = false, paymentDate: Long? = null, notes: String = ""
-    ) = viewModelScope.launch {
+    fun createOrUpdatePayment(clientId: String, month: String, amount: Double, isPaid: Boolean = false, paymentDate: Long? = null, notes: String = "") = viewModelScope.launch {
         paymentRepository.createOrUpdatePayment(clientId, month, amount, isPaid, paymentDate, notes)
     }
 }

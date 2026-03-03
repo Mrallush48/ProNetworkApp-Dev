@@ -36,7 +36,7 @@ fun ClientEditDialog(
     initialName: String = "",
     initialSubscriptionNumber: String = "",
     initialPrice: String = "",
-    initialBuildingId: Int = 0,
+    initialBuildingId: String = "",
     initialRoomNumber: String = "",
     initialStartMonth: String = "",
     initialStartDay: Int = 1,
@@ -50,7 +50,7 @@ fun ClientEditDialog(
         name: String,
         subscriptionNumber: String,
         price: Double,
-        buildingId: Int,
+        buildingId: String,
         roomNumber: String,
         startMonth: String,
         startDay: Int,
@@ -67,15 +67,13 @@ fun ClientEditDialog(
     var priceText by remember { mutableStateOf(initialPrice) }
 
     // المبنى nullable عشان نميّز بين "لم يُختر بعد" وقيمة حقيقية
-    var selectedBuildingId by remember {
-        mutableStateOf<Int?>(
-            if (!buildingSelectionEnabled && initialBuildingId > 0) {
-                initialBuildingId
-            } else {
-                initialBuildingId.takeIf { it > 0 }
-            }
-        )
-    }
+    var selectedBuildingId by remember { mutableStateOf(
+        if (!buildingSelectionEnabled && initialBuildingId.isNotBlank()) {
+            initialBuildingId
+        } else {
+            initialBuildingId.takeIf { it.isNotBlank() }
+        }
+    ) }
     var roomNumber by remember { mutableStateOf(initialRoomNumber) }
     var startMonth by remember { mutableStateOf(initialStartMonth) }
     var startDay by remember { mutableStateOf(initialStartDay.toString()) }
@@ -258,7 +256,7 @@ fun ClientEditDialog(
                             startDay.isNotBlank() &&
                             firstMonthAmountText.isNotBlank()
 
-                val buildingValid = selectedBuildingId != null
+                val buildingValid = !selectedBuildingId.isNullOrBlank()
                 val packageValid = !packageType.isNullOrBlank()
 
                 val roomValid = roomNumber.isNotBlank()
@@ -655,11 +653,11 @@ private fun SubscriptionStartSection(
 private fun BuildingAndContactSection(
     buildingSelectionEnabled: Boolean,
     buildingList: List<Building>,
-    selectedBuildingId: Int?,
+    selectedBuildingId: String?,
     buildingError: String?,
     buildingDropdownExpanded: Boolean,
     onBuildingDropdownExpandedChange: (Boolean) -> Unit,
-    onBuildingSelected: (Int) -> Unit,
+    onBuildingSelected: (String) -> Unit,
     roomNumber: String,
     onRoomNumberChange: (String) -> Unit,
     roomError: String? = null,

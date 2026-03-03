@@ -29,13 +29,13 @@ class PaymentsExportManager(
     // ===================== DATA MODELS =====================
 
     data class ClientPaymentSummary(
-        val clientId: Int,
+        val clientId: String,
         val clientName: String,
         val subscriptionNumber: String,
         val phone: String,
         val packageType: String,
         val roomNumber: String?,
-        val buildingId: Int,
+        val buildingId: String,
         val buildingName: String,
         val monthlyAmount: Double,
         val totalPaid: Double,
@@ -359,7 +359,7 @@ class PaymentsExportManager(
             val finalPhone: String
             val finalPackageType: String
             val finalRoomNumber: String?
-            val finalBuildingId: Int
+            val finalBuildingId: String
             val finalBuildingName: String
 
             if (firstTx != null) {
@@ -378,7 +378,7 @@ class PaymentsExportManager(
                 finalPhone = client?.phone ?: ""
                 finalPackageType = client?.packageType ?: ""
                 finalRoomNumber = client?.roomNumber
-                finalBuildingId = client?.buildingId ?: 0
+                finalBuildingId = client?.buildingId ?: ""
                 finalBuildingName = building?.name ?: "Unknown"
             }
 
@@ -478,7 +478,7 @@ class PaymentsExportManager(
         period: PaymentReportPeriod,
         startMonth: String,
         endMonth: String?,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ): PaymentReportData {
@@ -1316,7 +1316,7 @@ class PaymentsExportManager(
         period: PaymentReportPeriod,
         startMonth: String,
         endMonth: String?,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ) {

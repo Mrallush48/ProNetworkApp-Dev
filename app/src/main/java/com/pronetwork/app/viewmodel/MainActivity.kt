@@ -162,9 +162,8 @@ class MainActivity : ComponentActivity() {
                         // حفظ كل عميل والحصول على ID مباشرة ثم إنشاء سجلات الدفع
                         newClients.forEach { client ->
                             val newId = _clientViewModel.insertAndGetId(client)
-                            val savedClientId = newId.toInt()
                             _paymentViewModel.createPaymentsForClient(
-                                clientId = savedClientId,
+                                clientId = newId,
                                 startMonth = client.startMonth,
                                 endMonth = null,
                                 amount = client.price,
@@ -198,7 +197,7 @@ class MainActivity : ComponentActivity() {
         clients: List<Client>,
         selectedMonth: String,
         searchQuery: String,
-        selectedFilterBuildingId: Int?,
+        selectedFilterBuildingId: String?,
         selectedFilterPackage: String?,
         sortOption: SortOption
     ): List<Client> {
@@ -341,7 +340,7 @@ class MainActivity : ComponentActivity() {
                 var selectedClient by remember { mutableStateOf<Client?>(null) }
                 var showEditClientDialog by remember { mutableStateOf(false) }
                 var searchQuery by remember { mutableStateOf("") }
-                var selectedFilterBuildingId by remember { mutableStateOf<Int?>(null) }
+                var selectedFilterBuildingId by remember { mutableStateOf<String?>(null) }
                 var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
                 var selectedSortOption by remember { mutableStateOf(SortOption.NAME_ASC) }
                 var showViewOptionsDialog by remember { mutableStateOf(false) }

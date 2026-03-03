@@ -39,7 +39,7 @@ class ClientViewModel @Inject constructor(
     fun insert(client: Client) = viewModelScope.launch { repository.insert(client) }
 
     // دالة جديدة ترجع الـ ID مباشرة (تستخدم في الاستيراد)
-    suspend fun insertAndGetId(client: Client): Long {
+    suspend fun insertAndGetId(client: Client): String {
         return repository.insert(client)
     }
 
