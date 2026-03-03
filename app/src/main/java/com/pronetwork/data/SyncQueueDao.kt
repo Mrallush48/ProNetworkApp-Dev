@@ -24,17 +24,17 @@ interface SyncQueueDao {
     @Query("SELECT COUNT(*) FROM sync_queue")
     suspend fun getPendingCount(): Int
 
-    /** Increment retry count and set last error after a failed attempt */
-    @Query("UPDATE sync_queue SET retryCount = retryCount + 1, lastError = :error WHERE id = :id")
-    suspend fun incrementRetry(id: Long, error: String?)
+    /** Increment retry count after a failed attempt */
+    @Query("UPDATE sync_queue SET retryCount = retryCount + 1 WHERE id = :id")
+    suspend fun incrementRetry(id: Int)
 
     /** Remove a successfully synced operation */
     @Query("DELETE FROM sync_queue WHERE id = :id")
-    suspend fun remove(id: Long)
+    suspend fun remove(id: Int)
 
     /** Remove all operations for a specific entity (e.g. after full sync) */
     @Query("DELETE FROM sync_queue WHERE entityType = :entityType AND entityId = :entityId")
-    suspend fun removeByEntity(entityType: String, entityId: Int)
+    suspend fun removeByEntity(entityType: String, entityId: String)
 
     /** Clear all pending operations (used after full reset/re-sync) */
     @Query("DELETE FROM sync_queue")
