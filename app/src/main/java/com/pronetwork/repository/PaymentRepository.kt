@@ -150,20 +150,14 @@ class PaymentRepository @Inject constructor(
 
     suspend fun markAsPaid(clientId: String, month: String, paymentDate: Long) {
         val normalizedMonth = normalizeMonth(month)
-        paymentDao.markAsPaid(clientId, normalizedMonth, paymentDate)
-        val updated = paymentDao.getPayment(clientId, normalizedMonth)
-        if (updated != null) {
-            enqueueSync("payment", updated.id, "UPDATE", updated)
-        }
+        val existing = paymentDao.getPayment(clientId, normalizedMonth) ?: return
+        update(existing.copy(isPaid = true, paymentDate = paymentDate))
     }
 
     suspend fun markAsUnpaid(clientId: String, month: String) {
         val normalizedMonth = normalizeMonth(month)
-        paymentDao.markAsUnpaid(clientId, normalizedMonth)
-        val updated = paymentDao.getPayment(clientId, normalizedMonth)
-        if (updated != null) {
-            enqueueSync("payment", updated.id, "UPDATE", updated)
-        }
+        val existing = paymentDao.getPayment(clientId, normalizedMonth) ?: return
+        update(existing.copy(isPaid = false, paymentDate = null))
     }
 
     suspend fun getPayment(clientId: String, month: String): Payment? {
@@ -261,28 +255,30 @@ class PaymentRepository @Inject constructor(
         return paymentDao.getPaymentById(id)
     }
 
-    suspend fun updateFuturePaymentsAmount(
-        clientId: String,
-        fromMonth: String,
-        newAmount: Double
-    ) {
-        paymentDao.updateFuturePaymentsAmount(clientId, normalizeMonth(fromMonth), newAmount)
+    suspend fun updateFuturePaymentsAmount(clientId: String, fromMonth: String, newAmount: Double) {
+        val normalizedMonth = normalizeMonth(fromMonth)
+        val payments = paymentDao.getClientPaymentsDirect(clientId)
+            .filter { it.month >= normalizedMonth }
+        payments.forEach { payment ->
+            try {
+                update(payment.copy(amount = newAmount))
+            } catch (e: OptimisticLockException) {
+                android.util.Log.w("PaymentRepository",
+                    "Version conflict updating payment ${payment.id} — will resolve on next sync")
+            }
+        }
     }
 
-    suspend fun updateFutureUnpaidPaymentsAmount(
-        clientId: String,
-        fromMonth: String,
-        newAmount: Double
-    ) {
+    suspend fun updateFutureUnpaidPaymentsAmount(clientId: String, fromMonth: String, newAmount: Double) {
         val normalizedMonth = normalizeMonth(fromMonth)
-        paymentDao.updateFutureUnpaidPaymentsAmount(
-            clientId = clientId,
-            fromMonth = normalizedMonth,
-            newAmount = newAmount
-        )
-        val updatedPayments = paymentDao.getFutureUnpaidPayments(clientId, normalizedMonth)
-        updatedPayments.forEach { payment ->
-            enqueueSync("payment", payment.id, "UPDATE", payment)
+        val payments = paymentDao.getFutureUnpaidPayments(clientId, normalizedMonth)
+        payments.forEach { payment ->
+            try {
+                update(payment.copy(amount = newAmount))
+            } catch (e: OptimisticLockException) {
+                android.util.Log.w("PaymentRepository",
+                    "Version conflict updating payment ${payment.id} — will resolve on next sync")
+            }
         }
     }
 

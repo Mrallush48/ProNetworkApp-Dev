@@ -252,7 +252,7 @@ class SyncEngine @Inject constructor(
                     Log.d(TAG, "Push batch: ${result?.processed} processed, ${result?.failed} failed")
 
                     result?.acknowledgments?.forEach { ack ->
-                        if (ack.status == "ok" || ack.status == "conflict_server_wins") {
+                        if (ack.status in listOf("ok", "conflict_server_wins", "idempotent_skip")) {
                             val allOriginal = pending.filter {
                                 it.entityType == ack.entity_type &&
                                         it.entityId == ack.local_id
@@ -260,7 +260,13 @@ class SyncEngine @Inject constructor(
                             allOriginal.forEach { original ->
                                 syncQueueDao.remove(original.id)
                             }
-                            Log.d(TAG, "Ack OK: ${ack.entity_type} id=${ack.local_id} (removed ${allOriginal.size} queue entries)")
+                            val logSuffix = when (ack.status) {
+                                "idempotent_skip" -> "(idempotent — already processed)"
+                                "conflict_server_wins" -> "(conflict — server version kept)"
+                                else -> ""
+                            }
+                            Log.d(TAG, "Ack ${ack.status}: ${ack.entity_type} id=${ack.local_id} " +
+                                    "(removed ${allOriginal.size} queue entries) $logSuffix")
                         }
                     }
 
@@ -381,13 +387,26 @@ class SyncEngine @Inject constructor(
      * Apply changes from server with correct ordering:
      * 1. CREATEs/UPDATEs: buildings → clients → payments → transactions (parent-first)
      * 2. DELETEs: transactions → payments → clients → buildings (child-first)
-     * This prevents FK constraint violations.
+     *
+     * PROTECTION: Entities with pending local changes in sync_queue are SKIPPED
+     * to prevent server overwriting unsynced local financial data.
      */
     private suspend fun applyServerChanges(data: SyncPullResponse) {
+        // Pre-load pending entity keys — O(1) lookup to protect unsynced local changes
+        val pendingOps = syncQueueDao.getPendingWithRetryLimit(MAX_RETRIES)
+        val pendingKeys = pendingOps.map { "${it.entityType}:${it.entityId}" }.toSet()
+        if (pendingKeys.isNotEmpty()) {
+            Log.i(TAG, "Protecting ${pendingKeys.size} entities with pending local changes")
+        }
+
         // === Phase 1: CREATEs and UPDATEs (parent → child) ===
 
         // 1. Buildings
         data.buildings?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
+            if ("building:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP building #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 entity.data?.let { map ->
                     val json = gson.toJson(map)
@@ -402,6 +421,10 @@ class SyncEngine @Inject constructor(
 
         // 2. Clients
         data.clients?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
+            if ("client:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP client #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 entity.data?.let { map ->
                     val json = gson.toJson(map)
@@ -416,6 +439,10 @@ class SyncEngine @Inject constructor(
 
         // 3. Payments
         data.payments?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
+            if ("payment:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP payment #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 entity.data?.let { map ->
                     val json = gson.toJson(map)
@@ -430,6 +457,10 @@ class SyncEngine @Inject constructor(
 
         // 4. Payment Transactions
         data.payment_transactions?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
+            if ("payment_transaction:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP transaction #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 entity.data?.let { map ->
                     val json = gson.toJson(map)
@@ -446,6 +477,10 @@ class SyncEngine @Inject constructor(
 
         // 1. Payment Transactions (child-most)
         data.payment_transactions?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            if ("payment_transaction:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP DELETE transaction #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 db.paymentTransactionDao().deleteTransactionById(entity.id)
                 Log.d(TAG, "Applied DELETE transaction #${entity.id}")
@@ -456,6 +491,10 @@ class SyncEngine @Inject constructor(
 
         // 2. Payments
         data.payments?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            if ("payment:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP DELETE payment #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 val existing = db.paymentDao().getPaymentById(entity.id)
                 if (existing != null) {
@@ -469,6 +508,10 @@ class SyncEngine @Inject constructor(
 
         // 3. Clients
         data.clients?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            if ("client:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP DELETE client #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 val existing = db.clientDao().getClientById(entity.id)
                 if (existing != null) {
@@ -482,6 +525,10 @@ class SyncEngine @Inject constructor(
 
         // 4. Buildings (parent-most)
         data.buildings?.filter { it.action.uppercase() == "DELETE" }?.forEach { entity ->
+            if ("building:${entity.id}" in pendingKeys) {
+                Log.d(TAG, "Pull SKIP DELETE building #${entity.id} — pending local changes")
+                return@forEach
+            }
             try {
                 val existing = db.buildingDao().getBuildingById(entity.id)
                 if (existing != null) {
