@@ -29,7 +29,7 @@ object ApprovalHelper {
         authManager: AuthManager,
         scope: CoroutineScope,
         requestType: String,
-        targetId: Int? = null,
+        targetId: String? = null,
         targetName: String? = null,
         reason: String? = null,
         onAdminDirect: () -> Unit,

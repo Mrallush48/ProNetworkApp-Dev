@@ -106,7 +106,7 @@ class ClientsImportManager(
                         // إنشاء المبنى الجديد تلقائياً
                         val newBuilding = Building(name = buildingName)
                         val newId = buildingRepository.insert(newBuilding)
-                        building = newBuilding.copy(id = newId.toInt())
+                        building = newBuilding.copy(id = newId)
                         existingBuildings.add(building)
                         newBuildingsCount++
                     }

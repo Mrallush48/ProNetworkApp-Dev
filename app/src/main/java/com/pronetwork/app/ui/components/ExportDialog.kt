@@ -28,7 +28,7 @@ fun ExportDialog(
         type: ExportType,
         period: ExportPeriod,
         format: ExportFormat,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?
     ) -> Unit,
     showBuildingFilter: Boolean = true,

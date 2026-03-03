@@ -317,7 +317,7 @@ class PaymentsExportManager(
 
     private suspend fun gatherMonthData(
         month: String,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ): MonthData {
@@ -1369,7 +1369,7 @@ class PaymentsExportManager(
         period: PaymentReportPeriod,
         startMonth: String,
         endMonth: String?,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ) {
@@ -1420,7 +1420,7 @@ class PaymentsExportManager(
         period: PaymentReportPeriod,
         startMonth: String,
         endMonth: String?,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ) {
@@ -1461,7 +1461,7 @@ class PaymentsExportManager(
         period: PaymentReportPeriod,
         startMonth: String,
         endMonth: String?,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ) {

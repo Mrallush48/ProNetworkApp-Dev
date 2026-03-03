@@ -76,7 +76,7 @@ fun PaymentExportDialog(
         month: String,
         endMonth: String?,
         format: ExportFormat,
-        buildingFilter: Int?,
+        buildingFilter: String?,
         packageFilter: String?,
         statusFilter: PaymentReportFilter
     ) -> Unit
