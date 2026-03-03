@@ -3,6 +3,7 @@ package com.pronetwork.app.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.ForeignKey
+import com.pronetwork.util.generateId
 
 @Entity(
     tableName = "client_notes",
@@ -16,9 +17,10 @@ import androidx.room.ForeignKey
     ]
 )
 data class ClientNote(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val clientId: Int,
+    @PrimaryKey
+    val id: String = generateId(),
+    val clientId: String,
     val note: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val month: String // Format: yyyy-MM, the month when the note was added
+    val month: String
 )

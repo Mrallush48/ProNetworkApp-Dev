@@ -1,32 +1,19 @@
 package com.pronetwork.app.data
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.pronetwork.util.generateId
 
-@Entity(
-    tableName = "payment_transactions",
-    foreignKeys = [
-        ForeignKey(
-
-            entity = Payment::class,
-            parentColumns = ["id"],
-            childColumns = ["paymentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [
-        Index(value = ["paymentId"])
-    ]
-)
+@Entity(tableName = "payment_transactions")
 data class PaymentTransaction(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-
-    val paymentId: Int,        // يرتبط بسجل Payment (عميل + شهر)
-    val amount: Double,        // قيمة الدفعة (قد تكون جزئية أو كاملة)
-    val date: Long = System.currentTimeMillis(), // تاريخ الدفعة
-    val notes: String = "",     // ملاحظات اختيارية (مثلاً "دفع جزئي")
-    val createdBy: String = ""
+    @PrimaryKey
+    val id: String = generateId(),
+    val paymentId: String,
+    val type: String,
+    val amount: Double,
+    val notes: String = "",
+    val createdBy: Int? = null,
+    val timestamp: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val version: Int = 1
 )

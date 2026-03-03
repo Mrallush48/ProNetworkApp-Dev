@@ -1,14 +1,12 @@
 package com.pronetwork.app.data
 
-
-
 /**
  * حركة واحدة لعميل في يوم معيّن
  */
 data class DailyTransactionItem(
     val amount: Double,
     val time: String,
-    val type: String,       // "Payment" or "Refund"
+    val type: String,
     val notes: String
 )
 
@@ -16,7 +14,7 @@ data class DailyTransactionItem(
  * تفاصيل تحصيل عميل واحد في يوم معيّن
  */
 data class DailyClientCollection(
-    val clientId: Int,
+    val clientId: String,
     val clientName: String,
     val subscriptionNumber: String,
     val roomNumber: String?,
@@ -31,13 +29,11 @@ data class DailyClientCollection(
     val paymentStatus: String = ""
 )
 
-
 /**
  * نتيجة استعلام Room البسيط — تحصيل مبنى يومي
- * يستخدم فقط مع getDailyBuildingCollectionsForDay
  */
 data class DailyBuildingCollection(
-    val buildingId: Int,
+    val buildingId: String,
     val buildingName: String,
     val totalAmount: Double,
     val clientsCount: Int
@@ -45,10 +41,9 @@ data class DailyBuildingCollection(
 
 /**
  * موديل عرض مبنى تفصيلي — يُبنى في ViewModel
- * يحتوي على كل بيانات المبنى + قائمة العملاء
  */
 data class DailyBuildingDetailedUi(
-    val buildingId: Int,
+    val buildingId: String,
     val buildingName: String,
     val totalAmount: Double,
     val clientsCount: Int,
