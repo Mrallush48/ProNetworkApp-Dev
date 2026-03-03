@@ -8,6 +8,8 @@ import com.pronetwork.app.data.PaymentDao
 import com.pronetwork.app.data.Client
 import com.pronetwork.app.network.SyncEngine
 import com.pronetwork.app.network.SyncWorker
+import com.pronetwork.util.OptimisticLockException
+import com.pronetwork.util.generateId
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -39,11 +41,11 @@ class PaymentRepository @Inject constructor(
 
     val allPayments: LiveData<List<Payment>> = paymentDao.getAllPayments()
 
-    fun getPaymentLive(clientId: Int, month: String): LiveData<Payment?> {
+    fun getPaymentLive(clientId: String, month: String): LiveData<Payment> {
         return paymentDao.getPaymentLive(clientId, normalizeMonth(month))
     }
 
-    fun getClientPayments(clientId: Int): LiveData<List<Payment>> {
+    fun getClientPayments(clientId: String): LiveData<List<Payment>> {
         return paymentDao.getClientPayments(clientId)
     }
 
@@ -67,41 +69,59 @@ class PaymentRepository @Inject constructor(
         return paymentDao.getUnpaidCountByMonth(normalizeMonth(month))
     }
 
-    fun getTotalPaidAmountByMonth(month: String): LiveData<Double?> {
+    fun getTotalPaidAmountByMonth(month: String): LiveData<Double> {
         return paymentDao.getTotalPaidAmountByMonth(normalizeMonth(month))
     }
 
-    fun getTotalUnpaidAmountByMonth(month: String): LiveData<Double?> {
+    fun getTotalUnpaidAmountByMonth(month: String): LiveData<Double> {
         return paymentDao.getTotalUnpaidAmountByMonth(normalizeMonth(month))
     }
 
     // ================== Flow-based reactive queries ==================
 
-    /**
-     * Flow تفاعلي: جلب كل الدفعات في شهر معيّن — يتحدث تلقائياً.
-     */
     fun observePaymentsByMonth(month: String): Flow<List<Payment>> {
         return paymentDao.observePaymentsByMonth(normalizeMonth(month))
     }
 
-    /**
-     * Flow تفاعلي: جلب كل دفعات عميل معيّن — يتحدث تلقائياً.
-     */
-    fun observeClientPayments(clientId: Int): Flow<List<Payment>> {
+    fun observeClientPayments(clientId: String): Flow<List<Payment>> {
         return paymentDao.observeClientPayments(clientId)
     }
 
     // === استعلامات الكتابة ===
 
-    suspend fun insert(payment: Payment): Long {
-        val rowId = paymentDao.insert(payment)
-        enqueueSync("payment", rowId.toInt(), "CREATE", payment.copy(id = rowId.toInt()))
-        return rowId
+    suspend fun insert(payment: Payment): String {
+        val newPayment = payment.copy(
+            id = generateId(),
+            updatedAt = System.currentTimeMillis(),
+            version = 1,
+            checksum = ""
+        )
+        paymentDao.insert(newPayment)
+        enqueueSync("payment", newPayment.id, "CREATE", newPayment)
+        return newPayment.id
     }
 
     suspend fun update(payment: Payment) {
-        paymentDao.update(payment)
-        enqueueSync("payment", payment.id, "UPDATE", payment)
+        val updated = payment.copy(
+            version = payment.version + 1,
+            updatedAt = System.currentTimeMillis()
+        )
+        val rows = paymentDao.updateWithVersionCheck(
+            id = updated.id,
+            clientId = updated.clientId,
+            month = updated.month,
+            isPaid = updated.isPaid,
+            paymentDate = updated.paymentDate,
+            amount = updated.amount,
+            notes = updated.notes,
+            lastModifiedBy = updated.lastModifiedBy,
+            updatedAt = updated.updatedAt,
+            newVersion = updated.version,
+            expectedVersion = payment.version,
+            checksum = updated.checksum
+        )
+        if (rows == 0) throw OptimisticLockException("payment", payment.id)
+        enqueueSync("payment", updated.id, "UPDATE", updated)
     }
 
     suspend fun delete(payment: Payment) {
@@ -109,8 +129,7 @@ class PaymentRepository @Inject constructor(
         enqueueSync("payment", payment.id, "DELETE", payment)
     }
 
-    suspend fun deleteClientPayments(clientId: Int) {
-        // Get payments before deleting to enqueue sync
+    suspend fun deleteClientPayments(clientId: String) {
         val payments = paymentDao.getClientPaymentsDirect(clientId)
         paymentDao.deleteClientPayments(clientId)
         payments.forEach { payment ->
@@ -118,7 +137,7 @@ class PaymentRepository @Inject constructor(
         }
     }
 
-    suspend fun deletePayment(clientId: Int, month: String) {
+    suspend fun deletePayment(clientId: String, month: String) {
         val normalizedMonth = normalizeMonth(month)
         val existing = paymentDao.getPayment(clientId, normalizedMonth)
         paymentDao.deletePayment(clientId, normalizedMonth)
@@ -129,27 +148,25 @@ class PaymentRepository @Inject constructor(
 
     // === دوال مساعدة ===
 
-    suspend fun markAsPaid(clientId: Int, month: String, paymentDate: Long) {
+    suspend fun markAsPaid(clientId: String, month: String, paymentDate: Long) {
         val normalizedMonth = normalizeMonth(month)
         paymentDao.markAsPaid(clientId, normalizedMonth, paymentDate)
-        // Sync the updated payment
         val updated = paymentDao.getPayment(clientId, normalizedMonth)
         if (updated != null) {
             enqueueSync("payment", updated.id, "UPDATE", updated)
         }
     }
 
-    suspend fun markAsUnpaid(clientId: Int, month: String) {
+    suspend fun markAsUnpaid(clientId: String, month: String) {
         val normalizedMonth = normalizeMonth(month)
         paymentDao.markAsUnpaid(clientId, normalizedMonth)
-        // Sync the updated payment
         val updated = paymentDao.getPayment(clientId, normalizedMonth)
         if (updated != null) {
             enqueueSync("payment", updated.id, "UPDATE", updated)
         }
     }
 
-    suspend fun getPayment(clientId: Int, month: String): Payment? {
+    suspend fun getPayment(clientId: String, month: String): Payment? {
         return paymentDao.getPayment(clientId, normalizeMonth(month))
     }
 
@@ -160,19 +177,18 @@ class PaymentRepository @Inject constructor(
     /**
      * إرجاع id لسجل Payment لعميل/شهر معيّن.
      * إذا لم يكن موجودًا يتم إنشاؤه بمبلغ معيّن ويُرجع id الجديد.
-     * مهم لاستخدامه مع جدول payment_transactions.
      */
     suspend fun getOrCreatePaymentId(
-        clientId: Int,
+        clientId: String,
         month: String,
         amount: Double
-    ): Int {
+    ): String {
         val normalizedMonth = normalizeMonth(month)
         val existing = getPayment(clientId, normalizedMonth)
         return if (existing != null) {
             existing.id
         } else {
-            val newId = insert(
+            insert(
                 Payment(
                     clientId = clientId,
                     month = normalizedMonth,
@@ -182,16 +198,14 @@ class PaymentRepository @Inject constructor(
                     notes = ""
                 )
             )
-            newId.toInt()
         }
     }
 
     /**
      * ضبط حالة الدفع (مدفوع/غير مدفوع) لسجل معين مع تاريخ اختياري.
-     * يمكن استخدامها بعد حساب المدفوع الكلي من جدول الحركات الجزئية.
      */
     suspend fun setPaidStatus(
-        clientId: Int,
+        clientId: String,
         month: String,
         isPaid: Boolean,
         paymentDate: Long? = null
@@ -209,8 +223,9 @@ class PaymentRepository @Inject constructor(
     }
 
     // === دالة ذكية: إنشاء أو تحديث دفعة ===
+
     suspend fun createOrUpdatePayment(
-        clientId: Int,
+        clientId: String,
         month: String,
         amount: Double,
         isPaid: Boolean = false,
@@ -242,23 +257,20 @@ class PaymentRepository @Inject constructor(
         }
     }
 
-    // دالة جديدة: جلب Payment حسب المعرف
-    suspend fun getPaymentById(id: Int): Payment? {
+    suspend fun getPaymentById(id: String): Payment? {
         return paymentDao.getPaymentById(id)
     }
 
-    // دالة جديدة: تحديث مبالغ الشهور المستقبلية
     suspend fun updateFuturePaymentsAmount(
-        clientId: Int,
+        clientId: String,
         fromMonth: String,
         newAmount: Double
     ) {
         paymentDao.updateFuturePaymentsAmount(clientId, normalizeMonth(fromMonth), newAmount)
     }
 
-    // دالة جديدة: تحديث مبالغ الشهور المستقبلية (الجديدة)
     suspend fun updateFutureUnpaidPaymentsAmount(
-        clientId: Int,
+        clientId: String,
         fromMonth: String,
         newAmount: Double
     ) {
@@ -268,15 +280,13 @@ class PaymentRepository @Inject constructor(
             fromMonth = normalizedMonth,
             newAmount = newAmount
         )
-        // Sync all affected payments
         val updatedPayments = paymentDao.getFutureUnpaidPayments(clientId, normalizedMonth)
         updatedPayments.forEach { payment ->
             enqueueSync("payment", payment.id, "UPDATE", payment)
         }
     }
 
-    // دالة جديدة: جلب أول شهر غير مسجّل عليه أي حركات لعميل معيّن
-    suspend fun getFirstUnpaidMonthForClient(clientId: Int): String? {
+    suspend fun getFirstUnpaidMonthForClient(clientId: String): String? {
         return paymentDao.getFirstUnpaidMonthForClient(clientId)
     }
 
@@ -284,17 +294,13 @@ class PaymentRepository @Inject constructor(
         return paymentDao.getPaymentsByMonthDirect(normalizeMonth(month))
     }
 
-    suspend fun getClientsByIds(ids: List<Int>): List<Client> {
+    suspend fun getClientsByIds(ids: List<String>): List<Client> {
         return clientDao.getClientsByIds(ids)
     }
 
     // === مزامنة العمليات ===
 
-    /**
-     * إضافة العملية لقائمة المزامنة + تشغيل sync فوري
-     * يعمل بصمت — أي خطأ في الـ enqueue لا يؤثر على العملية الأساسية
-     */
-    private suspend fun enqueueSync(entityType: String, entityId: Int, action: String, entity: Any) {
+    private suspend fun enqueueSync(entityType: String, entityId: String, action: String, entity: Any) {
         try {
             syncEngine.enqueue(
                 entityType = entityType,
@@ -302,10 +308,8 @@ class PaymentRepository @Inject constructor(
                 action = action,
                 payload = gson.toJson(entity)
             )
-            // تشغيل مزامنة فورية في الخلفية
             SyncWorker.syncNow(context)
         } catch (e: Exception) {
-            // لا نوقف العملية المحلية أبداً بسبب فشل الـ enqueue
             android.util.Log.w("PaymentRepository", "Sync enqueue failed: ${e.message}")
         }
     }
