@@ -12,11 +12,13 @@ import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pronetwork.util.ChecksumKeyManager
 
 @Singleton
 class ClientRepository @Inject constructor(
     private val clientDao: ClientDao,
     private val syncEngine: SyncEngine,
+    private val checksumKeyManager: ChecksumKeyManager,
     @ApplicationContext private val context: Context
 ) {
     private val gson = Gson()
@@ -30,11 +32,13 @@ class ClientRepository @Inject constructor(
     suspend fun getClientById(id: String): Client? = clientDao.getClientById(id)
 
     suspend fun insert(client: Client): String {
-        val newClient = client.copy(
+        val withFields = client.copy(
             id = generateId(),
             updatedAt = System.currentTimeMillis(),
-            version = 1,
-            checksum = ""
+            version = 1
+        )
+        val newClient = withFields.copy(
+            checksum = withFields.computeChecksum(checksumKeyManager.getSecretKey())
         )
         clientDao.insert(newClient)
         enqueueSync("client", newClient.id, "CREATE", newClient)
@@ -42,9 +46,12 @@ class ClientRepository @Inject constructor(
     }
 
     suspend fun update(client: Client) {
-        val updated = client.copy(
+        val withFields = client.copy(
             version = client.version + 1,
             updatedAt = System.currentTimeMillis()
+        )
+        val updated = withFields.copy(
+            checksum = withFields.computeChecksum(checksumKeyManager.getSecretKey())
         )
         val rows = clientDao.updateWithVersionCheck(
             id = updated.id,

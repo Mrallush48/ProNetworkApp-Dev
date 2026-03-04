@@ -15,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import com.pronetwork.util.ChecksumKeyManager
 
 // توحيد صيغة الشهر إلى yyyy-MM
 private fun normalizeMonth(yearMonth: String): String {
@@ -33,6 +34,7 @@ class PaymentRepository @Inject constructor(
     private val paymentDao: PaymentDao,
     private val clientDao: ClientDao,
     private val syncEngine: SyncEngine,
+    private val checksumKeyManager: ChecksumKeyManager,
     @ApplicationContext private val context: Context
 ) {
     private val gson = Gson()
@@ -90,11 +92,13 @@ class PaymentRepository @Inject constructor(
     // === استعلامات الكتابة ===
 
     suspend fun insert(payment: Payment): String {
-        val newPayment = payment.copy(
+        val withFields = payment.copy(
             id = generateId(),
             updatedAt = System.currentTimeMillis(),
-            version = 1,
-            checksum = ""
+            version = 1
+        )
+        val newPayment = withFields.copy(
+            checksum = withFields.computeChecksum(checksumKeyManager.getSecretKey())
         )
         paymentDao.insert(newPayment)
         enqueueSync("payment", newPayment.id, "CREATE", newPayment)
@@ -102,9 +106,12 @@ class PaymentRepository @Inject constructor(
     }
 
     suspend fun update(payment: Payment) {
-        val updated = payment.copy(
+        val withFields = payment.copy(
             version = payment.version + 1,
             updatedAt = System.currentTimeMillis()
+        )
+        val updated = withFields.copy(
+            checksum = withFields.computeChecksum(checksumKeyManager.getSecretKey())
         )
         val rows = paymentDao.updateWithVersionCheck(
             id = updated.id,

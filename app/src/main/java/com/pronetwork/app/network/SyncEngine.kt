@@ -17,6 +17,8 @@ import java.util.Locale
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.room.withTransaction
+import com.pronetwork.util.ChecksumKeyManager
 
 /**
  * Core sync engine that handles push (upload local changes) and pull (download server changes).
@@ -27,7 +29,8 @@ class SyncEngine @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: ClientDatabase,
     private val syncQueueDao: SyncQueueDao,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val checksumKeyManager: ChecksumKeyManager
 ) {
     companion object {
         private const val TAG = "SyncEngine"
@@ -436,6 +439,25 @@ class SyncEngine @Inject constructor(
         return mutable
     }
 
+    /**
+     * Validates HMAC-SHA256 checksum for financial entities (Client, Payment).
+     * Returns true if:
+     * - Entity has no checksum (legacy data or buildings/transactions)
+     * - Checksum matches computed value
+     * Returns false only if checksum exists but doesn't match (data tampering/corruption).
+     */
+    private fun validateChecksum(entity: Any, storedChecksum: String): Boolean {
+        if (storedChecksum.isBlank()) return true
+
+        val secretKey = checksumKeyManager.getSecretKey()
+        val computed = when (entity) {
+            is com.pronetwork.app.data.Client -> entity.computeChecksum(secretKey)
+            is com.pronetwork.app.data.Payment -> entity.computeChecksum(secretKey)
+            else -> return true
+        }
+        return computed == storedChecksum
+    }
+
 
 
     /**
@@ -454,9 +476,10 @@ class SyncEngine @Inject constructor(
             Log.i(TAG, "Protecting ${pendingKeys.size} entities with pending local changes")
         }
 
-        // === Phase 1: CREATEs and UPDATEs (parent → child) ===
+        db.withTransaction {
+            // === Phase 1: CREATEs and UPDATEs (parent → child) ===
 
-        // 1. Buildings
+            // 1. Buildings
         data.buildings?.filter { it.action.uppercase() != "DELETE" }?.forEach { entity ->
             if ("building:${entity.id}" in pendingKeys) {
                 Log.d(TAG, "Pull SKIP building #${entity.id} — pending local changes")
@@ -466,8 +489,13 @@ class SyncEngine @Inject constructor(
                 entity.data?.let { map ->
                     val json = gson.toJson(sanitizeMap(map, "building"))
                     val building = gson.fromJson(json, com.pronetwork.app.data.Building::class.java)
-                    db.buildingDao().upsert(building)
-                    Log.d(TAG, "Applied ${entity.action} building #${entity.id}")
+                    val existing = db.buildingDao().getBuildingById(entity.id)
+                    if (existing == null || building.version >= existing.version) {
+                        db.buildingDao().upsert(building)
+                        Log.d(TAG, "Applied ${entity.action} building #${entity.id} (v${building.version})")
+                    } else {
+                        Log.d(TAG, "Pull SKIP building #${entity.id} — local v${existing.version} > server v${building.version}")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply building #${entity.id}: ${e.message}")
@@ -484,8 +512,16 @@ class SyncEngine @Inject constructor(
                 entity.data?.let { map ->
                     val json = gson.toJson(sanitizeMap(map, "client"))
                     val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
-                    db.clientDao().upsert(client)
-                    Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
+                    val existing = db.clientDao().getClientById(entity.id)
+                    if (existing == null || client.version >= existing.version) {
+                        if (!validateChecksum(client, client.checksum)) {
+                            Log.w(TAG, "CHECKSUM MISMATCH client #${entity.id} — data may be corrupted")
+                        }
+                        db.clientDao().upsert(client)
+                        Log.d(TAG, "Applied ${entity.action} client #${entity.id} (v${client.version})")
+                    } else {
+                        Log.d(TAG, "Pull SKIP client #${entity.id} — local v${existing.version} > server v${client.version}")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply client #${entity.id}: ${e.message}")
@@ -502,8 +538,16 @@ class SyncEngine @Inject constructor(
                 entity.data?.let { map ->
                     val json = gson.toJson(sanitizeMap(map, "payment"))
                     val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
-                    db.paymentDao().upsert(payment)
-                    Log.d(TAG, "Applied ${entity.action} payment #${entity.id}")
+                    val existing = db.paymentDao().getPaymentById(entity.id)
+                    if (existing == null || payment.version >= existing.version) {
+                        if (!validateChecksum(payment, payment.checksum)) {
+                            Log.w(TAG, "CHECKSUM MISMATCH payment #${entity.id} — data may be corrupted")
+                        }
+                        db.paymentDao().upsert(payment)
+                        Log.d(TAG, "Applied ${entity.action} payment #${entity.id} (v${payment.version})")
+                    } else {
+                        Log.d(TAG, "Pull SKIP payment #${entity.id} — local v${existing.version} > server v${payment.version}")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply payment #${entity.id}: ${e.message}")
@@ -520,8 +564,13 @@ class SyncEngine @Inject constructor(
                 entity.data?.let { map ->
                     val json = gson.toJson(sanitizeMap(map, "payment_transaction"))
                     val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
-                    db.paymentTransactionDao().upsert(transaction)
-                    Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
+                    val existing = db.paymentTransactionDao().getTransactionById(entity.id)
+                    if (existing == null || transaction.version >= existing.version) {
+                        db.paymentTransactionDao().upsert(transaction)
+                        Log.d(TAG, "Applied ${entity.action} transaction #${entity.id} (v${transaction.version})")
+                    } else {
+                        Log.d(TAG, "Pull SKIP transaction #${entity.id} — local v${existing.version} > server v${transaction.version}")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply transaction #${entity.id}: ${e.message}")
@@ -594,6 +643,9 @@ class SyncEngine @Inject constructor(
                 Log.e(TAG, "Failed to delete building #${entity.id}: ${e.message}")
             }
         }
+        }
+
+        // end withTransaction
 
         val clientCount = data.clients?.size ?: 0
         val buildingCount = data.buildings?.size ?: 0
