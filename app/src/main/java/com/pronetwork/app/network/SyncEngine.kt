@@ -440,25 +440,21 @@ class SyncEngine @Inject constructor(
     }
 
     /**
-     * Validates HMAC-SHA256 checksum for financial entities (Client, Payment).
-     * Returns true if:
-     * - Entity has no checksum (legacy data or buildings/transactions)
-     * - Checksum matches computed value
-     * Returns false only if checksum exists but doesn't match (data tampering/corruption).
+     * Recomputes HMAC-SHA256 checksum using the LOCAL device key.
+     * During Pull, the incoming checksum was computed by another device's key,
+     * so we replace it with our own to enable local integrity verification later.
+     * Returns entity with locally-computed checksum, or original if not applicable.
      */
-    private fun validateChecksum(entity: Any, storedChecksum: String): Boolean {
-        if (storedChecksum.isBlank()) return true
-
+    private fun recomputeLocalChecksum(entity: Any): Any {
         val secretKey = checksumKeyManager.getSecretKey()
-        val computed = when (entity) {
-            is com.pronetwork.app.data.Client -> entity.computeChecksum(secretKey)
-            is com.pronetwork.app.data.Payment -> entity.computeChecksum(secretKey)
-            else -> return true
+        return when (entity) {
+            is com.pronetwork.app.data.Client ->
+                entity.copy(checksum = entity.computeChecksum(secretKey))
+            is com.pronetwork.app.data.Payment ->
+                entity.copy(checksum = entity.computeChecksum(secretKey))
+            else -> entity
         }
-        return computed == storedChecksum
     }
-
-
 
     /**
      * Apply changes from server with correct ordering:
@@ -514,10 +510,8 @@ class SyncEngine @Inject constructor(
                     val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
                     val existing = db.clientDao().getClientById(entity.id)
                     if (existing == null || client.version >= existing.version) {
-                        if (!validateChecksum(client, client.checksum)) {
-                            Log.w(TAG, "CHECKSUM MISMATCH client #${entity.id} — data may be corrupted")
-                        }
-                        db.clientDao().upsert(client)
+                        val secured = recomputeLocalChecksum(client) as com.pronetwork.app.data.Client
+                        db.clientDao().upsert(secured)
                         Log.d(TAG, "Applied ${entity.action} client #${entity.id} (v${client.version})")
                     } else {
                         Log.d(TAG, "Pull SKIP client #${entity.id} — local v${existing.version} > server v${client.version}")
@@ -540,10 +534,8 @@ class SyncEngine @Inject constructor(
                     val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
                     val existing = db.paymentDao().getPaymentById(entity.id)
                     if (existing == null || payment.version >= existing.version) {
-                        if (!validateChecksum(payment, payment.checksum)) {
-                            Log.w(TAG, "CHECKSUM MISMATCH payment #${entity.id} — data may be corrupted")
-                        }
-                        db.paymentDao().upsert(payment)
+                        val secured = recomputeLocalChecksum(payment) as com.pronetwork.app.data.Payment
+                        db.paymentDao().upsert(secured)
                         Log.d(TAG, "Applied ${entity.action} payment #${entity.id} (v${payment.version})")
                     } else {
                         Log.d(TAG, "Pull SKIP payment #${entity.id} — local v${existing.version} > server v${payment.version}")
