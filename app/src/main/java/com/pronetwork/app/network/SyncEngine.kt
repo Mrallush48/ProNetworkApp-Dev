@@ -384,6 +384,61 @@ class SyncEngine @Inject constructor(
     }
 
     /**
+     * Sanitize server JSON map before Gson deserialization.
+     * Ensures NOT NULL fields have defaults when server omits them.
+     * This prevents SQLITE_CONSTRAINT_NOTNULL crashes during Pull.
+     */
+    private fun sanitizeMap(map: Map<String, Any>, entityType: String): Map<String, Any> {
+        val mutable = map.toMutableMap()
+
+        when (entityType) {
+            "client" -> {
+                mutable.putIfAbsent("checksum", "")
+                mutable.putIfAbsent("subscriptionNumber", "")
+                mutable.putIfAbsent("phone", "")
+                mutable.putIfAbsent("address", "")
+                mutable.putIfAbsent("packageType", "5Mbps")
+                mutable.putIfAbsent("notes", "")
+                mutable.putIfAbsent("version", 1)
+                mutable.putIfAbsent("updatedAt", System.currentTimeMillis())
+            }
+            "payment" -> {
+                mutable.putIfAbsent("checksum", "")
+                mutable.putIfAbsent("notes", "")
+                mutable.putIfAbsent("version", 1)
+                mutable.putIfAbsent("updatedAt", System.currentTimeMillis())
+            }
+            "building" -> {
+                mutable.putIfAbsent("location", "")
+                mutable.putIfAbsent("notes", "")
+                mutable.putIfAbsent("managerName", "")
+                mutable.putIfAbsent("version", 1)
+                mutable.putIfAbsent("updatedAt", System.currentTimeMillis())
+            }
+            "payment_transaction" -> {
+                mutable.putIfAbsent("notes", "")
+                mutable.putIfAbsent("type", "")
+                mutable.putIfAbsent("version", 1)
+                mutable.putIfAbsent("updatedAt", System.currentTimeMillis())
+                // Fix: server sends createdBy as String ("admin"), Entity expects Int?
+                val createdBy = mutable["createdBy"]
+                if (createdBy is String) {
+                    val parsed = createdBy.toIntOrNull()
+                    if (parsed != null) {
+                        mutable["createdBy"] = parsed
+                    } else {
+                        mutable.remove("createdBy")
+                    }
+                }
+            }
+        }
+
+        return mutable
+    }
+
+
+
+    /**
      * Apply changes from server with correct ordering:
      * 1. CREATEs/UPDATEs: buildings → clients → payments → transactions (parent-first)
      * 2. DELETEs: transactions → payments → clients → buildings (child-first)
@@ -409,7 +464,7 @@ class SyncEngine @Inject constructor(
             }
             try {
                 entity.data?.let { map ->
-                    val json = gson.toJson(map)
+                    val json = gson.toJson(sanitizeMap(map, "building"))
                     val building = gson.fromJson(json, com.pronetwork.app.data.Building::class.java)
                     db.buildingDao().upsert(building)
                     Log.d(TAG, "Applied ${entity.action} building #${entity.id}")
@@ -427,7 +482,7 @@ class SyncEngine @Inject constructor(
             }
             try {
                 entity.data?.let { map ->
-                    val json = gson.toJson(map)
+                    val json = gson.toJson(sanitizeMap(map, "client"))
                     val client = gson.fromJson(json, com.pronetwork.app.data.Client::class.java)
                     db.clientDao().upsert(client)
                     Log.d(TAG, "Applied ${entity.action} client #${entity.id}")
@@ -445,7 +500,7 @@ class SyncEngine @Inject constructor(
             }
             try {
                 entity.data?.let { map ->
-                    val json = gson.toJson(map)
+                    val json = gson.toJson(sanitizeMap(map, "payment"))
                     val payment = gson.fromJson(json, com.pronetwork.app.data.Payment::class.java)
                     db.paymentDao().upsert(payment)
                     Log.d(TAG, "Applied ${entity.action} payment #${entity.id}")
@@ -463,7 +518,7 @@ class SyncEngine @Inject constructor(
             }
             try {
                 entity.data?.let { map ->
-                    val json = gson.toJson(map)
+                    val json = gson.toJson(sanitizeMap(map, "payment_transaction"))
                     val transaction = gson.fromJson(json, com.pronetwork.app.data.PaymentTransaction::class.java)
                     db.paymentTransactionDao().upsert(transaction)
                     Log.d(TAG, "Applied ${entity.action} transaction #${entity.id}")
